@@ -1,0 +1,37 @@
+[package]
+name = "allframe-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "The composable Rust API framework - core library"
+
+[dependencies]
+tokio = { workspace = true }
+hyper = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Optional features
+allframe-macros = { path = "../allframe-macros", optional = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+mockall = { workspace = true }
+
+[features]
+default = ["di", "openapi", "router"]
+di = ["allframe-macros"]
+openapi = []
+otel = []
+router = []
+cqrs = []
+mcp = []

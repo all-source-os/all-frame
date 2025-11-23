@@ -1,0 +1,82 @@
+[workspace]
+members = [
+    "crates/allframe-core",
+    "crates/allframe-macros",
+    "crates/allframe-forge",
+]
+resolver = "2"
+
+# Root package for workspace-level tests
+[package]
+name = "allframe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+allframe-core = { path = "crates/allframe-core" }
+allframe-forge = { path = "crates/allframe-forge" }
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.0"
+tempfile = "3.8"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["AllFrame Contributors"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/allframe"
+homepage = "https://allframe.rs"
+documentation = "https://docs.rs/allframe"
+keywords = ["web", "framework", "api", "tdd", "clean-architecture"]
+categories = ["web-programming::http-server", "asynchronous"]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# HTTP server
+hyper = { version = "1.1", features = ["full"] }
+
+# Core utilities
+async-trait = "0.1"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Testing
+assert_cmd = "2.0"
+predicates = "3.0"
+tempfile = "3.8"
+proptest = "1.4"
+mockall = "0.12"
+trybuild = "1.0"
+criterion = "0.5"
+
+# CLI dependencies
+clap = "4.4"
+anyhow = "1.0"
+
+# Proc macro dependencies
+syn = "2.0"
+quote = "1.0"
+proc-macro2 = "1.0"
+
+# Test configuration for the workspace
+[profile.test]
+opt-level = 0
+debug = true
+
+[profile.bench]
+opt-level = 3
+lto = true
+
+# Release configuration
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

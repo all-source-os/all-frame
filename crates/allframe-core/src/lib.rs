@@ -21,14 +21,12 @@
 #![deny(unsafe_code)]
 
 /// Prelude module for convenient imports
-pub mod prelude {
-    //! Commonly used imports for AllFrame applications
-}
+///
+/// Commonly used imports for AllFrame applications
+pub mod prelude {}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_allframe_core_exists() {
         // This test verifies the crate compiles

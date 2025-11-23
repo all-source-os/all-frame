@@ -5,7 +5,12 @@
 //! - Generating code from LLM prompts (`allframe forge`)
 //! - Running migrations and deployments
 
+mod scaffolding;
+mod templates;
+mod validation;
+
 use clap::{Parser, Subcommand};
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(name = "allframe")]
@@ -21,7 +26,7 @@ enum Commands {
     /// Create a new AllFrame project
     Ignite {
         /// Name of the project to create
-        name: String,
+        name: PathBuf,
 
         /// Enable all features
         #[arg(long)]
@@ -50,28 +55,51 @@ fn main() -> anyhow::Result<()> {
 }
 
 /// Create a new AllFrame project
-fn ignite_project(name: &str, _all_features: bool) -> anyhow::Result<()> {
-    // RED PHASE: This implementation is intentionally incomplete
-    // to make the test fail.
-    //
-    // TODO (GREEN PHASE):
-    // 1. Validate project name
-    // 2. Create project directory
-    // 3. Generate Cargo.toml
-    // 4. Generate src/main.rs
-    // 5. Generate Clean Architecture structure
-    // 6. Generate .gitignore
-    // 7. Generate README.md
+///
+/// This function orchestrates the creation of a new AllFrame project with
+/// Clean Architecture structure.
+///
+/// # Arguments
+/// * `project_path` - Path where the project will be created
+/// * `_all_features` - Whether to enable all features (currently unused)
+///
+/// # Errors
+/// Returns an error if:
+/// - Project name is invalid
+/// - Directory already exists
+/// - File system operations fail
+fn ignite_project(project_path: &Path, _all_features: bool) -> anyhow::Result<()> {
+    // Extract and validate project name
+    let project_name = project_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| anyhow::anyhow!("Invalid project path"))?;
 
-    anyhow::bail!(
-        "allframe ignite is not yet implemented. \
-         This is the RED phase of TDD - the test should fail here. \
-         Project name was: {}",
-        name
-    );
+    validation::validate_project_name(project_name)?;
+
+    // Check if directory already exists
+    if project_path.exists() {
+        anyhow::bail!("Directory already exists: {}", project_path.display());
+    }
+
+    // Create project directory
+    std::fs::create_dir_all(project_path)?;
+
+    // Generate project structure
+    scaffolding::create_directory_structure(project_path)?;
+    scaffolding::generate_files(project_path, project_name)?;
+
+    // Success message
+    println!("AllFrame project created successfully: {}", project_name);
+    println!("\nNext steps:");
+    println!("  cd {}", project_name);
+    println!("  cargo test");
+    println!("  cargo run");
+
+    Ok(())
 }
 
-/// Generate code from LLM prompts
+/// Generate code from LLM prompts (not yet implemented)
 fn forge_code(_prompt: &str) -> anyhow::Result<()> {
     anyhow::bail!("allframe forge is not yet implemented")
 }
@@ -82,11 +110,10 @@ mod tests {
 
     #[test]
     fn test_cli_parses() {
-        // Verify CLI structure compiles and can be parsed
         let cli = Cli::parse_from(["allframe", "ignite", "test-project"]);
         match cli.command {
             Commands::Ignite { name, .. } => {
-                assert_eq!(name, "test-project");
+                assert_eq!(name, PathBuf::from("test-project"));
             }
             _ => panic!("Expected Ignite command"),
         }

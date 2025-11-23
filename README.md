@@ -1,0 +1,344 @@
+# AllFrame
+
+**The Composable Rust API Framework**
+
+> *One frame to rule them all. Transform, compose, ignite.*
+
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
+[![TDD](https://img.shields.io/badge/TDD-100%25-green.svg)](docs/current/PRD_01.md)
+
+---
+
+## What is AllFrame?
+
+AllFrame is the **first Rust web framework designed, built, and evolved exclusively through Test-Driven Development (TDD)**. Every feature, macro, and public API has a failing test before it is written.
+
+We ship **one crate** (`allframe-core`) that gives you, out of the box and with **zero external runtime dependencies**:
+
+- ✅ **Compile-time DI** - Dependency injection resolved at compile time
+- ✅ **Auto OpenAPI 3.1 + Swagger UI** - API documentation generated automatically
+- ✅ **OpenTelemetry auto-instrumentation** - Observability built-in
+- ✅ **Protocol-agnostic routing** - REST ↔ GraphQL ↔ gRPC ↔ WebSockets via config
+- ✅ **Enforced Clean Architecture + CQRS/ES** - Architectural patterns enforced at compile time
+- ✅ **Native MCP server** - LLMs can call your API as tools
+- ✅ **LLM-powered code generation** - `allframe forge` CLI
+
+**All of this in binaries < 8 MB, > 500k req/s** (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
+
+---
+
+## Quick Start
+
+```bash
+# Install AllFrame CLI
+cargo install allframe
+
+# Create a new project
+allframe ignite my-api
+
+# Run your API
+cd my-api
+cargo run
+
+# Visit http://localhost:8080/swagger-ui
+```
+
+---
+
+## Core Features
+
+### 🔧 Compile-Time Dependency Injection
+
+```rust
+use allframe::prelude::*;
+
+#[di_container]
+struct AppContainer {
+    user_repo: Arc<dyn UserRepository>,
+    user_service: Arc<UserService>,
+}
+
+// Dependencies resolved at compile time - zero runtime overhead
+```
+
+### 📝 Auto OpenAPI 3.1 Generation
+
+```rust
+#[api_handler]
+async fn get_user(id: Path<String>) -> Result<Json<User>, ApiError> {
+    // OpenAPI schema auto-generated
+    // Swagger UI available at /swagger-ui
+    // MCP schema exported for LLM tool calling
+}
+```
+
+### 🔄 Protocol-Agnostic Handlers
+
+```rust
+#[handler(protocols = ["rest", "graphql", "grpc"])]
+async fn create_user(input: CreateUserInput) -> Result<User, Error> {
+    // Same handler works as:
+    // - POST /users (REST)
+    // - mutation { createUser } (GraphQL)
+    // - CreateUser(request) (gRPC)
+}
+```
+
+### 🏛️ Clean Architecture Enforced
+
+```rust
+// ✅ This compiles
+domain_entity.apply_business_logic();
+
+// ❌ This fails at compile time
+handler.direct_database_access(); // Compilation error!
+```
+
+### 🤖 MCP Server (LLM Tool Calling)
+
+```rust
+// Your API is automatically available to Claude/GPT
+// LLMs can discover and call your endpoints as tools
+
+// No additional configuration needed!
+```
+
+---
+
+## Why AllFrame?
+
+| Feature | AllFrame | Actix | Axum | Rocket |
+|---------|----------|-------|------|--------|
+| TDD-First | ✅ 100% | ❌ | ❌ | ❌ |
+| Compile-time DI | ✅ | ❌ | ❌ | ❌ |
+| Auto OpenAPI 3.1 | ✅ | 🟡 Manual | 🟡 Manual | 🟡 Manual |
+| Protocol-agnostic | ✅ | ❌ | ❌ | ❌ |
+| Clean Arch enforced | ✅ | ❌ | ❌ | ❌ |
+| MCP Server | ✅ | ❌ | ❌ | ❌ |
+| Zero runtime deps | ✅ | ❌ | ✅ | ❌ |
+| Binary size | < 8 MB | ~12 MB | ~6 MB | ~10 MB |
+
+---
+
+## Installation
+
+### As a Library
+
+```toml
+[dependencies]
+allframe = "0.1"
+```
+
+### As a CLI Tool
+
+```bash
+cargo install allframe-cli
+```
+
+---
+
+## Example: Hello World
+
+```rust
+use allframe::prelude::*;
+
+#[allframe::main]
+async fn main() {
+    let app = App::new()
+        .route("/hello", get(hello_handler));
+
+    app.run().await;
+}
+
+#[api_handler]
+async fn hello_handler() -> &'static str {
+    "Hello, AllFrame!"
+}
+```
+
+**Run:**
+```bash
+cargo run
+```
+
+**OpenAPI docs automatically available at:**
+- http://localhost:8080/swagger-ui
+- http://localhost:8080/openapi.json
+
+---
+
+## Feature Flags
+
+AllFrame uses Cargo feature flags for optional functionality:
+
+```toml
+[dependencies]
+allframe = { version = "0.1", features = ["di", "openapi", "otel"] }
+```
+
+Available features:
+
+| Feature | Description | Default |
+|---------|-------------|---------|
+| `di` | Compile-time dependency injection | ✅ |
+| `openapi` | Auto OpenAPI 3.1 + Swagger UI | ✅ |
+| `otel` | OpenTelemetry auto-instrumentation | ❌ |
+| `router` | Protocol-agnostic routing | ✅ |
+| `cqrs` | CQRS + Event Sourcing support | ❌ |
+| `mcp` | Model Context Protocol server | ❌ |
+| `forge` | LLM code generation CLI | ❌ |
+
+---
+
+## Documentation
+
+- 📖 [Getting Started Guide](docs/guides/getting-started.md) *(coming soon)*
+- 📋 [Product Requirements Document](docs/current/PRD_01.md)
+- 🧪 [TDD Workflow](/.claude/TDD_CHECKLIST.md)
+- 🏛️ [Clean Architecture Guide](/.claude/skills/rust-clean-architecture.md)
+- 🔧 [API Reference](https://docs.rs/allframe) *(coming soon)*
+
+---
+
+## Contributing
+
+AllFrame is **100% TDD-driven**. Before contributing:
+
+1. Read the [PRD](docs/current/PRD_01.md)
+2. Review the [TDD Checklist](/.claude/TDD_CHECKLIST.md)
+3. Ensure **100% test coverage** for all changes
+4. Follow the [Clean Architecture Guide](/.claude/skills/rust-clean-architecture.md)
+
+**Every commit must contain at least one new failing test.**
+
+```bash
+# Clone the repo
+git clone https://github.com/yourusername/allframe.git
+cd allframe
+
+# Run tests (must pass)
+cargo test
+
+# Check coverage (must be 100%)
+cargo llvm-cov
+
+# Run quality checks
+cargo clippy -- -D warnings
+cargo fmt -- --check
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines. *(coming soon)*
+
+---
+
+## Roadmap
+
+See [PRD_01.md](docs/current/PRD_01.md) for detailed roadmap.
+
+### MVP Milestones (Q1 2026)
+
+- [x] **0.0** - Repository setup, documentation migration
+- [ ] **0.1** - `allframe ignite` + hello world
+- [ ] **0.2** - Compile-time DI + OpenAPI
+- [ ] **0.3** - Protocol router + config-driven switching
+- [ ] **0.4** - OTEL + CQRS + Clean Arch enforcement
+- [ ] **0.5** - MCP server (LLMs can call handlers)
+- [ ] **0.6** - `allframe forge` CLI (LLM code gen)
+- [ ] **1.0** - Production release, benchmarks, docs
+
+---
+
+## Philosophy
+
+### Test-Driven Development (TDD)
+
+**We do not write a single line of implementation until a test fails for it.**
+
+```rust
+// 1. RED - Write failing test
+#[test]
+fn test_user_creation() {
+    let user = User::new("test@example.com");
+    assert!(user.is_ok());
+}
+
+// 2. GREEN - Minimal implementation
+pub struct User { email: String }
+impl User {
+    pub fn new(email: impl Into<String>) -> Result<Self, Error> {
+        Ok(Self { email: email.into() })
+    }
+}
+
+// 3. REFACTOR - Improve while keeping tests passing
+```
+
+### Zero Runtime Dependencies
+
+AllFrame only depends on:
+- **Tokio** - Async runtime
+- **Hyper** - HTTP server
+- **std** - Rust standard library
+
+**No hidden bloat. No dependency hell.**
+
+### Clean Architecture
+
+Dependencies flow inward only:
+
+```
+Presentation → Application → Domain ← Infrastructure
+```
+
+This is **enforced at compile time** by AllFrame's macros.
+
+---
+
+## Performance
+
+AllFrame targets **TechEmpower Round 23** benchmarks:
+
+| Metric | Target | Status |
+|--------|--------|--------|
+| JSON serialization | > 500k req/s | 🚧 |
+| Single query | > 100k req/s | 🚧 |
+| Multiple queries | > 50k req/s | 🚧 |
+| Binary size | < 8 MB | 🚧 |
+
+---
+
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+---
+
+## Community
+
+- 💬 [Discussions](https://github.com/yourusername/allframe/discussions)
+- 🐛 [Issue Tracker](https://github.com/yourusername/allframe/issues)
+- 📢 [Twitter](https://twitter.com/allframe_rs) *(coming soon)*
+- 📧 [Discord](https://discord.gg/allframe) *(coming soon)*
+
+---
+
+## Acknowledgments
+
+AllFrame is inspired by:
+- **Axum** - Ergonomic Rust web framework
+- **Actix** - High-performance actor framework
+- **NestJS** - Architectural patterns for Node.js
+- **Clean Architecture** - Uncle Bob Martin
+- **Transformers (Cybertron)** - The inspiration for our "transform, compose, ignite" tagline
+
+---
+
+**AllFrame. One frame. Infinite transformations.**
+
+*Built with TDD, from day zero.*

@@ -16,15 +16,18 @@ AllFrame is the **first Rust web framework designed, built, and evolved exclusiv
 
 We ship **one crate** (`allframe-core`) that gives you, out of the box and with **zero external runtime dependencies**:
 
-- ✅ **Compile-time DI** - Dependency injection resolved at compile time
-- ✅ **Auto OpenAPI 3.1 + Swagger UI** - API documentation generated automatically
-- ✅ **OpenTelemetry auto-instrumentation** - Observability built-in
-- ✅ **Protocol-agnostic routing** - REST ↔ GraphQL ↔ gRPC ↔ WebSockets via config
-- ✅ **Enforced Clean Architecture + CQRS/ES** - Architectural patterns enforced at compile time
-- ✅ **Native MCP server** - LLMs can call your API as tools
-- ✅ **LLM-powered code generation** - `allframe forge` CLI
+- ✅ **Project Scaffolding** - `allframe ignite` creates Clean Architecture projects (v0.1)
+- 🚧 **Compile-time DI** - Dependency injection resolved at compile time (v0.2 - in progress)
+- 🚧 **Auto OpenAPI 3.1 + Swagger UI** - API documentation generated automatically (v0.2 - in progress)
+- 📋 **OpenTelemetry auto-instrumentation** - Observability built-in (v0.4 - planned)
+- 📋 **Protocol-agnostic routing** - REST ↔ GraphQL ↔ gRPC ↔ WebSockets via config (v0.3 - planned)
+- 📋 **Enforced Clean Architecture + CQRS/ES** - Architectural patterns enforced at compile time (v0.4 - planned)
+- 📋 **Native MCP server** - LLMs can call your API as tools (v0.5 - planned)
+- 📋 **LLM-powered code generation** - `allframe forge` CLI (v0.6 - planned)
 
-**All of this in binaries < 8 MB, > 500k req/s** (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
+**Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
+
+**Current Status**: v0.1 Complete, v0.2 In Progress (RED phase complete, GREEN phase 30%)
 
 ---
 
@@ -238,14 +241,16 @@ See [PRD_01.md](docs/current/PRD_01.md) for detailed roadmap.
 
 ### MVP Milestones (Q1 2026)
 
-- [x] **0.0** - Repository setup, documentation migration
-- [ ] **0.1** - `allframe ignite` + hello world
-- [ ] **0.2** - Compile-time DI + OpenAPI
-- [ ] **0.3** - Protocol router + config-driven switching
-- [ ] **0.4** - OTEL + CQRS + Clean Arch enforcement
-- [ ] **0.5** - MCP server (LLMs can call handlers)
-- [ ] **0.6** - `allframe forge` CLI (LLM code gen)
-- [ ] **1.0** - Production release, benchmarks, docs
+- [x] **0.0** - Repository setup, documentation migration ✅
+- [x] **0.1** - `allframe ignite` + hello world ✅ (RED-GREEN-REFACTOR complete)
+- [ ] **0.2** - Compile-time DI + OpenAPI 🚧 (RED complete, GREEN 30%)
+- [ ] **0.3** - Protocol router + config-driven switching 📋
+- [ ] **0.4** - OTEL + CQRS + Clean Arch enforcement 📋
+- [ ] **0.5** - MCP server (LLMs can call handlers) 📋
+- [ ] **0.6** - `allframe forge` CLI (LLM code gen) 📋
+- [ ] **1.0** - Production release, benchmarks, docs 📋
+
+**Detailed Status**: See [MILESTONE_0.2_STATUS.md](docs/MILESTONE_0.2_STATUS.md)
 
 ---
 

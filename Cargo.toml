@@ -21,6 +21,10 @@ allframe-forge = { path = "crates/allframe-forge" }
 assert_cmd = "2.0"
 predicates = "3.0"
 tempfile = "3.8"
+allframe-macros = { path = "crates/allframe-macros" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
 
 [workspace.package]
 version = "0.1.0"

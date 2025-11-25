@@ -6,7 +6,10 @@
       "Bash(cargo clippy:*)",
       "Bash(cargo fmt:*)",
       "Bash(cargo expand:*)",
-      "Bash(cargo install:*)"
+      "Bash(cargo install:*)",
+      "Bash(for file in 04_router_core 04_router_rest 04_router_graphql 04_router_grpc 04_router_config)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

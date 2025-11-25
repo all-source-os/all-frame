@@ -31,18 +31,18 @@ fn test_di_basic_injection() {
             }
         }
 
-        fn query(&self, _sql: &str) -> String {
-            format!("Querying: {}", self.connection_string)
+        fn query(&self, sql: &str) -> String {
+            format!("Querying: {} | SQL: {}", self.connection_string, sql)
         }
     }
 
     // Define a service that depends on DatabaseService
     struct UserRepository {
-        db: DatabaseService,
+        db: std::sync::Arc<DatabaseService>,
     }
 
     impl UserRepository {
-        fn new(db: DatabaseService) -> Self {
+        fn new(db: std::sync::Arc<DatabaseService>) -> Self {
             Self { db }
         }
 
@@ -54,11 +54,11 @@ fn test_di_basic_injection() {
 
     // Define a service that depends on UserRepository
     struct UserService {
-        repo: UserRepository,
+        repo: std::sync::Arc<UserRepository>,
     }
 
     impl UserService {
-        fn new(repo: UserRepository) -> Self {
+        fn new(repo: std::sync::Arc<UserRepository>) -> Self {
             Self { repo }
         }
 
@@ -105,11 +105,11 @@ fn test_di_trait_injection() {
 
     // Service that depends on the trait
     struct UserRepository {
-        db: Box<dyn Database>,
+        db: std::sync::Arc<Box<dyn Database>>,
     }
 
     impl UserRepository {
-        fn new(db: Box<dyn Database>) -> Self {
+        fn new(db: std::sync::Arc<Box<dyn Database>>) -> Self {
             Self { db }
         }
 
@@ -122,7 +122,7 @@ fn test_di_trait_injection() {
     // Container with trait-based dependency
     #[di_container]
     struct AppContainer {
-        #[provide(Box::new(PostgresDatabase))]
+        #[provide(Box::new(PostgresDatabase) as Box<dyn Database>)]
         database: Box<dyn Database>,
         user_repository: UserRepository,
     }
@@ -199,11 +199,11 @@ fn test_di_nested_dependencies() {
 
     // Level 2: Repository (depends on Database)
     struct Repository {
-        db: Database,
+        db: std::sync::Arc<Database>,
     }
 
     impl Repository {
-        fn new(db: Database) -> Self {
+        fn new(db: std::sync::Arc<Database>) -> Self {
             Self { db }
         }
 
@@ -214,11 +214,11 @@ fn test_di_nested_dependencies() {
 
     // Level 3: Service (depends on Repository)
     struct Service {
-        repo: Repository,
+        repo: std::sync::Arc<Repository>,
     }
 
     impl Service {
-        fn new(repo: Repository) -> Self {
+        fn new(repo: std::sync::Arc<Repository>) -> Self {
             Self { repo }
         }
 
@@ -229,11 +229,11 @@ fn test_di_nested_dependencies() {
 
     // Level 4: Controller (depends on Service)
     struct Controller {
-        service: Service,
+        service: std::sync::Arc<Service>,
     }
 
     impl Controller {
-        fn new(service: Service) -> Self {
+        fn new(service: std::sync::Arc<Service>) -> Self {
             Self { service }
         }
 

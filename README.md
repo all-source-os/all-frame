@@ -17,8 +17,8 @@ AllFrame is the **first Rust web framework designed, built, and evolved exclusiv
 We ship **one crate** (`allframe-core`) that gives you, out of the box and with **zero external runtime dependencies**:
 
 - ✅ **Project Scaffolding** - `allframe ignite` creates Clean Architecture projects (v0.1)
-- 🚧 **Compile-time DI** - Dependency injection resolved at compile time (v0.2 - in progress)
-- 🚧 **Auto OpenAPI 3.1 + Swagger UI** - API documentation generated automatically (v0.2 - in progress)
+- ✅ **Compile-time DI** - Dependency injection resolved at compile time (v0.2 MVP)
+- ✅ **Auto OpenAPI 3.1** - API documentation generated automatically (v0.2 MVP)
 - 📋 **OpenTelemetry auto-instrumentation** - Observability built-in (v0.4 - planned)
 - 📋 **Protocol-agnostic routing** - REST ↔ GraphQL ↔ gRPC ↔ WebSockets via config (v0.3 - planned)
 - 📋 **Enforced Clean Architecture + CQRS/ES** - Architectural patterns enforced at compile time (v0.4 - planned)
@@ -27,7 +27,7 @@ We ship **one crate** (`allframe-core`) that gives you, out of the box and with 
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: v0.1 Complete, v0.2 In Progress (RED phase complete, GREEN phase 30%)
+**Current Status**: v0.2 MVP Complete! (10/10 tests passing, both macros working)
 
 ---
 
@@ -243,14 +243,14 @@ See [PRD_01.md](docs/current/PRD_01.md) for detailed roadmap.
 
 - [x] **0.0** - Repository setup, documentation migration ✅
 - [x] **0.1** - `allframe ignite` + hello world ✅ (RED-GREEN-REFACTOR complete)
-- [ ] **0.2** - Compile-time DI + OpenAPI 🚧 (RED complete, GREEN 30%)
-- [ ] **0.3** - Protocol router + config-driven switching 📋
+- [x] **0.2** - Compile-time DI + OpenAPI ✅ (MVP complete, 10/10 tests passing)
+- [ ] **0.3** - Protocol router + Advanced DI/OpenAPI 📋
 - [ ] **0.4** - OTEL + CQRS + Clean Arch enforcement 📋
 - [ ] **0.5** - MCP server (LLMs can call handlers) 📋
 - [ ] **0.6** - `allframe forge` CLI (LLM code gen) 📋
 - [ ] **1.0** - Production release, benchmarks, docs 📋
 
-**Detailed Status**: See [MILESTONE_0.2_STATUS.md](docs/MILESTONE_0.2_STATUS.md)
+**Detailed Status**: See [MILESTONE_0.2_COMPLETE.md](docs/MILESTONE_0.2_COMPLETE.md)
 
 ---
 

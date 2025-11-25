@@ -4,7 +4,9 @@
       "Bash(cargo test:*)",
       "Bash(cargo build:*)",
       "Bash(cargo clippy:*)",
-      "Bash(cargo fmt:*)"
+      "Bash(cargo fmt:*)",
+      "Bash(cargo expand:*)",
+      "Bash(cargo install:*)"
     ],
     "deny": [],
     "ask": []

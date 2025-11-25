@@ -20,10 +20,21 @@
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 
+/// Router module for protocol-agnostic request handling
+pub mod router;
+
 /// Prelude module for convenient imports
 ///
 /// Commonly used imports for AllFrame applications
-pub mod prelude {}
+pub mod prelude {
+    pub use crate::router::{
+        GraphQLAdapter, GrpcAdapter, GrpcRequest, GrpcStatus, ProtocolAdapter, RestAdapter,
+        RestRequest, RestResponse, Router,
+    };
+
+    #[cfg(feature = "router")]
+    pub use crate::router::{GraphQLConfig, GrpcConfig, RestConfig, RouterConfig, ServerConfig};
+}
 
 #[cfg(test)]
 mod tests {

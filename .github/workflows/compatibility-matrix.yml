@@ -1,0 +1,173 @@
+name: Compatibility Matrix
+
+# Test against multiple versions of key dependencies
+# This ensures AllFrame works with a range of versions
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Run weekly to catch breaking changes early
+    - cron: '0 9 * * 1'  # Monday 9 AM UTC
+
+jobs:
+  # Test against different Rust versions
+  rust-versions:
+    name: Rust ${{ matrix.rust }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust:
+          - stable
+          - beta
+          - nightly
+          - 1.75.0  # MSRV (Minimum Supported Rust Version)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --all-features
+
+      - name: Test
+        run: cargo test --all-features
+
+  # Test against different dependency versions
+  dependency-versions:
+    name: Dependencies - ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        profile:
+          - name: "latest"
+            description: "Latest versions of all dependencies"
+            flags: ""
+
+          - name: "minimal"
+            description: "Minimum supported versions"
+            flags: "-Z minimal-versions"
+
+          - name: "async-graphql-latest"
+            description: "Latest async-graphql"
+            update: "async-graphql"
+
+          - name: "tonic-latest"
+            description: "Latest tonic/prost"
+            update: "tonic prost"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Update specific dependencies
+        if: matrix.profile.update
+        run: |
+          for dep in ${{ matrix.profile.update }}; do
+            cargo update -p $dep
+          done
+
+      - name: Build with ${{ matrix.profile.name }}
+        run: cargo build --all-features ${{ matrix.profile.flags }}
+
+      - name: Test with ${{ matrix.profile.name }}
+        run: cargo test --all-features
+
+  # Feature flag combinations
+  feature-matrix:
+    name: Features - ${{ matrix.features }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - "default"
+          - "router"
+          - "router-graphql"
+          - "router-grpc"
+          - "router-full"
+          - "di,openapi"
+          - "di,openapi,router-full"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build with features=${{ matrix.features }}
+        run: cargo build -p allframe-core --features=${{ matrix.features }}
+
+      - name: Test with features=${{ matrix.features }}
+        run: cargo test -p allframe-core --features=${{ matrix.features }}
+
+  # Platform compatibility
+  platform-matrix:
+    name: Platform - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --all-features
+
+      - name: Test
+        run: cargo test --all-features
+
+  # External ecosystem compatibility
+  ecosystem-compat:
+    name: Ecosystem - ${{ matrix.ecosystem }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ecosystem:
+          - name: "axum"
+            description: "Compatibility with Axum"
+          - name: "actix"
+            description: "Compatibility with Actix"
+          - name: "juniper"
+            description: "GraphQL interop with Juniper"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # Future: Add ecosystem compatibility tests
+      - name: Run ${{ matrix.ecosystem.name }} compatibility tests
+        run: echo "Compatibility test for ${{ matrix.ecosystem.name }}"
+
+  # Notify on failures
+  notify:
+    name: Notify on failure
+    runs-on: ubuntu-latest
+    needs: [rust-versions, dependency-versions, feature-matrix, platform-matrix]
+    if: failure()
+    steps:
+      - name: Create issue on failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Compatibility Matrix Failed',
+              body: 'The compatibility matrix CI has failed. Please investigate.\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+              labels: ['ci', 'compatibility', 'needs-investigation']
+            })

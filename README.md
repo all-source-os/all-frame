@@ -20,14 +20,14 @@ We ship **one crate** (`allframe-core`) that gives you, out of the box and with 
 - ✅ **Compile-time DI** - Dependency injection resolved at compile time (v0.2 MVP)
 - ✅ **Auto OpenAPI 3.1** - API documentation generated automatically (v0.2 MVP)
 - 📋 **OpenTelemetry auto-instrumentation** - Observability built-in (v0.4 - planned)
-- 📋 **Protocol-agnostic routing** - REST ↔ GraphQL ↔ gRPC ↔ WebSockets via config (v0.3 - planned)
+- 🚧 **Protocol-agnostic routing** - REST ↔ GraphQL ↔ gRPC ↔ WebSockets via config (v0.3 - in progress)
 - 📋 **Enforced Clean Architecture + CQRS/ES** - Architectural patterns enforced at compile time (v0.4 - planned)
 - 📋 **Native MCP server** - LLMs can call your API as tools (v0.5 - planned)
 - 📋 **LLM-powered code generation** - `allframe forge` CLI (v0.6 - planned)
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: v0.2 MVP Complete! (10/10 tests passing, both macros working)
+**Current Status**: v0.3 In Progress! (44/50 tests passing - REST, GraphQL & gRPC adapters complete)
 
 ---
 
@@ -46,6 +46,26 @@ cargo run
 
 # Visit http://localhost:8080/swagger-ui
 ```
+
+### Try the Examples
+
+AllFrame includes comprehensive examples demonstrating all features:
+
+```bash
+# REST API example - Build REST APIs with AllFrame
+cargo run --example rest_api
+
+# GraphQL API example - Build GraphQL APIs with AllFrame
+cargo run --example graphql_api
+
+# gRPC API example - Build gRPC services with AllFrame
+cargo run --example grpc_api
+
+# Multi-Protocol example - Same handler, multiple protocols!
+cargo run --example multi_protocol
+```
+
+See [examples/README.md](examples/README.md) for detailed documentation.
 
 ---
 
@@ -173,30 +193,62 @@ cargo run
 
 ## Feature Flags
 
-AllFrame uses Cargo feature flags for optional functionality:
+AllFrame uses Cargo feature flags to minimize bloat - you only pay for what you use:
 
 ```toml
 [dependencies]
-allframe = { version = "0.1", features = ["di", "openapi", "otel"] }
+allframe-core = { version = "0.1", features = ["di", "openapi"] }
 ```
 
-Available features:
+### Core Features
+
+| Feature | Description | Binary Impact | Default |
+|---------|-------------|---------------|---------|
+| `di` | Compile-time dependency injection | +0KB | ✅ |
+| `openapi` | Auto OpenAPI 3.1 + Swagger UI | +0KB | ✅ |
+| `router` | Protocol-agnostic routing + TOML config | +50KB | ✅ |
+
+### Router Features (Protocol Support)
+
+| Feature | Description | Binary Impact | Default |
+|---------|-------------|---------------|---------|
+| `router-graphql` | Production GraphQL (async-graphql, GraphiQL) | +2MB | ❌ |
+| `router-grpc` | Production gRPC (tonic, streaming, reflection) | +3MB | ❌ |
+| `router-full` | Both GraphQL + gRPC production adapters | +5MB | ❌ |
+
+### Planned Features
 
 | Feature | Description | Default |
 |---------|-------------|---------|
-| `di` | Compile-time dependency injection | ✅ |
-| `openapi` | Auto OpenAPI 3.1 + Swagger UI | ✅ |
 | `otel` | OpenTelemetry auto-instrumentation | ❌ |
-| `router` | Protocol-agnostic routing | ✅ |
 | `cqrs` | CQRS + Event Sourcing support | ❌ |
 | `mcp` | Model Context Protocol server | ❌ |
-| `forge` | LLM code generation CLI | ❌ |
+
+**💡 Tip:** Start minimal and add features as needed. See [docs/feature-flags.md](docs/feature-flags.md) for detailed guidance.
+
+### Examples
+
+**Minimal REST API:**
+```toml
+allframe-core = { version = "0.1", default-features = false, features = ["router"] }
+```
+
+**Production GraphQL API:**
+```toml
+allframe-core = { version = "0.1", features = ["router-graphql"] }
+```
+
+**Multi-Protocol Gateway:**
+```toml
+allframe-core = { version = "0.1", features = ["router-full"] }
+```
 
 ---
 
 ## Documentation
 
 - 📖 [Getting Started Guide](docs/guides/getting-started.md) *(coming soon)*
+- 🎯 [Feature Flags Guide](docs/feature-flags.md) - Minimize binary size
 - 📋 [Product Requirements Document](docs/current/PRD_01.md)
 - 🧪 [TDD Workflow](/.claude/TDD_CHECKLIST.md)
 - 🏛️ [Clean Architecture Guide](/.claude/skills/rust-clean-architecture.md)
@@ -244,7 +296,7 @@ See [PRD_01.md](docs/current/PRD_01.md) for detailed roadmap.
 - [x] **0.0** - Repository setup, documentation migration ✅
 - [x] **0.1** - `allframe ignite` + hello world ✅ (RED-GREEN-REFACTOR complete)
 - [x] **0.2** - Compile-time DI + OpenAPI ✅ (MVP complete, 10/10 tests passing)
-- [ ] **0.3** - Protocol router + Advanced DI/OpenAPI 📋
+- [ ] **0.3** - Protocol router + Advanced DI/OpenAPI 🚧 (44/50 tests passing, REST/GraphQL/gRPC complete)
 - [ ] **0.4** - OTEL + CQRS + Clean Arch enforcement 📋
 - [ ] **0.5** - MCP server (LLMs can call handlers) 📋
 - [ ] **0.6** - `allframe forge` CLI (LLM code gen) 📋

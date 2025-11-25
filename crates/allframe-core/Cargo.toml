@@ -17,11 +17,27 @@ tokio = { workspace = true }
 hyper = { workspace = true }
 async-trait = { workspace = true }
 thiserror = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+toml = { version = "0.8", optional = true }
 
 # Optional features
 allframe-macros = { path = "../allframe-macros", optional = true }
+
+# GraphQL support (production-ready)
+async-graphql = { version = "7.0", optional = true }
+async-graphql-parser = { version = "7.0", optional = true }
+
+# gRPC/Protobuf support (production-ready)
+tonic = { version = "0.14", optional = true, features = ["transport", "codegen"] }
+tonic-reflection = { version = "0.14", optional = true }
+prost = { version = "0.14", optional = true }
+prost-types = { version = "0.14", optional = true }
+tokio-stream = { version = "0.1", optional = true }
+futures = { version = "0.3", optional = true }
+
+[build-dependencies]
+tonic-build = { version = "0.14", optional = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
@@ -32,6 +48,9 @@ default = ["di", "openapi", "router"]
 di = ["allframe-macros"]
 openapi = []
 otel = []
-router = []
+router = ["toml"]
+router-graphql = ["router", "async-graphql", "async-graphql-parser"]
+router-grpc = ["router", "tonic", "tonic-reflection", "prost", "prost-types", "tonic-build", "tokio-stream", "futures"]
+router-full = ["router-graphql", "router-grpc"]
 cqrs = []
 mcp = []

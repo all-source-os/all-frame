@@ -1,0 +1,70 @@
+# Dependabot configuration for automated dependency updates
+# This ensures AllFrame stays current with the latest stable releases
+
+version: 2
+updates:
+  # Cargo dependencies - check weekly
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+
+    # Group related updates together
+    groups:
+      # GraphQL ecosystem
+      graphql:
+        patterns:
+          - "async-graphql*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # gRPC/Protobuf ecosystem
+      grpc:
+        patterns:
+          - "tonic*"
+          - "prost*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Tokio ecosystem
+      tokio:
+        patterns:
+          - "tokio*"
+        update-types:
+          - "minor"
+          - "patch"
+
+    # Version update strategy
+    versioning-strategy: "increase"
+
+    # Auto-merge settings (only for patch updates)
+    # Requires GitHub Actions workflow to auto-merge
+    labels:
+      - "dependencies"
+      - "automerge-candidate"
+
+    # Commit message prefix
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+  # GitHub Actions - check monthly
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "ci"
+      - "dependencies"
+
+# Strategy:
+# 1. Weekly checks ensure we catch important updates quickly
+# 2. Grouped updates reduce PR noise
+# 3. Patch updates can be auto-merged after CI passes
+# 4. Minor updates require manual review
+# 5. Major updates require careful migration planning

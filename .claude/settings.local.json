@@ -9,7 +9,11 @@
       "Bash(cargo install:*)",
       "Bash(for file in 04_router_core 04_router_rest 04_router_graphql 04_router_grpc 04_router_config)",
       "Bash(do echo \"=== $file ===\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(paste:*)",
+      "Bash(bc:*)",
+      "Bash(cargo run:*)",
+      "Bash(cargo search:*)"
     ],
     "deny": [],
     "ask": []

@@ -18,7 +18,8 @@
       "WebFetch(domain:api.github.com)",
       "Bash(cargo check:*)",
       "Bash(cargo clean:*)",
-      "Bash(wait)"
+      "Bash(wait)",
+      "Bash(cargo tree:*)"
     ],
     "deny": [],
     "ask": []

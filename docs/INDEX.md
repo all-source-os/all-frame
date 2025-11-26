@@ -9,7 +9,9 @@ Welcome to the AllFrame documentation! This index provides a comprehensive overv
 ## Quick Links
 
 - **[Main README](./README.md)** - Documentation overview and conventions
-- **[Product Requirements](./current/PRD_01.md)** - PRIMARY SOURCE OF TRUTH
+- **[Project Status](./PROJECT_STATUS.md)** - Complete project status and roadmap
+- **[Product Requirements](./current/PRD_01.md)** - Original PRD (PRIMARY SOURCE OF TRUTH)
+- **[Router + Docs PRD](./current/PRD_ROUTER_DOCS.md)** - Phase 6 PRD (Next major phase)
 - **[CQRS Complete Announcement](./announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)** - Latest achievement
 
 ---
@@ -22,7 +24,8 @@ docs/
 ├── INDEX.md                     # This file - complete index
 │
 ├── current/                     # Active documentation
-│   └── PRD_01.md               # Product Requirements (PRIMARY SOURCE)
+│   ├── PRD_01.md               # Product Requirements (PRIMARY SOURCE)
+│   └── PRD_ROUTER_DOCS.md      # Router + API Documentation PRD (Phase 6)
 │
 ├── phases/                      # CQRS Infrastructure (COMPLETE ✅)
 │   ├── PHASE1_COMPLETE.md      # AllSource Integration
@@ -81,11 +84,26 @@ docs/
 
 ## Core Documentation
 
+### Project Status
+- **[PROJECT_STATUS.md](./PROJECT_STATUS.md)** - Complete Project Status
+  - Current phase status (CQRS: 100% complete)
+  - Next phase planning (Router + Docs: PRD complete)
+  - Technical debt tracking
+  - Repository statistics
+  - Roadmap (Q1-Q4 2025)
+
 ### Product Requirements
-- **[PRD_01.md](./current/PRD_01.md)** - Final Product Requirements Document
+- **[PRD_01.md](./current/PRD_01.md)** - Original Product Requirements
   - PRIMARY SOURCE OF TRUTH for AllFrame vision and scope
   - Defines all core features and capabilities
   - Reference for all development decisions
+
+- **[PRD_ROUTER_DOCS.md](./current/PRD_ROUTER_DOCS.md)** - Router + API Documentation PRD (Phase 6)
+  - Best-in-class REST documentation (Scalar)
+  - GraphQL documentation (GraphiQL)
+  - gRPC documentation (custom UI)
+  - Contract testing system
+  - 11-week implementation plan
 
 ### Development Guides
 - **[Rust Clean Architecture](../.claude/skills/rust-clean-architecture.md)** - Architecture patterns

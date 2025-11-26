@@ -33,7 +33,11 @@ docs/
 ### Key Documents
 
 #### **Product Requirements**
-- **[PRD_01.md](./current/PRD_01.md)** - Final Product Requirements Document (PRIMARY SOURCE OF TRUTH)
+- **[PRD_01.md](./current/PRD_01.md)** - Original Product Requirements (PRIMARY SOURCE OF TRUTH)
+- **[PRD_ROUTER_DOCS.md](./current/PRD_ROUTER_DOCS.md)** - Router + API Documentation System (Phase 6)
+
+#### **Project Status**
+- **[PROJECT_STATUS.md](./PROJECT_STATUS.md)** - Complete project status, roadmap, and metrics
 
 #### **CQRS Infrastructure (Phases 1-5)** ✅ **COMPLETE**
 - **[Phase 1: AllSource Integration](./phases/PHASE1_COMPLETE.md)** - Event store backend abstraction

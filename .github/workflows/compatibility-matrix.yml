@@ -23,7 +23,7 @@ jobs:
           - stable
           - beta
           - nightly
-          - 1.75.0  # MSRV (Minimum Supported Rust Version)
+          - 1.80.0  # MSRV (Minimum Supported Rust Version - required for edition2024 deps)
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -39,7 +39,7 @@ jobs:
 
   # Test against different dependency versions
   dependency-versions:
-    name: Dependencies - ${{ matrix.profile }}
+    name: Dependencies - ${{ matrix.profile.name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -47,23 +47,31 @@ jobs:
         profile:
           - name: "latest"
             description: "Latest versions of all dependencies"
+            toolchain: "stable"
             flags: ""
 
           - name: "minimal"
             description: "Minimum supported versions"
+            toolchain: "nightly"
             flags: "-Z minimal-versions"
 
-          - name: "async-graphql-latest"
-            description: "Latest async-graphql"
+          - name: "async-graphql-v7"
+            description: "Pinned async-graphql v7"
+            toolchain: "stable"
             update: "async-graphql"
+            flags: ""
 
-          - name: "tonic-latest"
-            description: "Latest tonic/prost"
-            update: "tonic prost"
+          - name: "tonic-v0.13"
+            description: "Pinned tonic v0.13"
+            toolchain: "stable"
+            update: "tonic@0.13 prost@0.13"
+            flags: ""
 
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.profile.toolchain }}
       - uses: Swatinem/rust-cache@v2
 
       - name: Update specific dependencies

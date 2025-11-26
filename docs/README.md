@@ -1,6 +1,6 @@
 # AllFrame Documentation Index
 
-**Last Updated**: 2025-11-23
+**Last Updated**: 2025-11-26
 **Repository**: all-frame
 **Project**: AllFrame - The Composable Rust API Framework
 
@@ -21,10 +21,13 @@ One crate (`allframe-core`) that provides compile-time DI, auto OpenAPI 3.1, Ope
 ```
 docs/
 ├── current/          # Active, current documentation (PRDs, architecture)
-├── archive/          # Historical/deprecated docs (timestamped)
+├── phases/           # Development phase documentation (CQRS infrastructure)
+├── milestones/       # Milestone tracking and status
+├── announcements/    # Public announcements and social posts
 ├── guides/           # How-to guides and tutorials
 ├── architecture/     # Architecture Decision Records (ADRs)
-└── operations/       # Operational guides (deployment, CI/CD)
+├── operations/       # Operational guides (deployment, CI/CD)
+└── archive/          # Historical/deprecated docs (timestamped)
 ```
 
 ### Key Documents
@@ -32,9 +35,19 @@ docs/
 #### **Product Requirements**
 - **[PRD_01.md](./current/PRD_01.md)** - Final Product Requirements Document (PRIMARY SOURCE OF TRUTH)
 
+#### **CQRS Infrastructure (Phases 1-5)** ✅ **COMPLETE**
+- **[Phase 1: AllSource Integration](./phases/PHASE1_COMPLETE.md)** - Event store backend abstraction
+- **[Phase 2: CommandBus](./phases/PHASE2_COMPLETE.md)** - Command dispatch & validation (90% reduction)
+- **[Phase 3: ProjectionRegistry](./phases/PHASE3_COMPLETE.md)** - Automatic projections (90% reduction)
+- **[Phase 4: Event Versioning](./phases/PHASE4_COMPLETE.md)** - Automatic upcasting (95% reduction)
+- **[Phase 5: Saga Orchestration](./phases/PHASE5_COMPLETE.md)** - Distributed transactions (75% reduction)
+
 #### **Development Guides**
 - **[.claude/skills/rust-clean-architecture.md](../.claude/skills/rust-clean-architecture.md)** - Clean Architecture patterns for AllFrame
 - **[.claude/TDD_CHECKLIST.md](../.claude/TDD_CHECKLIST.md)** - Mandatory TDD workflow
+
+#### **Announcements**
+- **[CQRS Infrastructure Complete](./announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)** - 5 phases, 85% avg boilerplate reduction
 
 ---
 

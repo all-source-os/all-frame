@@ -14,8 +14,23 @@ edition = "2021"
 publish = false
 
 [dependencies]
-allframe-core = { path = "crates/allframe-core" }
+allframe-core = { path = "crates/allframe-core", default-features = false, features = ["di", "openapi", "router", "otel", "cqrs"] }
 allframe-forge = { path = "crates/allframe-forge" }
+
+[features]
+default = ["di", "openapi", "router", "otel", "cqrs"]
+di = ["allframe-core/di"]
+openapi = ["allframe-core/openapi"]
+otel = ["allframe-core/otel"]
+router = ["allframe-core/router"]
+router-graphql = ["allframe-core/router-graphql"]
+router-grpc = ["allframe-core/router-grpc"]
+router-full = ["allframe-core/router-full"]
+cqrs = ["allframe-core/cqrs"]
+cqrs-allsource = ["allframe-core/cqrs-allsource"]
+cqrs-postgres = ["allframe-core/cqrs-postgres"]
+cqrs-rocksdb = ["allframe-core/cqrs-rocksdb"]
+mcp = ["allframe-core/mcp"]
 
 [dev-dependencies]
 assert_cmd = "2.0"
@@ -33,7 +48,7 @@ edition = "2021"
 rust-version = "1.75"
 authors = ["AllFrame Contributors"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/yourusername/allframe"
+repository = "https://github.com/all-source-os/all-frame"
 homepage = "https://allframe.rs"
 documentation = "https://docs.rs/allframe"
 keywords = ["web", "framework", "api", "tdd", "clean-architecture"]

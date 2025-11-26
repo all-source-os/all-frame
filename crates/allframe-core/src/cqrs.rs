@@ -3,13 +3,58 @@
 //! This module provides the core CQRS (Command Query Responsibility Segregation)
 //! and Event Sourcing infrastructure for AllFrame.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 
 // Re-export macros
 #[cfg(feature = "di")]
 pub use allframe_macros::{command, command_handler, event, query, query_handler};
+
+// Backend abstraction
+mod backend;
+mod memory_backend;
+
+#[cfg(feature = "cqrs-allsource")]
+mod allsource_backend;
+
+// Command bus infrastructure
+mod command_bus;
+
+// Projection registry infrastructure
+mod projection_registry;
+
+// Event versioning infrastructure
+mod event_versioning;
+
+// Saga orchestration infrastructure
+mod saga_orchestrator;
+
+// Re-export backend types
+pub use backend::{BackendStats, EventStoreBackend};
+pub use memory_backend::InMemoryBackend;
+
+#[cfg(feature = "cqrs-allsource")]
+pub use allsource_backend::{AllSourceBackend, AllSourceConfig};
+
+// Re-export command bus types
+pub use command_bus::{
+    Command, CommandBus, CommandError, CommandHandler, CommandResult, ValidationError,
+};
+
+// Re-export projection registry types
+pub use projection_registry::{
+    ProjectionMetadata, ProjectionPosition, ProjectionRegistry,
+};
+
+// Re-export event versioning types
+pub use event_versioning::{
+    AutoUpcaster, MigrationPath, Upcaster, VersionRegistry, VersionedEvent,
+};
+
+// Re-export saga orchestration types
+pub use saga_orchestrator::{
+    SagaDefinition, SagaError, SagaMetadata, SagaOrchestrator, SagaResult, SagaStatus, SagaStep,
+};
 
 /// Trait for Events - immutable facts that represent state changes
 pub trait Event: Clone + Send + Sync + 'static {}
@@ -33,27 +78,42 @@ pub trait Aggregate: Default + Send + Sync {
 }
 
 /// Event Store - append-only log of domain events
+///
+/// The EventStore uses a pluggable backend architecture:
+/// - Default: InMemoryBackend (for testing/MVP)
+/// - Production: AllSourceBackend (requires cqrs-allsource feature)
 #[derive(Clone)]
-pub struct EventStore<E: Event> {
-    events: Arc<RwLock<HashMap<String, Vec<E>>>>,
+pub struct EventStore<E: Event, B: EventStoreBackend<E> = InMemoryBackend<E>> {
+    backend: Arc<B>,
     subscribers: Arc<RwLock<Vec<mpsc::Sender<E>>>>,
+    _phantom: std::marker::PhantomData<E>,
 }
 
-impl<E: Event> EventStore<E> {
-    /// Create a new event store
+impl<E: Event> EventStore<E, InMemoryBackend<E>> {
+    /// Create a new event store with in-memory backend
     pub fn new() -> Self {
+        Self::with_backend(InMemoryBackend::new())
+    }
+}
+
+impl<E: Event, B: EventStoreBackend<E>> EventStore<E, B> {
+    /// Create a new event store with a custom backend
+    pub fn with_backend(backend: B) -> Self {
         Self {
-            events: Arc::new(RwLock::new(HashMap::new())),
+            backend: Arc::new(backend),
             subscribers: Arc::new(RwLock::new(Vec::new())),
+            _phantom: std::marker::PhantomData,
         }
+    }
+
+    /// Get a reference to the backend
+    pub fn backend(&self) -> &B {
+        &self.backend
     }
 
     /// Append events to an aggregate's event stream
     pub async fn append(&self, aggregate_id: &str, events: Vec<E>) -> Result<(), String> {
-        let mut store = self.events.write().await;
-        let stream = store.entry(aggregate_id.to_string()).or_insert_with(Vec::new);
-
-        // Notify subscribers
+        // Notify subscribers before appending
         let subscribers = self.subscribers.read().await;
         for event in &events {
             for subscriber in subscribers.iter() {
@@ -61,30 +121,27 @@ impl<E: Event> EventStore<E> {
             }
         }
 
-        stream.extend(events);
-        Ok(())
+        // Delegate to backend
+        self.backend.append(aggregate_id, events).await
     }
 
     /// Get all events for an aggregate
     pub async fn get_events(&self, aggregate_id: &str) -> Result<Vec<E>, String> {
-        let store = self.events.read().await;
-        Ok(store.get(aggregate_id).cloned().unwrap_or_default())
+        self.backend.get_events(aggregate_id).await
     }
 
     /// Get all events from all aggregates (for projection rebuild)
     pub async fn get_all_events(&self) -> Result<Vec<E>, String> {
-        let store = self.events.read().await;
-        let mut all_events = Vec::new();
-        for events in store.values() {
-            all_events.extend(events.clone());
-        }
-        Ok(all_events)
+        self.backend.get_all_events().await
     }
 
     /// Get events after a specific version (for snapshot optimization)
-    pub async fn get_events_after(&self, aggregate_id: &str, version: u64) -> Result<Vec<E>, String> {
-        let events = self.get_events(aggregate_id).await?;
-        Ok(events.into_iter().skip(version as usize).collect())
+    pub async fn get_events_after(
+        &self,
+        aggregate_id: &str,
+        version: u64,
+    ) -> Result<Vec<E>, String> {
+        self.backend.get_events_after(aggregate_id, version).await
     }
 
     /// Subscribe to event stream
@@ -93,29 +150,51 @@ impl<E: Event> EventStore<E> {
         subscribers.push(tx);
     }
 
-    /// Save a snapshot (placeholder for future implementation)
-    #[allow(dead_code)]
+    /// Save a snapshot
     pub async fn save_snapshot<A: Aggregate<Event = E>>(
         &self,
-        _aggregate_id: &str,
-        _snapshot: Snapshot<A>,
-    ) -> Result<(), String> {
-        // Placeholder - will be implemented when needed
-        Ok(())
+        aggregate_id: &str,
+        snapshot: Snapshot<A>,
+    ) -> Result<(), String>
+    where
+        A: serde::Serialize,
+    {
+        let snapshot_data = serde_json::to_vec(&snapshot.aggregate)
+            .map_err(|e| format!("Failed to serialize snapshot: {}", e))?;
+
+        self.backend
+            .save_snapshot(aggregate_id, snapshot_data, snapshot.version)
+            .await
     }
 
-    /// Get latest snapshot (placeholder for future implementation)
-    #[allow(dead_code)]
+    /// Get latest snapshot
     pub async fn get_latest_snapshot<A: Aggregate<Event = E>>(
         &self,
-        _aggregate_id: &str,
-    ) -> Result<Snapshot<A>, String> {
-        // Placeholder - will be implemented when needed
-        Err("Snapshots not implemented yet".to_string())
+        aggregate_id: &str,
+    ) -> Result<Snapshot<A>, String>
+    where
+        A: serde::de::DeserializeOwned,
+    {
+        let (snapshot_data, version) = self.backend.get_latest_snapshot(aggregate_id).await?;
+
+        let aggregate: A = serde_json::from_slice(&snapshot_data)
+            .map_err(|e| format!("Failed to deserialize snapshot: {}", e))?;
+
+        Ok(Snapshot { aggregate, version })
+    }
+
+    /// Flush pending writes to storage (useful with WAL or batching backends)
+    pub async fn flush(&self) -> Result<(), String> {
+        self.backend.flush().await
+    }
+
+    /// Get backend statistics
+    pub async fn stats(&self) -> BackendStats {
+        self.backend.stats().await
     }
 }
 
-impl<E: Event> Default for EventStore<E> {
+impl<E: Event> Default for EventStore<E, InMemoryBackend<E>> {
     fn default() -> Self {
         Self::new()
     }
@@ -141,51 +220,7 @@ impl<A: Aggregate> Snapshot<A> {
     }
 }
 
-/// Command Bus for dispatching commands
-pub struct CommandBus {
-    handlers_count: usize,
-}
-
-impl CommandBus {
-    /// Create a new command bus
-    pub fn new() -> Self {
-        Self { handlers_count: 0 }
-    }
-
-    /// Register a command handler
-    pub fn register<F>(mut self, _handler: F) -> Self
-    where
-        F: Fn() + Send + Sync + 'static,
-    {
-        self.handlers_count += 1;
-        self
-    }
-
-    /// Get number of registered handlers
-    pub fn handlers_count(&self) -> usize {
-        self.handlers_count
-    }
-
-    /// Dispatch a command (placeholder)
-    #[allow(dead_code)]
-    pub async fn dispatch<C>(&self, _cmd: C) -> Result<(), String> {
-        // Placeholder - will be implemented when needed
-        Ok(())
-    }
-
-    /// Get all events (placeholder for testing)
-    #[allow(dead_code)]
-    pub async fn get_all_events<E: Event>(&self) -> Result<Vec<E>, String> {
-        // Placeholder - will be implemented when needed
-        Ok(Vec::new())
-    }
-}
-
-impl Default for CommandBus {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Old CommandBus removed - use command_bus::CommandBus<E> instead
 
 /// Query Bus for dispatching queries
 pub struct QueryBus;
@@ -203,41 +238,11 @@ impl Default for QueryBus {
     }
 }
 
-/// Saga step for multi-aggregate transactions
-#[allow(dead_code)]
-pub enum SagaStep {
-    /// Debit money from an account
-    DebitAccount {
-        /// Account ID to debit from
-        account_id: String,
-        /// Amount to debit
-        amount: f64
-    },
-    /// Credit money to an account
-    CreditAccount {
-        /// Account ID to credit to
-        account_id: String,
-        /// Amount to credit
-        amount: f64
-    },
-}
-
-/// Saga trait for coordinating multi-aggregate transactions
-#[async_trait::async_trait]
-pub trait Saga: Send + Sync {
-    /// Execute the saga steps
-    async fn execute(&self) -> Result<(), String>;
-
-    /// Compensate for failed steps
-    async fn compensate(&self, failed_step: usize) -> Result<(), String>;
-
-    /// Execute a saga step (helper method)
-    #[allow(dead_code)]
-    async fn execute_step(&self, _step: SagaStep) -> Result<(), String> {
-        // Placeholder - will be implemented when needed
-        Ok(())
-    }
-}
+// Old Saga types removed - use saga_orchestrator module instead
+// The new saga system provides:
+// - SagaStep trait for defining steps
+// - SagaDefinition for building sagas
+// - SagaOrchestrator for execution with automatic compensation
 
 #[cfg(test)]
 mod tests {
@@ -280,10 +285,36 @@ mod tests {
 
     #[tokio::test]
     async fn test_command_bus_handlers() {
-        let bus = CommandBus::new()
-            .register(|| {})
-            .register(|| {});
+        use crate::cqrs::{Command, CommandBus, CommandHandler, CommandResult};
 
-        assert_eq!(bus.handlers_count(), 2);
+        #[derive(Clone)]
+        struct TestCommand1;
+        impl Command for TestCommand1 {}
+
+        #[derive(Clone)]
+        struct TestCommand2;
+        impl Command for TestCommand2 {}
+
+        struct Handler1;
+        #[async_trait::async_trait]
+        impl CommandHandler<TestCommand1, TestEvent> for Handler1 {
+            async fn handle(&self, _cmd: TestCommand1) -> CommandResult<TestEvent> {
+                Ok(vec![])
+            }
+        }
+
+        struct Handler2;
+        #[async_trait::async_trait]
+        impl CommandHandler<TestCommand2, TestEvent> for Handler2 {
+            async fn handle(&self, _cmd: TestCommand2) -> CommandResult<TestEvent> {
+                Ok(vec![])
+            }
+        }
+
+        let bus: CommandBus<TestEvent> = CommandBus::new();
+        bus.register(Handler1).await;
+        bus.register(Handler2).await;
+
+        assert_eq!(bus.handlers_count().await, 2);
     }
 }

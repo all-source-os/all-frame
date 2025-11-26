@@ -57,9 +57,9 @@ fn test_graphql_production_adapter() {
 #[cfg(feature = "router-grpc")]
 fn test_grpc_production_adapter() {
     // This test only compiles when "router-grpc" feature is enabled
-    use allframe_core::router::GrpcProductionAdapter;
+    use allframe_core::router::{GrpcProductionAdapter, ProtocolAdapter};
 
-    let adapter = GrpcProductionAdapter::new();
+    let adapter = GrpcProductionAdapter::new("test-service");
     assert_eq!(adapter.name(), "grpc-production");
 }
 
@@ -70,7 +70,7 @@ fn test_full_router_features() {
     use allframe_core::router::{GraphQLProductionAdapter, GrpcProductionAdapter};
 
     let _graphql = GraphQLProductionAdapter::new("/graphql");
-    let _grpc = GrpcProductionAdapter::new();
+    let _grpc = GrpcProductionAdapter::new("test-service");
 
     // Both adapters available
     assert!(true);

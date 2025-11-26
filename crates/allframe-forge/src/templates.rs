@@ -326,7 +326,7 @@ src/
 
 ## Built with AllFrame
 
-[AllFrame](https://github.com/yourusername/allframe) - The composable Rust API framework.
+[AllFrame](https://github.com/all-source-os/all-frame) - The composable Rust API framework.
 
 *One frame. Infinite transformations.*
 "#,

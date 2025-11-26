@@ -13,7 +13,12 @@
       "Bash(paste:*)",
       "Bash(bc:*)",
       "Bash(cargo run:*)",
-      "Bash(cargo search:*)"
+      "Bash(cargo search:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(cargo check:*)",
+      "Bash(cargo clean:*)",
+      "Bash(wait)"
     ],
     "deny": [],
     "ask": []

@@ -7,7 +7,8 @@
 
 use allframe_core::cqrs::{
     command, command_handler, query, query_handler,
-    Event, EventStore, Projection, Aggregate, Saga, Snapshot,
+    Event, EventStore, Projection, Aggregate, Snapshot,
+    SagaDefinition, SagaOrchestrator, SagaStep,
 };
 use std::collections::HashMap;
 
@@ -275,65 +276,77 @@ async fn test_snapshot_optimization() {
 /// Test saga coordination for multi-aggregate transactions
 #[tokio::test]
 async fn test_saga_coordination() {
-    use allframe_core::cqrs::SagaStep;
-
-    // Saga: Transfer money between two accounts
-    struct TransferMoneySaga {
-        from_account: String,
-        to_account: String,
+    // Define debit step
+    struct DebitStep {
+        account: String,
         amount: f64,
-        steps_executed: std::sync::Arc<tokio::sync::Mutex<Vec<String>>>,
     }
 
     #[async_trait::async_trait]
-    impl Saga for TransferMoneySaga {
-        async fn execute(&self) -> Result<(), String> {
-            // Step 1: Debit from account
-            self.execute_step(SagaStep::DebitAccount {
-                account_id: self.from_account.clone(),
-                amount: self.amount,
-            }).await?;
-
-            let mut steps = self.steps_executed.lock().await;
-            steps.push(format!("Debited {} from {}", self.amount, self.from_account));
-            drop(steps);
-
-            // Step 2: Credit to account
-            self.execute_step(SagaStep::CreditAccount {
-                account_id: self.to_account.clone(),
-                amount: self.amount,
-            }).await?;
-
-            let mut steps = self.steps_executed.lock().await;
-            steps.push(format!("Credited {} to {}", self.amount, self.to_account));
-
-            Ok(())
+    impl SagaStep<UserEvent> for DebitStep {
+        async fn execute(&self) -> Result<Vec<UserEvent>, String> {
+            // Simulate debiting account
+            Ok(vec![UserEvent::Created {
+                user_id: format!("debit-{}", self.account),
+                email: format!("debit@{}.com", self.account),
+            }])
         }
 
-        async fn compensate(&self, failed_step: usize) -> Result<(), String> {
-            // If step 2 fails, compensate step 1
-            if failed_step == 1 {
-                self.execute_step(SagaStep::CreditAccount {
-                    account_id: self.from_account.clone(),
-                    amount: self.amount,
-                }).await?;
-            }
-            Ok(())
+        async fn compensate(&self) -> Result<Vec<UserEvent>, String> {
+            // Compensate by crediting back
+            Ok(vec![])
+        }
+
+        fn name(&self) -> &str {
+            "DebitStep"
         }
     }
 
-    let steps_executed = std::sync::Arc::new(tokio::sync::Mutex::new(Vec::new()));
-    let saga = TransferMoneySaga {
-        from_account: "account-1".to_string(),
-        to_account: "account-2".to_string(),
-        amount: 100.0,
-        steps_executed: steps_executed.clone(),
-    };
+    // Define credit step
+    struct CreditStep {
+        account: String,
+        amount: f64,
+    }
 
-    saga.execute().await.unwrap();
+    #[async_trait::async_trait]
+    impl SagaStep<UserEvent> for CreditStep {
+        async fn execute(&self) -> Result<Vec<UserEvent>, String> {
+            // Simulate crediting account
+            Ok(vec![UserEvent::Created {
+                user_id: format!("credit-{}", self.account),
+                email: format!("credit@{}.com", self.account),
+            }])
+        }
 
-    let steps = steps_executed.lock().await;
-    assert_eq!(steps.len(), 2);
-    assert!(steps[0].contains("Debited"));
-    assert!(steps[1].contains("Credited"));
+        async fn compensate(&self) -> Result<Vec<UserEvent>, String> {
+            // Compensate by debiting back
+            Ok(vec![])
+        }
+
+        fn name(&self) -> &str {
+            "CreditStep"
+        }
+    }
+
+    // Create saga orchestrator
+    let orchestrator = SagaOrchestrator::<UserEvent>::new();
+
+    // Build saga definition
+    let saga = SagaDefinition::new("transfer-saga")
+        .add_step(DebitStep {
+            account: "account-1".to_string(),
+            amount: 100.0,
+        })
+        .add_step(CreditStep {
+            account: "account-2".to_string(),
+            amount: 100.0,
+        });
+
+    // Execute saga
+    let events = orchestrator.execute(saga).await.unwrap();
+
+    // Verify events were generated
+    assert_eq!(events.len(), 2);
+    assert_eq!(orchestrator.running_count().await, 0);
+    assert_eq!(orchestrator.history_count().await, 1);
 }

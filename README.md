@@ -269,8 +269,8 @@ AllFrame is **100% TDD-driven**. Before contributing:
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/allframe.git
-cd allframe
+git clone https://github.com/all-source-os/all-frame.git
+cd all-frame
 
 # Run tests (must pass)
 cargo test
@@ -378,8 +378,8 @@ at your option.
 
 ## Community
 
-- 💬 [Discussions](https://github.com/yourusername/allframe/discussions)
-- 🐛 [Issue Tracker](https://github.com/yourusername/allframe/issues)
+- 💬 [Discussions](https://github.com/all-source-os/all-frame/discussions)
+- 🐛 [Issue Tracker](https://github.com/all-source-os/all-frame/issues)
 - 📢 [Twitter](https://twitter.com/allframe_rs) *(coming soon)*
 - 📧 [Discord](https://discord.gg/allframe) *(coming soon)*
 

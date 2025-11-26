@@ -25,7 +25,7 @@
 pub mod arch;
 
 /// CQRS + Event Sourcing
-#[cfg(feature = "di")]
+#[cfg(feature = "cqrs")]
 pub mod cqrs;
 
 /// OpenTelemetry automatic instrumentation

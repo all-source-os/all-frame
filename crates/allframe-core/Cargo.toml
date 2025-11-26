@@ -24,6 +24,9 @@ toml = { version = "0.8", optional = true }
 # Optional features
 allframe-macros = { path = "../allframe-macros", optional = true }
 
+# AllSource Core for CQRS + Event Sourcing
+allsource-core = { git = "https://github.com/all-source-os/chronos-monorepo", optional = true, default-features = false }
+
 # GraphQL support (production-ready)
 async-graphql = { version = "7.0", optional = true }
 async-graphql-parser = { version = "7.0", optional = true }
@@ -45,12 +48,25 @@ mockall = { workspace = true }
 
 [features]
 default = ["di", "openapi", "router", "otel"]
+
+# Core features
 di = ["allframe-macros"]
 openapi = []
 otel = ["allframe-macros"]
+
+# Router features
 router = ["toml"]
 router-graphql = ["router", "async-graphql", "async-graphql-parser"]
 router-grpc = ["router", "tonic", "tonic-reflection", "prost", "prost-types", "tonic-build", "tokio-stream", "futures"]
 router-full = ["router-graphql", "router-grpc"]
-cqrs = []
+
+# CQRS + Event Sourcing features (optional, not in default)
+cqrs = ["allframe-macros"]
+
+# AllSource Core integration (production event store)
+cqrs-allsource = ["cqrs", "allsource-core"]
+cqrs-postgres = ["cqrs-allsource", "allsource-core/postgres"]
+cqrs-rocksdb = ["cqrs-allsource", "allsource-core/rocksdb-storage"]
+
+# Model Context Protocol (optional, not in default)
 mcp = []

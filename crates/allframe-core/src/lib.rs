@@ -20,6 +20,14 @@
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 
+/// Clean Architecture enforcement
+#[cfg(feature = "di")]
+pub mod arch;
+
+/// CQRS + Event Sourcing
+#[cfg(feature = "di")]
+pub mod cqrs;
+
 /// Router module for protocol-agnostic request handling
 pub mod router;
 

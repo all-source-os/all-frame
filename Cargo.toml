@@ -25,6 +25,7 @@ allframe-macros = { path = "crates/allframe-macros" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
+async-trait = { workspace = true }
 
 [workspace.package]
 version = "0.1.0"

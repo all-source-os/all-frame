@@ -44,10 +44,10 @@ proptest = { workspace = true }
 mockall = { workspace = true }
 
 [features]
-default = ["di", "openapi", "router"]
+default = ["di", "openapi", "router", "otel"]
 di = ["allframe-macros"]
 openapi = []
-otel = []
+otel = ["allframe-macros"]
 router = ["toml"]
 router-graphql = ["router", "async-graphql", "async-graphql-parser"]
 router-grpc = ["router", "tonic", "tonic-reflection", "prost", "prost-types", "tonic-build", "tokio-stream", "futures"]

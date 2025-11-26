@@ -28,6 +28,10 @@ pub mod arch;
 #[cfg(feature = "di")]
 pub mod cqrs;
 
+/// OpenTelemetry automatic instrumentation
+#[cfg(feature = "otel")]
+pub mod otel;
+
 /// Router module for protocol-agnostic request handling
 pub mod router;
 

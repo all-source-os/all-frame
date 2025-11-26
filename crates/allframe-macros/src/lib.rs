@@ -9,6 +9,7 @@ mod api;
 mod arch;
 mod cqrs;
 mod di;
+mod otel;
 
 use proc_macro::TokenStream;
 
@@ -252,6 +253,29 @@ pub fn query_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = proc_macro2::TokenStream::from(item);
 
     cqrs::query_handler_impl(attr, item)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Marks a function to be automatically traced with OpenTelemetry
+///
+/// Automatically creates spans with proper context propagation.
+///
+/// # Example
+/// ```ignore
+/// #[traced]
+/// async fn fetch_user(user_id: String) -> Result<User, Error> {
+///     // Span created automatically with name "fetch_user"
+///     // Span includes function arguments as attributes
+///     Ok(user)
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn traced(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = proc_macro2::TokenStream::from(attr);
+    let item = proc_macro2::TokenStream::from(item);
+
+    otel::traced_impl(attr, item)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }

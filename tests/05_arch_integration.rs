@@ -106,6 +106,7 @@ async fn test_full_clean_architecture_flow() {
 
     assert_eq!(user.id, "123");
     assert_eq!(user.email, "user@example.com");
+    assert_eq!(user.name, "John Doe");
 }
 
 /// Test multiple use cases sharing the same repository
@@ -185,6 +186,7 @@ async fn test_multiple_use_cases_share_repository() {
     // Get the user
     let user = get_use_case.repo.find("1").await;
     assert!(user.is_some());
+    assert_eq!(user.as_ref().unwrap().email, "test@example.com");
 
     // Delete the user
     delete_use_case.repo.delete("1").await.unwrap();
@@ -311,6 +313,7 @@ async fn test_handler_can_have_multiple_use_cases() {
     let (user, posts) = handler.handle("1").await.unwrap();
     assert_eq!(user.id, "1");
     assert_eq!(posts.len(), 1);
+    assert_eq!(posts[0].id, "p1");
 }
 
 /// Test layer metadata available at runtime

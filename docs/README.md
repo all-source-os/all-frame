@@ -17,41 +17,14 @@ One crate (`allframe-core`) that provides compile-time DI, auto OpenAPI 3.1, Ope
 
 ## 📂 Documentation Structure
 
-### Root Documentation (`/docs`)
-```
-docs/
-├── current/          # Active, current documentation (PRDs, architecture)
-├── phases/           # Development phase documentation (CQRS infrastructure)
-├── milestones/       # Milestone tracking and status
-├── announcements/    # Public announcements and social posts
-├── guides/           # How-to guides and tutorials
-├── architecture/     # Architecture Decision Records (ADRs)
-├── operations/       # Operational guides (deployment, CI/CD)
-└── archive/          # Historical/deprecated docs (timestamped)
-```
+For complete documentation structure and navigation, see **[INDEX.md](./INDEX.md)**.
 
 ### Key Documents
 
-#### **Product Requirements**
-- **[PRD_01.md](./current/PRD_01.md)** - Original Product Requirements (PRIMARY SOURCE OF TRUTH)
-- **[PRD_ROUTER_DOCS.md](./current/PRD_ROUTER_DOCS.md)** - Router + API Documentation System (Phase 6)
-
-#### **Project Status**
-- **[PROJECT_STATUS.md](./PROJECT_STATUS.md)** - Complete project status, roadmap, and metrics
-
-#### **CQRS Infrastructure (Phases 1-5)** ✅ **COMPLETE**
-- **[Phase 1: AllSource Integration](./phases/PHASE1_COMPLETE.md)** - Event store backend abstraction
-- **[Phase 2: CommandBus](./phases/PHASE2_COMPLETE.md)** - Command dispatch & validation (90% reduction)
-- **[Phase 3: ProjectionRegistry](./phases/PHASE3_COMPLETE.md)** - Automatic projections (90% reduction)
-- **[Phase 4: Event Versioning](./phases/PHASE4_COMPLETE.md)** - Automatic upcasting (95% reduction)
-- **[Phase 5: Saga Orchestration](./phases/PHASE5_COMPLETE.md)** - Distributed transactions (75% reduction)
-
-#### **Development Guides**
-- **[.claude/skills/rust-clean-architecture.md](../.claude/skills/rust-clean-architecture.md)** - Clean Architecture patterns for AllFrame
-- **[.claude/TDD_CHECKLIST.md](../.claude/TDD_CHECKLIST.md)** - Mandatory TDD workflow
-
-#### **Announcements**
-- **[CQRS Infrastructure Complete](./announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)** - 5 phases, 85% avg boilerplate reduction
+- **[PROJECT_STATUS.md](./PROJECT_STATUS.md)** - Current status, roadmap, and metrics
+- **[PRD_01.md](./current/PRD_01.md)** - Product Requirements (PRIMARY SOURCE OF TRUTH)
+- **[Phase Documentation](./phases/)** - All completed phases (CQRS, Router, etc.)
+- **[Announcements](./announcements/)** - Project announcements and milestones
 
 ---
 
@@ -156,28 +129,22 @@ cargo build --release
 
 **100% TDD - NO EXCEPTIONS**
 
-Every feature, macro, and public API must have:
-1. A failing test written FIRST (RED phase)
-2. Minimal implementation to pass (GREEN phase)
-3. Refactoring while maintaining tests (REFACTOR phase)
+Every feature, macro, and public API must follow the RED-GREEN-REFACTOR cycle.
 
-See [TDD_CHECKLIST.md](../.claude/TDD_CHECKLIST.md) for detailed workflow.
+See **[TDD_CHECKLIST.md](../.claude/TDD_CHECKLIST.md)** for the complete mandatory workflow.
 
 ---
 
-## 📚 Quick Reference Links
+## 📚 Quick Reference
 
 ### Core Documentation
-- [PRD_01.md](./current/PRD_01.md) - Product Requirements
-- [Clean Architecture Skill](../.claude/skills/rust-clean-architecture.md) - Development patterns
-- [TDD Checklist](../.claude/TDD_CHECKLIST.md) - Testing workflow
-- [Claude Instructions](../.claude/instructions.md) - AI assistant guidelines
+- **[PRD_01.md](./current/PRD_01.md)** - Product Requirements
+- **[PROJECT_STATUS.md](./PROJECT_STATUS.md)** - Current status and roadmap
+- **[TDD Checklist](../.claude/TDD_CHECKLIST.md)** - Testing workflow
+- **[INDEX.md](./INDEX.md)** - Complete documentation index
 
 ### External Resources
-- [Rust Book](https://doc.rust-lang.org/book/)
-- [Tokio Documentation](https://tokio.rs/tokio/tutorial)
-- [Hyper Documentation](https://hyper.rs/)
-- [Clean Architecture (Uncle Bob)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+See **[INDEX.md](./INDEX.md#external-resources)** for complete list of external references.
 
 ---
 

@@ -40,8 +40,8 @@ pub mod router;
 /// Commonly used imports for AllFrame applications
 pub mod prelude {
     pub use crate::router::{
-        GraphQLAdapter, GrpcAdapter, GrpcRequest, GrpcStatus, ProtocolAdapter, RestAdapter,
-        RestRequest, RestResponse, Router,
+        GraphQLAdapter, GrpcAdapter, GrpcRequest, GrpcStatus, Method, ProtocolAdapter,
+        RestAdapter, RestRequest, RestResponse, RouteMetadata, Router, ToJsonSchema,
     };
 
     #[cfg(feature = "router")]

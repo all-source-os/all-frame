@@ -7,12 +7,18 @@ use std::collections::HashMap;
 use std::future::Future;
 
 pub mod adapter;
+pub mod builder;
 #[cfg(feature = "router")]
 pub mod config;
+pub mod docs;
 pub mod graphql;
 pub mod grpc;
 pub mod handler;
+pub mod metadata;
+pub mod method;
+pub mod openapi;
 pub mod rest;
+pub mod schema;
 
 // Production adapters (optional features)
 #[cfg(feature = "router-graphql")]
@@ -21,12 +27,18 @@ pub mod graphql_prod;
 pub mod grpc_prod;
 
 pub use adapter::ProtocolAdapter;
+pub use builder::RouteBuilder;
 #[cfg(feature = "router")]
 pub use config::{GrpcConfig, GraphQLConfig, RestConfig, RouterConfig, ServerConfig};
+pub use docs::DocsConfig;
 pub use graphql::GraphQLAdapter;
 pub use grpc::{GrpcAdapter, GrpcRequest, GrpcStatus};
 pub use handler::{Handler, HandlerFn};
+pub use metadata::RouteMetadata;
+pub use method::Method;
+pub use openapi::OpenApiGenerator;
 pub use rest::{RestAdapter, RestRequest, RestResponse};
+pub use schema::ToJsonSchema;
 
 // Re-export production adapters when features are enabled
 #[cfg(feature = "router-graphql")]
@@ -41,6 +53,7 @@ pub use grpc_prod::{GrpcProductionAdapter, GrpcService, protobuf, status, stream
 pub struct Router {
     handlers: HashMap<String, Box<dyn Handler>>,
     adapters: HashMap<String, Box<dyn ProtocolAdapter>>,
+    routes: Vec<RouteMetadata>,
     #[cfg(feature = "router")]
     #[allow(dead_code)]
     config: Option<RouterConfig>,
@@ -52,6 +65,7 @@ impl Router {
         Self {
             handlers: HashMap::new(),
             adapters: HashMap::new(),
+            routes: Vec::new(),
             #[cfg(feature = "router")]
             config: None,
         }
@@ -63,6 +77,7 @@ impl Router {
         let mut router = Self {
             handlers: HashMap::new(),
             adapters: HashMap::new(),
+            routes: Vec::new(),
             config: Some(config.clone()),
         };
 
@@ -133,6 +148,120 @@ impl Router {
         self.adapters.keys().cloned().collect()
     }
 
+    /// Add a route with metadata
+    ///
+    /// This stores route metadata that can be used to generate
+    /// documentation (OpenAPI, GraphQL schemas, gRPC reflection).
+    pub fn add_route(&mut self, metadata: RouteMetadata) {
+        self.routes.push(metadata);
+    }
+
+    /// Get all registered routes
+    ///
+    /// Returns an immutable reference to all route metadata.
+    /// This is used for documentation generation.
+    pub fn routes(&self) -> &[RouteMetadata] {
+        &self.routes
+    }
+
+    /// Register a GET route
+    ///
+    /// This is a convenience method that registers both a handler and route metadata
+    /// for a GET request. The handler name is automatically generated as "GET:{path}".
+    pub fn get<F, Fut>(&mut self, path: &str, handler: F)
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = String> + Send + 'static,
+    {
+        let handler_name = format!("GET:{}", path);
+        self.register(&handler_name, handler);
+        self.add_route(RouteMetadata::new(path, Method::GET, "rest"));
+    }
+
+    /// Register a POST route
+    ///
+    /// This is a convenience method that registers both a handler and route metadata
+    /// for a POST request. The handler name is automatically generated as "POST:{path}".
+    pub fn post<F, Fut>(&mut self, path: &str, handler: F)
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = String> + Send + 'static,
+    {
+        let handler_name = format!("POST:{}", path);
+        self.register(&handler_name, handler);
+        self.add_route(RouteMetadata::new(path, Method::POST, "rest"));
+    }
+
+    /// Register a PUT route
+    ///
+    /// This is a convenience method that registers both a handler and route metadata
+    /// for a PUT request. The handler name is automatically generated as "PUT:{path}".
+    pub fn put<F, Fut>(&mut self, path: &str, handler: F)
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = String> + Send + 'static,
+    {
+        let handler_name = format!("PUT:{}", path);
+        self.register(&handler_name, handler);
+        self.add_route(RouteMetadata::new(path, Method::PUT, "rest"));
+    }
+
+    /// Register a DELETE route
+    ///
+    /// This is a convenience method that registers both a handler and route metadata
+    /// for a DELETE request. The handler name is automatically generated as "DELETE:{path}".
+    pub fn delete<F, Fut>(&mut self, path: &str, handler: F)
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = String> + Send + 'static,
+    {
+        let handler_name = format!("DELETE:{}", path);
+        self.register(&handler_name, handler);
+        self.add_route(RouteMetadata::new(path, Method::DELETE, "rest"));
+    }
+
+    /// Register a PATCH route
+    ///
+    /// This is a convenience method that registers both a handler and route metadata
+    /// for a PATCH request. The handler name is automatically generated as "PATCH:{path}".
+    pub fn patch<F, Fut>(&mut self, path: &str, handler: F)
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = String> + Send + 'static,
+    {
+        let handler_name = format!("PATCH:{}", path);
+        self.register(&handler_name, handler);
+        self.add_route(RouteMetadata::new(path, Method::PATCH, "rest"));
+    }
+
+    /// Register a HEAD route
+    ///
+    /// This is a convenience method that registers both a handler and route metadata
+    /// for a HEAD request. The handler name is automatically generated as "HEAD:{path}".
+    pub fn head<F, Fut>(&mut self, path: &str, handler: F)
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = String> + Send + 'static,
+    {
+        let handler_name = format!("HEAD:{}", path);
+        self.register(&handler_name, handler);
+        self.add_route(RouteMetadata::new(path, Method::HEAD, "rest"));
+    }
+
+    /// Register an OPTIONS route
+    ///
+    /// This is a convenience method that registers both a handler and route metadata
+    /// for an OPTIONS request. The handler name is automatically generated as "OPTIONS:{path}".
+    pub fn options<F, Fut>(&mut self, path: &str, handler: F)
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = String> + Send + 'static,
+    {
+        let handler_name = format!("OPTIONS:{}", path);
+        self.register(&handler_name, handler);
+        self.add_route(RouteMetadata::new(path, Method::OPTIONS, "rest"));
+    }
+
     /// Call handler via REST
     pub async fn call_rest(&self, method: &str, path: &str) -> Result<String, String> {
         let adapter = self
@@ -195,5 +324,170 @@ mod tests {
         router.register("test", || async { "Hello".to_string() });
         let result = router.execute("test").await;
         assert_eq!(result, Ok("Hello".to_string()));
+    }
+
+    // New tests for route metadata tracking
+    #[tokio::test]
+    async fn test_router_starts_with_no_routes() {
+        let router = Router::new();
+        let routes = router.routes();
+        assert_eq!(routes.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_add_route_metadata() {
+        let mut router = Router::new();
+        let metadata = RouteMetadata::new("/users", "GET", "rest");
+
+        router.add_route(metadata.clone());
+
+        let routes = router.routes();
+        assert_eq!(routes.len(), 1);
+        assert_eq!(routes[0].path, "/users");
+        assert_eq!(routes[0].method, "GET");
+        assert_eq!(routes[0].protocol, "rest");
+    }
+
+    #[tokio::test]
+    async fn test_add_multiple_routes() {
+        let mut router = Router::new();
+
+        router.add_route(RouteMetadata::new("/users", "GET", "rest"));
+        router.add_route(RouteMetadata::new("/users", "POST", "rest"));
+        router.add_route(RouteMetadata::new("/posts", "GET", "rest"));
+
+        let routes = router.routes();
+        assert_eq!(routes.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_routes_with_different_protocols() {
+        let mut router = Router::new();
+
+        router.add_route(RouteMetadata::new("/users", "GET", "rest"));
+        router.add_route(RouteMetadata::new("users", "query", "graphql"));
+        router.add_route(RouteMetadata::new("UserService.GetUser", "unary", "grpc"));
+
+        let routes = router.routes();
+        assert_eq!(routes.len(), 3);
+
+        assert_eq!(routes[0].protocol, "rest");
+        assert_eq!(routes[1].protocol, "graphql");
+        assert_eq!(routes[2].protocol, "grpc");
+    }
+
+    #[tokio::test]
+    async fn test_routes_returns_immutable_reference() {
+        let mut router = Router::new();
+        router.add_route(RouteMetadata::new("/test", "GET", "rest"));
+
+        let routes1 = router.routes();
+        let routes2 = router.routes();
+
+        // Both should have the same data
+        assert_eq!(routes1.len(), routes2.len());
+        assert_eq!(routes1[0].path, routes2[0].path);
+    }
+
+    // Tests for type-safe route registration
+    #[tokio::test]
+    async fn test_route_get_method() {
+        let mut router = Router::new();
+        router.get("/users", || async { "User list".to_string() });
+
+        let routes = router.routes();
+        assert_eq!(routes.len(), 1);
+        assert_eq!(routes[0].path, "/users");
+        assert_eq!(routes[0].method, "GET");
+        assert_eq!(routes[0].protocol, "rest");
+    }
+
+    #[tokio::test]
+    async fn test_route_post_method() {
+        let mut router = Router::new();
+        router.post("/users", || async { "User created".to_string() });
+
+        let routes = router.routes();
+        assert_eq!(routes.len(), 1);
+        assert_eq!(routes[0].path, "/users");
+        assert_eq!(routes[0].method, "POST");
+        assert_eq!(routes[0].protocol, "rest");
+    }
+
+    #[tokio::test]
+    async fn test_route_put_method() {
+        let mut router = Router::new();
+        router.put("/users/1", || async { "User updated".to_string() });
+
+        let routes = router.routes();
+        assert_eq!(routes.len(), 1);
+        assert_eq!(routes[0].method, "PUT");
+    }
+
+    #[tokio::test]
+    async fn test_route_delete_method() {
+        let mut router = Router::new();
+        router.delete("/users/1", || async { "User deleted".to_string() });
+
+        let routes = router.routes();
+        assert_eq!(routes.len(), 1);
+        assert_eq!(routes[0].method, "DELETE");
+    }
+
+    #[tokio::test]
+    async fn test_route_patch_method() {
+        let mut router = Router::new();
+        router.patch("/users/1", || async { "User patched".to_string() });
+
+        let routes = router.routes();
+        assert_eq!(routes.len(), 1);
+        assert_eq!(routes[0].method, "PATCH");
+    }
+
+    #[tokio::test]
+    async fn test_multiple_routes_different_methods() {
+        let mut router = Router::new();
+        router.get("/users", || async { "List".to_string() });
+        router.post("/users", || async { "Create".to_string() });
+        router.put("/users/1", || async { "Update".to_string() });
+        router.delete("/users/1", || async { "Delete".to_string() });
+
+        let routes = router.routes();
+        assert_eq!(routes.len(), 4);
+
+        assert_eq!(routes[0].method, "GET");
+        assert_eq!(routes[1].method, "POST");
+        assert_eq!(routes[2].method, "PUT");
+        assert_eq!(routes[3].method, "DELETE");
+    }
+
+    #[tokio::test]
+    async fn test_route_method_with_path_params() {
+        let mut router = Router::new();
+        router.get("/users/{id}", || async { "User details".to_string() });
+        router.get("/users/{id}/posts/{post_id}", || async { "Post details".to_string() });
+
+        let routes = router.routes();
+        assert_eq!(routes.len(), 2);
+        assert_eq!(routes[0].path, "/users/{id}");
+        assert_eq!(routes[1].path, "/users/{id}/posts/{post_id}");
+    }
+
+    #[tokio::test]
+    async fn test_route_registration_and_execution() {
+        let mut router = Router::new();
+        router.get("/test", || async { "GET response".to_string() });
+        router.post("/test", || async { "POST response".to_string() });
+
+        // Both route metadata and handler should be registered
+        assert_eq!(router.routes().len(), 2);
+        assert_eq!(router.handlers_count(), 2);
+
+        // Handlers should be executable
+        let result1 = router.execute("GET:/test").await;
+        let result2 = router.execute("POST:/test").await;
+
+        assert_eq!(result1, Ok("GET response".to_string()));
+        assert_eq!(result2, Ok("POST response".to_string()));
     }
 }

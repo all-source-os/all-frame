@@ -1,6 +1,6 @@
 # AllFrame Documentation Index
 
-**Last Updated**: 2025-11-26
+**Last Updated**: 2025-11-27
 
 Welcome to the AllFrame documentation! This index provides a comprehensive overview of all available documentation.
 
@@ -25,14 +25,19 @@ docs/
 │
 ├── current/                     # Active documentation
 │   ├── PRD_01.md               # Product Requirements (PRIMARY SOURCE)
-│   └── PRD_ROUTER_DOCS.md      # Router + API Documentation PRD (Phase 6)
+│   ├── PRD_ROUTER_DOCS.md      # Router + API Documentation PRD (Phase 6)
+│   ├── PRD_QUALITY_METRICS.md  # Binary Size, Demos, Performance (P0)
+│   ├── PRD_SERVERLESS.md       # Serverless + IaC PRD (Phase 7)
+│   ├── PRD_ALLSOURCE_CLOUD.md  # AllSource Cloud Evolution PRD
+│   └── ALLSOURCE_CORE_ISSUES.md # External dependency issues tracker
 │
-├── phases/                      # CQRS Infrastructure (COMPLETE ✅)
-│   ├── PHASE1_COMPLETE.md      # AllSource Integration
-│   ├── PHASE2_COMPLETE.md      # CommandBus (90% reduction)
-│   ├── PHASE3_COMPLETE.md      # ProjectionRegistry (90% reduction)
-│   ├── PHASE4_COMPLETE.md      # Event Versioning (95% reduction)
-│   └── PHASE5_COMPLETE.md      # Saga Orchestration (75% reduction)
+├── phases/                      # Implementation Phases
+│   ├── PHASE1_COMPLETE.md      # AllSource Integration ✅
+│   ├── PHASE2_COMPLETE.md      # CommandBus (90% reduction) ✅
+│   ├── PHASE3_COMPLETE.md      # ProjectionRegistry (90% reduction) ✅
+│   ├── PHASE4_COMPLETE.md      # Event Versioning (95% reduction) ✅
+│   ├── PHASE5_COMPLETE.md      # Saga Orchestration (75% reduction) ✅
+│   └── PHASE6_1_ROUTER_CORE_PLAN.md  # Router Core Enhancement (READY) 📋
 │
 ├── announcements/               # Public announcements
 │   ├── CQRS_INFRASTRUCTURE_COMPLETE.md  # Main announcement (2025-11-26)
@@ -40,6 +45,7 @@ docs/
 │   └── SOCIAL_POSTS.md                  # Social media posts
 │
 ├── milestones/                  # Milestone tracking
+│   ├── WARNING_CLEANUP_COMPLETE.md  # Code quality milestone (2025-11-27)
 │   ├── milestone-0.4-plan.md
 │   ├── MILESTONE_0.2_COMPLETE.md
 │   ├── MILESTONE_0.2_STATUS.md
@@ -77,6 +83,7 @@ docs/
 | 3 | ProjectionRegistry | 90% | [PHASE3_COMPLETE.md](./phases/PHASE3_COMPLETE.md) |
 | 4 | Event Versioning | 95% | [PHASE4_COMPLETE.md](./phases/PHASE4_COMPLETE.md) |
 | 5 | Saga Orchestration | 75% | [PHASE5_COMPLETE.md](./phases/PHASE5_COMPLETE.md) |
+| **6.1** | **Router Core** | **-** | **[PHASE6_1_COMPLETE.md](./phases/PHASE6_1_COMPLETE.md)** ✅ **NEW** |
 
 **Summary**: [CQRS Infrastructure Complete Announcement](./announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)
 
@@ -104,6 +111,28 @@ docs/
   - gRPC documentation (custom UI)
   - Contract testing system
   - 11-week implementation plan
+
+- **[PRD_QUALITY_METRICS.md](./current/PRD_QUALITY_METRICS.md)** - Quality Metrics & Performance (P0)
+  - Binary size monitoring (< 8 MB target)
+  - Demo scenarios (5 comprehensive examples)
+  - Performance testing (TechEmpower benchmarks)
+  - Automated CI/CD monitoring
+  - 9-week implementation plan
+
+- **[PRD_SERVERLESS.md](./current/PRD_SERVERLESS.md)** - AllFrame Serverless (Phase 7)
+  - AWS Lambda runtime adapter
+  - GCP Cloud Run support
+  - DynamoDB event store backend
+  - Infrastructure-from-Code (Terraform generation)
+  - 12-week implementation plan
+
+- **[PRD_ALLSOURCE_CLOUD.md](./current/PRD_ALLSOURCE_CLOUD.md)** - AllSource Cloud-Ready Evolution
+  - Fix existing compilation issues
+  - DynamoDB and Firestore backends
+  - Multi-tenant support with isolation
+  - S3/GCS archival for cold storage
+  - Serverless optimization (connection pooling, cold start)
+  - 12-week implementation plan
 
 ### Development Guides
 - **[Rust Clean Architecture](../.claude/skills/rust-clean-architecture.md)** - Architecture patterns
@@ -182,24 +211,19 @@ Historical documentation moved to `/docs/archive/`:
 - **Event Versioning**: [PHASE4_COMPLETE.md](./phases/PHASE4_COMPLETE.md)
 - **Sagas**: [PHASE5_COMPLETE.md](./phases/PHASE5_COMPLETE.md)
 - **Storage Backends**: [PHASE1_COMPLETE.md](./phases/PHASE1_COMPLETE.md)
+- **Router & OpenAPI**: [PHASE6_1_COMPLETE.md](./phases/PHASE6_1_COMPLETE.md) ✅ **NEW**
 
 ---
 
 ## Statistics
 
-### CQRS Infrastructure
-- **Total Phases**: 5 (all complete)
-- **Total Tests**: 72 (100% passing)
-- **Framework Code**: ~1,500 lines
-- **Average Boilerplate Reduction**: 85%
-- **Breaking Changes**: 0
+**Current Metrics**: See **[PROJECT_STATUS.md](./PROJECT_STATUS.md#repository-statistics)** for detailed, up-to-date statistics.
 
-### Documentation
-- **Total Documents**: 24+
-- **Guides**: 3
-- **Phase Docs**: 5
-- **Announcements**: 3
-- **Milestones**: 6
+### Quick Stats
+- **Total Tests**: 99 (100% passing)
+- **CQRS Phases**: 5 (all complete, 85% avg boilerplate reduction)
+- **Router Phase**: 6.1 (complete)
+- **Documentation**: 25+ files across phases, guides, and PRDs
 
 ---
 
@@ -233,16 +257,7 @@ Historical documentation moved to `/docs/archive/`:
 
 ## Quick Start
 
-### For Framework Users
-1. Read [CQRS Infrastructure Complete](./announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)
-2. Review phase documentation for features you need
-3. Check [guides/](./guides/) for integration instructions
-
-### For Framework Contributors
-1. Read [PRD_01.md](./current/PRD_01.md) thoroughly
-2. Review [.claude/skills/rust-clean-architecture.md](../.claude/skills/rust-clean-architecture.md)
-3. Follow [.claude/TDD_CHECKLIST.md](../.claude/TDD_CHECKLIST.md) for ALL changes
-4. Ensure 100% test coverage before submitting PR
+See **[README.md#getting-started](./README.md#getting-started)** for detailed getting started guide.
 
 ---
 

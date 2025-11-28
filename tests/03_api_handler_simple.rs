@@ -3,6 +3,13 @@
 //! These tests verify basic OpenAPI schema generation.
 //! Full type introspection will come in v0.3.
 
+// Allow dead code - simplified tests for #[api_handler] macro schema generation.
+// Test fixtures (health_check, CreateRequest, create_user, status) demonstrate minimal
+// API patterns for basic OpenAPI generation. The macro generates schema functions that
+// tests verify produce valid JSON. Unused functions are intentional test fixtures showing
+// different HTTP methods and parameter styles (GET with no params, POST with body, etc.).
+#[allow(dead_code)]
+
 use allframe_macros::api_handler;
 use serde::{Deserialize, Serialize};
 

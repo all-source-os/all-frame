@@ -72,6 +72,7 @@ async fn test_otel_with_clean_arch() {
 
     let result = get_user_handler(use_case).await;
     assert!(result.is_some());
+    assert_eq!(result.unwrap().id, "123");
 
     // For MVP, layers are marked with #[traced] and execute correctly
 }
@@ -116,6 +117,8 @@ async fn test_otel_with_cqrs() {
     // Verify event was stored
     let events = store.get_events("123").await.unwrap();
     assert_eq!(events.len(), 1);
+    let UserEvent::Created { user_id } = &events[0];
+    assert_eq!(user_id, "123");
 
     // For MVP, CQRS operations are traced and execute correctly
 }

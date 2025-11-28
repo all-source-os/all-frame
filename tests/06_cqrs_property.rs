@@ -109,6 +109,7 @@ fn proptest_projection_consistency() {
         assert_eq!(projection1.users.len(), projection2.users.len());
         for (id, user1) in &projection1.users {
             let user2 = projection2.users.get(id).unwrap();
+            assert_eq!(user1.id, user2.id);
             assert_eq!(user1.email, user2.email);
         }
     }

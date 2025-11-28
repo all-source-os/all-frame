@@ -5,7 +5,7 @@
 //! Tests for OpenTelemetry automatic tracing instrumentation.
 //! Handlers, use cases, and repositories should be automatically traced.
 
-use allframe_core::otel::{traced, SpanRecorder};
+use allframe_core::otel::traced;
 
 /// Test handler automatically creates span
 #[tokio::test]

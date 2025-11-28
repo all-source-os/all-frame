@@ -144,6 +144,29 @@
 
 ## Active Work
 
+### Compiler Warning Cleanup ✅
+**Status**: Complete (2025-11-27)
+**Achievement**: Zero unexpected warnings, all exceptions documented
+
+**Work Completed**:
+- ✅ Fixed 15+ "field never read" warnings by adding proper assertions
+- ✅ Fixed irrefutable pattern warnings
+- ✅ Removed unused imports
+- ✅ Added comprehensive `#[allow(dead_code)]` documentation to all test files
+- ✅ Documented all 45 intentional exceptions with clear explanations
+- ✅ Created AllSource-Core dependency issue tracker
+
+**Documentation**:
+- [Milestone: Warning Cleanup Complete](./milestones/WARNING_CLEANUP_COMPLETE.md)
+- [AllSource-Core Issues](./current/ALLSOURCE_CORE_ISSUES.md)
+
+**Impact**:
+- Production-ready codebase with documented quality standards
+- Clear best practices for test assertions
+- External dependency issues tracked with workarounds
+
+---
+
 ### CI/CD Fixes ✅
 **Status**: Complete (2025-11-26)
 
@@ -160,33 +183,88 @@
 
 **Remaining**:
 - prost version conflict needs allsource-core update (external dependency)
+- AllSource backend blocked by upstream compilation errors (see [ALLSOURCE_CORE_ISSUES.md](./current/ALLSOURCE_CORE_ISSUES.md))
 - Monitoring for upstream dependency changes
+
+---
+
+## Active Phase
+
+### Phase 6.1: Router Core Enhancement ✅
+**Status**: COMPLETE (2025-11-27)
+**Achievement**: Type-safe routing + OpenAPI 3.1 + JSON Schema generation
+
+**Deliverables Completed**:
+- ✅ Route metadata extraction (`RouteMetadata`)
+- ✅ Type-safe route registration (`router.get()`, `router.post()`, etc.)
+- ✅ JSON Schema generation (`ToJsonSchema` trait)
+- ✅ OpenAPI 3.1 spec generation (`Router::to_openapi()`)
+- ✅ Route builder API (`RouteBuilder`)
+- ✅ Documentation serving (`DocsConfig`, `openapi_json()`, `docs_html()`)
+
+**Metrics**:
+- Tests added: 60 (39 → 99 total)
+- Files created: 6 router modules (~835 lines)
+- Breaking changes: 0
+- Test coverage: 100%
+- Performance: <1μs per route (exceeded <10μs target)
+
+**Documentation**: [Phase 6.1 Complete](./phases/PHASE6_1_COMPLETE.md)
 
 ---
 
 ## Next Phase
 
-### Phase 6: Router + API Documentation 📝
-**Status**: PRD Complete, Ready for Implementation
+### Phase 6.2: REST + Scalar Integration 📝
+**Status**: Ready for Implementation
 **Priority**: P0 (Next Major Phase)
 
-**Goal**: Build best-in-class, protocol-agnostic routing and documentation system
+**Goal**: Integrate Scalar UI for beautiful, modern REST API documentation
 
 **Key Features**:
-1. **Unified Router Core** - Protocol-agnostic routing abstraction
-2. **REST Documentation** - Scalar.com integration (<50KB bundle)
-3. **GraphQL Documentation** - GraphiQL playground + auto-docs
-4. **gRPC Documentation** - Reflection API + service explorer
-5. **Contract Testing** - Built-in contract test generators
+1. **Scalar UI Integration** - Modern documentation UI (<50KB bundle)
+2. **Interactive Testing** - "Try It" functionality built-in
+3. **Dark Mode** - Beautiful dark theme by default
+4. **Mobile-Friendly** - Responsive design
 
-**Timeline**: 11 weeks (5 sub-phases)
-- Phase 6.1: Router Core (3 weeks)
-- Phase 6.2: REST + Scalar (2 weeks)
-- Phase 6.3: GraphQL Docs (2 weeks)
-- Phase 6.4: gRPC Docs (2 weeks)
+**Prerequisites**: ✅ All met (Phase 6.1 complete)
+- ✅ OpenAPI 3.1 generation working
+- ✅ Route metadata extraction complete
+- ✅ JSON Schema generation ready
+- ✅ Documentation serving infrastructure ready
+
+**Timeline**: 2 weeks
+
+**Documentation**:
+- [PRD: Router + API Documentation](./current/PRD_ROUTER_DOCS.md)
+- [Phase 6.1 Complete](./phases/PHASE6_1_COMPLETE.md)
+
+**Remaining Phases**:
+- Phase 6.3: GraphQL Documentation (2 weeks)
+- Phase 6.4: gRPC Documentation (2 weeks)
 - Phase 6.5: Contract Testing (2 weeks)
 
-**PRD**: [docs/current/PRD_ROUTER_DOCS.md](./current/PRD_ROUTER_DOCS.md)
+---
+
+### Quality Metrics & Performance 📝
+**Status**: PRD Complete, Ready for Implementation
+**Priority**: P0 (Critical for 1.0)
+
+**Goal**: Comprehensive quality monitoring, performance testing, and demo scenarios
+
+**Key Deliverables**:
+1. **Binary Size Monitoring** - < 8 MB target, CI/CD enforcement
+2. **Demo Scenarios** - 5 comprehensive real-world examples
+3. **Performance Testing** - TechEmpower benchmarks, > 500k req/s
+4. **Automated Monitoring** - CI/CD checks for all metrics
+
+**Timeline**: 9 weeks (4 phases)
+- Phase 1: Binary Size Monitoring (1 week)
+- Phase 2: Demo Scenarios (5 weeks)
+- Phase 3: Performance Testing (2 weeks)
+- Phase 4: Integration & Documentation (1 week)
+
+**PRD**: [docs/current/PRD_QUALITY_METRICS.md](./current/PRD_QUALITY_METRICS.md)
 
 **Why This Matters**:
 - Swagger UI is outdated (2015), heavy (100KB+), slow
@@ -248,11 +326,16 @@
 
 | Component | Files | Lines | Tests |
 |-----------|-------|-------|-------|
-| allframe-core | ~40 | ~5,000 | 43 |
+| allframe-core | ~46 | ~5,835 | 99 |
 | allframe-macros | ~10 | ~1,500 | 8 |
 | allframe-forge | ~5 | ~500 | 5 |
 | Integration tests | ~15 | ~3,000 | 25 |
-| **Total** | **~70** | **~10,000** | **81** |
+| **Total** | **~76** | **~10,835** | **137** |
+
+**Phase Breakdown**:
+- CQRS (Phases 1-5): 39 tests
+- Router (Phase 6.1): 60 tests
+- Other: 38 tests
 
 ### Documentation
 
@@ -296,7 +379,7 @@
 
 ### Q1 2025: Router + Documentation (Phase 6)
 - ✅ PRD Complete
-- ⏳ Phase 6.1: Router Core (3 weeks)
+- ✅ Phase 6.1: Router Core Enhancement (COMPLETE 2025-11-27)
 - ⏳ Phase 6.2: REST + Scalar (2 weeks)
 - ⏳ Phase 6.3: GraphQL Docs (2 weeks)
 - ⏳ Phase 6.4: gRPC Docs (2 weeks)

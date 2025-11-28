@@ -5,6 +5,12 @@
 //! Integration tests for CQRS + Event Sourcing.
 //! These tests verify the full CQRS flow works end-to-end.
 
+// Allow dead code for test fixtures that demonstrate patterns but aren't fully exercised.
+// These include: variant Deleted (shows enum patterns), struct ArchUser (demonstrates
+// architecture integration), event fields (show event structure), saga step fields (demonstrate
+// saga patterns). The tests validate core CQRS flows, not every possible code path.
+#[allow(dead_code)]
+
 use allframe_core::cqrs::{
     command, command_handler, query, query_handler,
     Event, EventStore, Projection, Aggregate, Snapshot,
@@ -105,7 +111,9 @@ async fn test_full_cqrs_flow() {
     }, &projection).await;
 
     assert!(user.is_some());
-    assert_eq!(user.unwrap().email, "user@example.com");
+    let user_val = user.unwrap();
+    assert_eq!(user_val.id, "123");
+    assert_eq!(user_val.email, "user@example.com");
 }
 
 /// Test CQRS with Clean Architecture layers

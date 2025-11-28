@@ -11,6 +11,13 @@
 //! - Events can be replayed to rebuild state
 //! - Events support versioning for schema evolution
 
+// Allow dead code for test fixtures demonstrating event patterns:
+// - variant Deleted: Shows deletion events in enum (not exercised in all tests)
+// - field version in V1: Demonstrates versioning structure (used in conversion, not directly read)
+// - StreamUserEvent.user_id: Shows event streaming patterns (not fully exercised)
+// These fixtures document event sourcing patterns even when not every field is validated.
+#[allow(dead_code)]
+
 use allframe_core::cqrs::{Event, EventStore};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -131,6 +138,8 @@ fn test_event_versioning() {
 
     let v2: UserCreatedV2 = v1.into();
     assert_eq!(v2.version, 2);
+    assert_eq!(v2.user_id, "123");
+    assert_eq!(v2.email, "user@example.com");
     assert_eq!(v2.name, "Unknown");
 }
 

@@ -274,6 +274,10 @@ fn test_di_multiple_instances() {
         fn name(&self) -> &str {
             &self.name
         }
+
+        fn count(&self) -> u32 {
+            self.count
+        }
     }
 
     #[di_container]
@@ -286,5 +290,7 @@ fn test_di_multiple_instances() {
 
     let container = AppContainer::new();
     assert_eq!(container.counter_a().name(), "counter_a");
+    assert_eq!(container.counter_a().count(), 0);
     assert_eq!(container.counter_b().name(), "counter_b");
+    assert_eq!(container.counter_b().count(), 0);
 }

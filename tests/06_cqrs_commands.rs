@@ -11,6 +11,13 @@
 //! - Command handlers are pure functions
 //! - Commands are idempotent where possible
 
+// Allow dead code for test fixtures demonstrating command patterns:
+// - field name in CreateUserCommand: Used in some tests, not all (shows command structure)
+// - CreateUserCommand/UpdateUserCommand: Show command composition patterns (not fully exercised)
+// - handle_create/handle_update: Demonstrate multiple handler patterns (documented, not called)
+// These fixtures illustrate command handler architecture even when not every test exercises them.
+#[allow(dead_code)]
+
 use allframe_core::cqrs::{command, command_handler, Event};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -51,6 +58,8 @@ async fn test_command_handler_execution() {
 
     let events = handle_create_user(cmd).await.unwrap();
     assert_eq!(events.len(), 1);
+    let UserEvent::UserCreated { name, .. } = &events[0];
+    assert_eq!(name, "John Doe");
 }
 
 /// Test command validation rejects invalid commands
@@ -88,7 +97,6 @@ async fn test_command_validation() {
 /// Test command handler composition - multiple handlers
 #[tokio::test]
 async fn test_command_handler_composition() {
-    use allframe_core::cqrs::CommandBus;
 
     #[command]
     struct CreateUserCommand {

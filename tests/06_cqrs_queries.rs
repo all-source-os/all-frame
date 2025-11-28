@@ -51,6 +51,7 @@ async fn test_query_handler_execution() {
 
     let user = handle_get_user(query).await.unwrap();
     assert!(user.is_some());
+    assert_eq!(user.as_ref().unwrap().id, "123");
 }
 
 /// Test projection update from events

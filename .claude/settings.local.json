@@ -19,7 +19,9 @@
       "Bash(cargo check:*)",
       "Bash(cargo clean:*)",
       "Bash(wait)",
-      "Bash(cargo tree:*)"
+      "Bash(cargo tree:*)",
+      "Bash(tee:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

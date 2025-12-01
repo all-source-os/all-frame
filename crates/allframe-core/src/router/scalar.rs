@@ -69,6 +69,14 @@ pub struct ScalarConfig {
     pub hide_download_button: bool,
     /// Hide models section
     pub hide_models: bool,
+    /// CDN URL for Scalar JS (default: jsdelivr with latest version)
+    pub cdn_url: String,
+    /// SRI hash for CDN integrity verification (optional but recommended)
+    pub sri_hash: Option<String>,
+    /// Fallback CDN URL if primary fails (optional)
+    pub fallback_cdn_url: Option<String>,
+    /// Proxy URL for "Try It" requests to avoid CORS issues (optional)
+    pub proxy_url: Option<String>,
 }
 
 impl Default for ScalarConfig {
@@ -81,6 +89,10 @@ impl Default for ScalarConfig {
             custom_css: None,
             hide_download_button: false,
             hide_models: false,
+            cdn_url: "https://cdn.jsdelivr.net/npm/@scalar/api-reference".to_string(),
+            sri_hash: None,
+            fallback_cdn_url: None,
+            proxy_url: None,
         }
     }
 }
@@ -133,15 +145,85 @@ impl ScalarConfig {
         self
     }
 
+    /// Set custom CDN URL for Scalar JS
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use allframe_core::router::ScalarConfig;
+    ///
+    /// let config = ScalarConfig::new()
+    ///     .cdn_url("https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.25.0");
+    /// ```
+    pub fn cdn_url(mut self, url: impl Into<String>) -> Self {
+        self.cdn_url = url.into();
+        self
+    }
+
+    /// Set SRI hash for CDN integrity verification
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use allframe_core::router::ScalarConfig;
+    ///
+    /// let config = ScalarConfig::new()
+    ///     .sri_hash("sha384-abc123...");
+    /// ```
+    pub fn sri_hash(mut self, hash: impl Into<String>) -> Self {
+        self.sri_hash = Some(hash.into());
+        self
+    }
+
+    /// Set fallback CDN URL if primary fails
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use allframe_core::router::ScalarConfig;
+    ///
+    /// let config = ScalarConfig::new()
+    ///     .fallback_cdn_url("https://unpkg.com/@scalar/api-reference");
+    /// ```
+    pub fn fallback_cdn_url(mut self, url: impl Into<String>) -> Self {
+        self.fallback_cdn_url = Some(url.into());
+        self
+    }
+
+    /// Set proxy URL for "Try It" requests
+    ///
+    /// A proxy is recommended to avoid CORS issues when making requests
+    /// to your API from the documentation interface.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use allframe_core::router::ScalarConfig;
+    ///
+    /// let config = ScalarConfig::new()
+    ///     .proxy_url("https://proxy.scalar.com");
+    /// ```
+    pub fn proxy_url(mut self, url: impl Into<String>) -> Self {
+        self.proxy_url = Some(url.into());
+        self
+    }
+
     /// Generate the configuration JSON for Scalar
     pub fn to_json(&self) -> serde_json::Value {
-        serde_json::json!({
+        let mut config = serde_json::json!({
             "theme": self.theme,
             "layout": self.layout,
             "showSidebar": self.show_sidebar,
             "hideDownloadButton": self.hide_download_button,
             "hideModels": self.hide_models,
-        })
+        });
+
+        // Add proxy URL if provided (for "Try It" functionality)
+        if let Some(ref proxy) = self.proxy_url {
+            config["proxy"] = serde_json::Value::String(proxy.clone());
+        }
+
+        config
     }
 }
 
@@ -165,6 +247,37 @@ pub fn scalar_html(config: &ScalarConfig, title: &str, openapi_spec_json: &str) 
         String::new()
     };
 
+    // Build script tag with SRI if provided
+    let script_attrs = if let Some(sri) = &config.sri_hash {
+        format!(
+            r#"src="{}" integrity="{}" crossorigin="anonymous""#,
+            config.cdn_url, sri
+        )
+    } else {
+        format!(r#"src="{}""#, config.cdn_url)
+    };
+
+    // Build fallback script if provided
+    let fallback_script = if let Some(fallback_url) = &config.fallback_cdn_url {
+        format!(
+            r#"
+    <script>
+        // Fallback CDN loader
+        window.addEventListener('error', function(e) {{
+            if (e.target.tagName === 'SCRIPT' && e.target.src.includes('scalar')) {{
+                console.warn('Primary CDN failed, loading from fallback...');
+                var fallback = document.createElement('script');
+                fallback.src = '{}';
+                document.body.appendChild(fallback);
+            }}
+        }}, true);
+    </script>"#,
+            fallback_url
+        )
+    } else {
+        String::new()
+    };
+
     format!(
         r#"<!DOCTYPE html>
 <html>
@@ -175,20 +288,22 @@ pub fn scalar_html(config: &ScalarConfig, title: &str, openapi_spec_json: &str) 
     <style>
         body {{ margin: 0; padding: 0; }}
     </style>
-    {custom_style}
+    {custom_style}{fallback_script}
 </head>
 <body>
     <script
         id="api-reference"
         data-configuration='{configuration}'
     >{openapi_spec}</script>
-    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+    <script {script_attrs}></script>
 </body>
 </html>"#,
         title = title,
         custom_style = custom_style,
+        fallback_script = fallback_script,
         configuration = configuration,
         openapi_spec = openapi_spec_json,
+        script_attrs = script_attrs,
     )
 }
 
@@ -216,6 +331,13 @@ mod tests {
         assert_eq!(config.custom_css, None);
         assert_eq!(config.hide_download_button, false);
         assert_eq!(config.hide_models, false);
+        assert_eq!(
+            config.cdn_url,
+            "https://cdn.jsdelivr.net/npm/@scalar/api-reference"
+        );
+        assert_eq!(config.sri_hash, None);
+        assert_eq!(config.fallback_cdn_url, None);
+        assert_eq!(config.proxy_url, None);
     }
 
     #[test]
@@ -309,5 +431,97 @@ mod tests {
 
         // Should not contain empty style tag
         assert!(!html.contains("<style></style>"));
+    }
+
+    #[test]
+    fn test_scalar_config_with_cdn_url() {
+        let config = ScalarConfig::new()
+            .cdn_url("https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.25.0");
+
+        assert_eq!(
+            config.cdn_url,
+            "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.25.0"
+        );
+    }
+
+    #[test]
+    fn test_scalar_config_with_sri_hash() {
+        let config = ScalarConfig::new().sri_hash("sha384-abc123def456");
+
+        assert_eq!(config.sri_hash, Some("sha384-abc123def456".to_string()));
+    }
+
+    #[test]
+    fn test_scalar_config_with_fallback_cdn() {
+        let config =
+            ScalarConfig::new().fallback_cdn_url("https://unpkg.com/@scalar/api-reference");
+
+        assert_eq!(
+            config.fallback_cdn_url,
+            Some("https://unpkg.com/@scalar/api-reference".to_string())
+        );
+    }
+
+    #[test]
+    fn test_scalar_html_with_sri() {
+        let config = ScalarConfig::new()
+            .cdn_url("https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.25.0")
+            .sri_hash("sha384-abc123");
+        let spec = r#"{"openapi":"3.1.0"}"#;
+        let html = scalar_html(&config, "Test API", spec);
+
+        assert!(html.contains("integrity=\"sha384-abc123\""));
+        assert!(html.contains("crossorigin=\"anonymous\""));
+    }
+
+    #[test]
+    fn test_scalar_html_with_fallback() {
+        let config =
+            ScalarConfig::new().fallback_cdn_url("https://unpkg.com/@scalar/api-reference");
+        let spec = r#"{"openapi":"3.1.0"}"#;
+        let html = scalar_html(&config, "Test API", spec);
+
+        assert!(html.contains("Fallback CDN loader"));
+        assert!(html.contains("https://unpkg.com/@scalar/api-reference"));
+        assert!(html.contains("window.addEventListener('error'"));
+    }
+
+    #[test]
+    fn test_scalar_html_without_fallback() {
+        let config = ScalarConfig::default();
+        let spec = r#"{"openapi":"3.1.0"}"#;
+        let html = scalar_html(&config, "Test API", spec);
+
+        assert!(!html.contains("Fallback CDN loader"));
+        assert!(!html.contains("window.addEventListener('error'"));
+    }
+
+    #[test]
+    fn test_scalar_config_with_proxy() {
+        let config = ScalarConfig::new().proxy_url("https://proxy.scalar.com");
+
+        assert_eq!(
+            config.proxy_url,
+            Some("https://proxy.scalar.com".to_string())
+        );
+    }
+
+    #[test]
+    fn test_scalar_config_to_json_with_proxy() {
+        let config = ScalarConfig::new()
+            .proxy_url("https://proxy.scalar.com")
+            .show_sidebar(false);
+
+        let json = config.to_json();
+        assert_eq!(json["proxy"], "https://proxy.scalar.com");
+        assert_eq!(json["showSidebar"], false);
+    }
+
+    #[test]
+    fn test_scalar_config_to_json_without_proxy() {
+        let config = ScalarConfig::default();
+        let json = config.to_json();
+
+        assert!(json.get("proxy").is_none());
     }
 }

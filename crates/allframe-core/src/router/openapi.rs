@@ -8,6 +8,34 @@ use serde_json::{json, Value};
 
 use crate::router::{RouteMetadata, Router};
 
+/// OpenAPI server configuration
+///
+/// Represents a server that the API can be accessed from.
+/// Used in the "Try It" functionality to make actual API calls.
+#[derive(Debug, Clone)]
+pub struct OpenApiServer {
+    /// Server URL (e.g., "https://api.example.com")
+    pub url: String,
+    /// Optional description (e.g., "Production server")
+    pub description: Option<String>,
+}
+
+impl OpenApiServer {
+    /// Create a new server configuration
+    pub fn new(url: impl Into<String>) -> Self {
+        Self {
+            url: url.into(),
+            description: None,
+        }
+    }
+
+    /// Set the server description
+    pub fn with_description(mut self, description: impl Into<String>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+}
+
 /// OpenAPI specification generator
 ///
 /// Generates OpenAPI 3.1 compliant specifications from router metadata.
@@ -15,6 +43,7 @@ pub struct OpenApiGenerator {
     title: String,
     version: String,
     description: Option<String>,
+    servers: Vec<OpenApiServer>,
 }
 
 impl OpenApiGenerator {
@@ -24,12 +53,44 @@ impl OpenApiGenerator {
             title: title.into(),
             version: version.into(),
             description: None,
+            servers: vec![],
         }
     }
 
     /// Set the API description
     pub fn with_description(mut self, description: impl Into<String>) -> Self {
         self.description = Some(description.into());
+        self
+    }
+
+    /// Add a server URL
+    ///
+    /// Servers are used by the "Try It" functionality to make actual API calls.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use allframe_core::router::openapi::OpenApiGenerator;
+    ///
+    /// let generator = OpenApiGenerator::new("API", "1.0.0")
+    ///     .with_server("http://localhost:3000", Some("Local development"));
+    /// ```
+    pub fn with_server(
+        mut self,
+        url: impl Into<String>,
+        description: Option<impl Into<String>>,
+    ) -> Self {
+        let mut server = OpenApiServer::new(url);
+        if let Some(desc) = description {
+            server = server.with_description(desc);
+        }
+        self.servers.push(server);
+        self
+    }
+
+    /// Add multiple servers
+    pub fn with_servers(mut self, servers: Vec<OpenApiServer>) -> Self {
+        self.servers = servers;
         self
     }
 
@@ -47,6 +108,22 @@ impl OpenApiGenerator {
         // Add description if present
         if let Some(ref desc) = self.description {
             spec["info"]["description"] = Value::String(desc.clone());
+        }
+
+        // Add servers if present (required for "Try It" functionality)
+        if !self.servers.is_empty() {
+            let servers: Vec<Value> = self
+                .servers
+                .iter()
+                .map(|s| {
+                    let mut server = json!({ "url": s.url });
+                    if let Some(ref desc) = s.description {
+                        server["description"] = Value::String(desc.clone());
+                    }
+                    server
+                })
+                .collect();
+            spec["servers"] = Value::Array(servers);
         }
 
         // Build paths from routes

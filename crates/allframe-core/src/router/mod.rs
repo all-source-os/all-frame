@@ -41,7 +41,7 @@ pub use grpc_prod::{protobuf, status, streaming, GrpcProductionAdapter, GrpcServ
 pub use handler::{Handler, HandlerFn};
 pub use metadata::RouteMetadata;
 pub use method::Method;
-pub use openapi::OpenApiGenerator;
+pub use openapi::{OpenApiGenerator, OpenApiServer};
 pub use rest::{RestAdapter, RestRequest, RestResponse};
 pub use scalar::{scalar_html, ScalarConfig, ScalarLayout, ScalarTheme};
 pub use schema::ToJsonSchema;

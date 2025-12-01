@@ -1,7 +1,6 @@
 //! Handler trait and implementations for protocol-agnostic request handling
 
-use std::future::Future;
-use std::pin::Pin;
+use std::{future::Future, pin::Pin};
 
 /// Handler trait for protocol-agnostic request handling
 ///

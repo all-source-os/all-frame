@@ -3,19 +3,20 @@
 //! This module provides full GraphQL AST parsing, schema introspection,
 //! and resolver system using the async-graphql library.
 
+use std::{future::Future, pin::Pin};
+
 #[cfg(feature = "router-graphql")]
 use async_graphql::{
     http::GraphiQLSource, parser::parse_query, Error as GraphQLError, Request as GraphQLRequest,
 };
 
 use super::ProtocolAdapter;
-use std::future::Future;
-use std::pin::Pin;
 
 /// Production GraphQL adapter with full AST parsing
 ///
 /// Features:
-/// - Full GraphQL query/mutation/subscription parsing using async-graphql-parser
+/// - Full GraphQL query/mutation/subscription parsing using
+///   async-graphql-parser
 /// - AST validation and optimization
 /// - GraphiQL playground support
 /// - Schema introspection
@@ -72,8 +73,10 @@ impl ProtocolAdapter for GraphQLProductionAdapter {
             match Self::parse_query(&request) {
                 Ok(_) => {
                     // Query is valid - in production this would execute against a schema
-                    Ok(r#"{"data":{"message":"Query parsed and validated successfully"}}"#
-                        .to_string())
+                    Ok(
+                        r#"{"data":{"message":"Query parsed and validated successfully"}}"#
+                            .to_string(),
+                    )
                 }
                 Err(e) => Err(format!("GraphQL parsing error: {:?}", e)),
             }

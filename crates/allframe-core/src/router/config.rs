@@ -93,7 +93,7 @@ fn default_grpc_port() -> u16 {
 
 impl RouterConfig {
     /// Parse configuration from TOML string
-    pub fn from_str(toml: &str) -> Result<Self, String> {
+    pub fn from_toml(toml: &str) -> Result<Self, String> {
         toml::from_str(toml).map_err(|e| format!("Failed to parse config: {}", e))
     }
 
@@ -101,7 +101,7 @@ impl RouterConfig {
     pub fn from_file(path: &str) -> Result<Self, String> {
         let contents =
             std::fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
-        Self::from_str(&contents)
+        Self::from_toml(&contents)
     }
 
     /// Get enabled protocols
@@ -182,7 +182,7 @@ mod tests {
             protocols = ["rest", "graphql"]
         "#;
 
-        let config = RouterConfig::from_str(toml).unwrap();
+        let config = RouterConfig::from_toml(toml).unwrap();
         assert_eq!(config.protocols().len(), 2);
         assert!(config.has_protocol("rest"));
         assert!(config.has_protocol("graphql"));
@@ -209,7 +209,7 @@ mod tests {
             reflection = true
         "#;
 
-        let config = RouterConfig::from_str(toml).unwrap();
+        let config = RouterConfig::from_toml(toml).unwrap();
 
         // Check protocols
         assert_eq!(config.protocols().len(), 3);
@@ -241,7 +241,7 @@ mod tests {
             protocols = ["rest"]
         "#;
 
-        let config = RouterConfig::from_str(toml).unwrap();
+        let config = RouterConfig::from_toml(toml).unwrap();
         assert_eq!(config.protocols().len(), 1);
         assert!(config.has_protocol("rest"));
         assert!(config.rest().is_none()); // No explicit REST config
@@ -258,7 +258,7 @@ mod tests {
             [server.grpc]
         "#;
 
-        let config = RouterConfig::from_str(toml).unwrap();
+        let config = RouterConfig::from_toml(toml).unwrap();
 
         // Check default REST values
         let rest = config.rest().unwrap();

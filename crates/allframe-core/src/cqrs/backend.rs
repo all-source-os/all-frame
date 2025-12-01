@@ -4,8 +4,9 @@
 //! allowing AllFrame to support multiple storage implementations including
 //! in-memory (for testing/MVP) and AllSource Core (for production).
 
-use super::Event;
 use async_trait::async_trait;
+
+use super::Event;
 
 /// Backend trait for event storage implementations
 #[async_trait]
@@ -20,11 +21,7 @@ pub trait EventStoreBackend<E: Event>: Send + Sync {
     async fn get_all_events(&self) -> Result<Vec<E>, String>;
 
     /// Get events after a specific version (for snapshot optimization)
-    async fn get_events_after(
-        &self,
-        aggregate_id: &str,
-        version: u64,
-    ) -> Result<Vec<E>, String>;
+    async fn get_events_after(&self, aggregate_id: &str, version: u64) -> Result<Vec<E>, String>;
 
     /// Save a snapshot (optional, return Ok(()) if not supported)
     async fn save_snapshot(
@@ -38,10 +35,7 @@ pub trait EventStoreBackend<E: Event>: Send + Sync {
     }
 
     /// Get latest snapshot (optional, return Err if not supported)
-    async fn get_latest_snapshot(
-        &self,
-        aggregate_id: &str,
-    ) -> Result<(Vec<u8>, u64), String> {
+    async fn get_latest_snapshot(&self, aggregate_id: &str) -> Result<(Vec<u8>, u64), String> {
         let _ = aggregate_id;
         Err("Snapshots not supported by this backend".to_string())
     }

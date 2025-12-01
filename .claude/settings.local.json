@@ -21,7 +21,12 @@
       "Bash(wait)",
       "Bash(cargo tree:*)",
       "Bash(tee:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(cargo bloat:*)",
+      "Bash(make lint:*)",
+      "Bash(make format:*)",
+      "Bash(cargo make:*)",
+      "Bash(cargo format-code:*)"
     ],
     "deny": [],
     "ask": []

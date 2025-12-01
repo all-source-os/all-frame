@@ -1,10 +1,13 @@
 //! OpenTelemetry automatic instrumentation
 //!
-//! This module provides automatic distributed tracing, metrics, and context propagation
-//! for AllFrame applications with zero manual instrumentation required.
+//! This module provides automatic distributed tracing, metrics, and context
+//! propagation for AllFrame applications with zero manual instrumentation
+//! required.
 
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 // Re-export macros
 #[cfg(feature = "otel")]
@@ -148,7 +151,12 @@ impl MetricsRecorder {
 
     /// Get counter value
     pub fn get_counter(&self, name: &str) -> u64 {
-        self.counters.read().unwrap().get(name).copied().unwrap_or(0)
+        self.counters
+            .read()
+            .unwrap()
+            .get(name)
+            .copied()
+            .unwrap_or(0)
     }
 
     /// Get gauge value
@@ -158,7 +166,10 @@ impl MetricsRecorder {
 
     /// Get histogram
     pub fn get_histogram(&self, name: &str) -> Histogram {
-        let values = self.histograms.read().unwrap()
+        let values = self
+            .histograms
+            .read()
+            .unwrap()
             .get(name)
             .cloned()
             .unwrap_or_default();
@@ -226,12 +237,12 @@ pub enum ExporterType {
     /// Jaeger exporter
     Jaeger {
         /// Jaeger endpoint URL
-        endpoint: String
+        endpoint: String,
     },
     /// OTLP exporter
     Otlp {
         /// OTLP endpoint URL
-        endpoint: String
+        endpoint: String,
     },
 }
 

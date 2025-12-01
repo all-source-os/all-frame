@@ -3,8 +3,7 @@
 //! This module provides the core abstractions for routing requests across
 //! multiple protocols (REST, GraphQL, gRPC) using a unified handler interface.
 
-use std::collections::HashMap;
-use std::future::Future;
+use std::{collections::HashMap, future::Future};
 
 pub mod adapter;
 pub mod builder;
@@ -18,6 +17,7 @@ pub mod metadata;
 pub mod method;
 pub mod openapi;
 pub mod rest;
+pub mod scalar;
 pub mod schema;
 
 // Production adapters (optional features)
@@ -29,22 +29,22 @@ pub mod grpc_prod;
 pub use adapter::ProtocolAdapter;
 pub use builder::RouteBuilder;
 #[cfg(feature = "router")]
-pub use config::{GrpcConfig, GraphQLConfig, RestConfig, RouterConfig, ServerConfig};
+pub use config::{GraphQLConfig, GrpcConfig, RestConfig, RouterConfig, ServerConfig};
 pub use docs::DocsConfig;
 pub use graphql::GraphQLAdapter;
+// Re-export production adapters when features are enabled
+#[cfg(feature = "router-graphql")]
+pub use graphql_prod::GraphQLProductionAdapter;
 pub use grpc::{GrpcAdapter, GrpcRequest, GrpcStatus};
+#[cfg(feature = "router-grpc")]
+pub use grpc_prod::{protobuf, status, streaming, GrpcProductionAdapter, GrpcService};
 pub use handler::{Handler, HandlerFn};
 pub use metadata::RouteMetadata;
 pub use method::Method;
 pub use openapi::OpenApiGenerator;
 pub use rest::{RestAdapter, RestRequest, RestResponse};
+pub use scalar::{scalar_html, ScalarConfig, ScalarLayout, ScalarTheme};
 pub use schema::ToJsonSchema;
-
-// Re-export production adapters when features are enabled
-#[cfg(feature = "router-graphql")]
-pub use graphql_prod::GraphQLProductionAdapter;
-#[cfg(feature = "router-grpc")]
-pub use grpc_prod::{GrpcProductionAdapter, GrpcService, protobuf, status, streaming};
 
 /// Router manages handler registration and protocol adapters
 ///
@@ -166,8 +166,9 @@ impl Router {
 
     /// Register a GET route
     ///
-    /// This is a convenience method that registers both a handler and route metadata
-    /// for a GET request. The handler name is automatically generated as "GET:{path}".
+    /// This is a convenience method that registers both a handler and route
+    /// metadata for a GET request. The handler name is automatically
+    /// generated as "GET:{path}".
     pub fn get<F, Fut>(&mut self, path: &str, handler: F)
     where
         F: Fn() -> Fut + Send + Sync + 'static,
@@ -180,8 +181,9 @@ impl Router {
 
     /// Register a POST route
     ///
-    /// This is a convenience method that registers both a handler and route metadata
-    /// for a POST request. The handler name is automatically generated as "POST:{path}".
+    /// This is a convenience method that registers both a handler and route
+    /// metadata for a POST request. The handler name is automatically
+    /// generated as "POST:{path}".
     pub fn post<F, Fut>(&mut self, path: &str, handler: F)
     where
         F: Fn() -> Fut + Send + Sync + 'static,
@@ -194,8 +196,9 @@ impl Router {
 
     /// Register a PUT route
     ///
-    /// This is a convenience method that registers both a handler and route metadata
-    /// for a PUT request. The handler name is automatically generated as "PUT:{path}".
+    /// This is a convenience method that registers both a handler and route
+    /// metadata for a PUT request. The handler name is automatically
+    /// generated as "PUT:{path}".
     pub fn put<F, Fut>(&mut self, path: &str, handler: F)
     where
         F: Fn() -> Fut + Send + Sync + 'static,
@@ -208,8 +211,9 @@ impl Router {
 
     /// Register a DELETE route
     ///
-    /// This is a convenience method that registers both a handler and route metadata
-    /// for a DELETE request. The handler name is automatically generated as "DELETE:{path}".
+    /// This is a convenience method that registers both a handler and route
+    /// metadata for a DELETE request. The handler name is automatically
+    /// generated as "DELETE:{path}".
     pub fn delete<F, Fut>(&mut self, path: &str, handler: F)
     where
         F: Fn() -> Fut + Send + Sync + 'static,
@@ -222,8 +226,9 @@ impl Router {
 
     /// Register a PATCH route
     ///
-    /// This is a convenience method that registers both a handler and route metadata
-    /// for a PATCH request. The handler name is automatically generated as "PATCH:{path}".
+    /// This is a convenience method that registers both a handler and route
+    /// metadata for a PATCH request. The handler name is automatically
+    /// generated as "PATCH:{path}".
     pub fn patch<F, Fut>(&mut self, path: &str, handler: F)
     where
         F: Fn() -> Fut + Send + Sync + 'static,
@@ -236,8 +241,9 @@ impl Router {
 
     /// Register a HEAD route
     ///
-    /// This is a convenience method that registers both a handler and route metadata
-    /// for a HEAD request. The handler name is automatically generated as "HEAD:{path}".
+    /// This is a convenience method that registers both a handler and route
+    /// metadata for a HEAD request. The handler name is automatically
+    /// generated as "HEAD:{path}".
     pub fn head<F, Fut>(&mut self, path: &str, handler: F)
     where
         F: Fn() -> Fut + Send + Sync + 'static,
@@ -250,8 +256,9 @@ impl Router {
 
     /// Register an OPTIONS route
     ///
-    /// This is a convenience method that registers both a handler and route metadata
-    /// for an OPTIONS request. The handler name is automatically generated as "OPTIONS:{path}".
+    /// This is a convenience method that registers both a handler and route
+    /// metadata for an OPTIONS request. The handler name is automatically
+    /// generated as "OPTIONS:{path}".
     pub fn options<F, Fut>(&mut self, path: &str, handler: F)
     where
         F: Fn() -> Fut + Send + Sync + 'static,
@@ -292,6 +299,66 @@ impl Router {
 
         let grpc_request = format!("{}:{}", method, request);
         adapter.handle(&grpc_request).await
+    }
+
+    /// Generate Scalar documentation HTML with default configuration
+    ///
+    /// This is a convenience method that generates a complete HTML page
+    /// with Scalar UI for interactive API documentation.
+    ///
+    /// # Arguments
+    ///
+    /// * `title` - API title
+    /// * `version` - API version
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use allframe_core::router::Router;
+    ///
+    /// let mut router = Router::new();
+    /// router.get("/users", || async { "Users".to_string() });
+    ///
+    /// let html = router.scalar("My API", "1.0.0");
+    /// // Serve this HTML at /docs endpoint
+    /// ```
+    pub fn scalar(&self, title: &str, version: &str) -> String {
+        let config = scalar::ScalarConfig::default();
+        self.scalar_docs(config, title, version)
+    }
+
+    /// Generate Scalar documentation HTML with custom configuration
+    ///
+    /// This method allows full customization of the Scalar UI appearance
+    /// and behavior.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Scalar configuration
+    /// * `title` - API title
+    /// * `version` - API version
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use allframe_core::router::{Router, ScalarConfig, ScalarTheme};
+    ///
+    /// let mut router = Router::new();
+    /// router.get("/users", || async { "Users".to_string() });
+    ///
+    /// let config = ScalarConfig::new()
+    ///     .theme(ScalarTheme::Light)
+    ///     .show_sidebar(false);
+    ///
+    /// let html = router.scalar_docs(config, "My API", "1.0.0");
+    /// ```
+    pub fn scalar_docs(&self, config: scalar::ScalarConfig, title: &str, version: &str) -> String {
+        // Generate OpenAPI spec
+        let spec = OpenApiGenerator::new(title, version).generate(self);
+        let spec_json = serde_json::to_string(&spec).unwrap_or_else(|_| "{}".to_string());
+
+        // Generate Scalar HTML
+        scalar::scalar_html(&config, title, &spec_json)
     }
 }
 
@@ -465,7 +532,9 @@ mod tests {
     async fn test_route_method_with_path_params() {
         let mut router = Router::new();
         router.get("/users/{id}", || async { "User details".to_string() });
-        router.get("/users/{id}/posts/{post_id}", || async { "Post details".to_string() });
+        router.get("/users/{id}/posts/{post_id}", || async {
+            "Post details".to_string()
+        });
 
         let routes = router.routes();
         assert_eq!(routes.len(), 2);
@@ -489,5 +558,74 @@ mod tests {
 
         assert_eq!(result1, Ok("GET response".to_string()));
         assert_eq!(result2, Ok("POST response".to_string()));
+    }
+
+    // Tests for Scalar integration
+    #[tokio::test]
+    async fn test_scalar_generates_html() {
+        let mut router = Router::new();
+        router.get("/users", || async { "Users".to_string() });
+
+        let html = router.scalar("Test API", "1.0.0");
+
+        assert!(html.contains("<!DOCTYPE html>"));
+        assert!(html.contains("<title>Test API - API Documentation</title>"));
+        assert!(html.contains("@scalar/api-reference"));
+    }
+
+    #[tokio::test]
+    async fn test_scalar_contains_openapi_spec() {
+        let mut router = Router::new();
+        router.get("/users", || async { "Users".to_string() });
+        router.post("/users", || async { "User created".to_string() });
+
+        let html = router.scalar("Test API", "1.0.0");
+
+        // Should contain the OpenAPI spec
+        assert!(html.contains("openapi"));
+        assert!(html.contains("Test API"));
+        assert!(html.contains("1.0.0"));
+    }
+
+    #[tokio::test]
+    async fn test_scalar_docs_with_custom_config() {
+        let mut router = Router::new();
+        router.get("/users", || async { "Users".to_string() });
+
+        let config = scalar::ScalarConfig::new()
+            .theme(scalar::ScalarTheme::Light)
+            .show_sidebar(false);
+
+        let html = router.scalar_docs(config, "Custom API", "2.0.0");
+
+        assert!(html.contains("Custom API"));
+        assert!(html.contains(r#""theme":"light""#));
+        assert!(html.contains(r#""showSidebar":false"#));
+    }
+
+    #[tokio::test]
+    async fn test_scalar_docs_with_custom_css() {
+        let mut router = Router::new();
+        router.get("/test", || async { "Test".to_string() });
+
+        let config = scalar::ScalarConfig::new().custom_css("body { font-family: 'Inter'; }");
+
+        let html = router.scalar_docs(config, "API", "1.0");
+
+        assert!(html.contains("<style>body { font-family: 'Inter'; }</style>"));
+    }
+
+    #[tokio::test]
+    async fn test_scalar_with_multiple_routes() {
+        let mut router = Router::new();
+        router.get("/users", || async { "Users".to_string() });
+        router.post("/users", || async { "Create".to_string() });
+        router.get("/users/{id}", || async { "User details".to_string() });
+        router.delete("/users/{id}", || async { "Delete".to_string() });
+
+        let html = router.scalar("API", "1.0.0");
+
+        // Should contain all routes in the OpenAPI spec
+        assert!(html.contains("/users"));
     }
 }

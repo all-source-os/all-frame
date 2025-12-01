@@ -1,8 +1,8 @@
 //! Clean Architecture enforcement
 //!
-//! This module provides compile-time and runtime support for Clean Architecture.
-//! AllFrame enforces architectural boundaries at compile time, preventing
-//! violations like handlers directly accessing repositories.
+//! This module provides compile-time and runtime support for Clean
+//! Architecture. AllFrame enforces architectural boundaries at compile time,
+//! preventing violations like handlers directly accessing repositories.
 //!
 //! ## Architecture Layers
 //!

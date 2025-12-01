@@ -3,19 +3,20 @@
 //! This module provides full gRPC support with protobuf encoding,
 //! streaming RPCs, HTTP/2 transport, and reflection API.
 
+use std::future::Future;
+#[cfg(feature = "router-grpc")]
+use std::pin::Pin;
+
 #[cfg(feature = "router-grpc")]
 use futures::Stream;
 #[cfg(feature = "router-grpc")]
 use prost::Message;
-#[cfg(feature = "router-grpc")]
-use std::pin::Pin;
 #[cfg(feature = "router-grpc")]
 use tokio_stream::StreamExt;
 #[cfg(feature = "router-grpc")]
 use tonic::{transport::Server, Code, Status, Streaming};
 
 use super::ProtocolAdapter;
-use std::future::Future;
 
 /// Production gRPC adapter with full protobuf support
 ///
@@ -96,11 +97,7 @@ pub trait GrpcService: Send + Sync + 'static {
     const NAME: &'static str;
 
     /// Handle a unary RPC call
-    async fn handle_unary(
-        &self,
-        method: &str,
-        request: Vec<u8>,
-    ) -> Result<Vec<u8>, Status>;
+    async fn handle_unary(&self, method: &str, request: Vec<u8>) -> Result<Vec<u8>, Status>;
 }
 
 /// gRPC streaming types and helpers

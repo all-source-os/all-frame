@@ -1,14 +1,14 @@
 //! CQRS + Event Sourcing implementation
 //!
-//! This module provides the core CQRS (Command Query Responsibility Segregation)
-//! and Event Sourcing infrastructure for AllFrame.
+//! This module provides the core CQRS (Command Query Responsibility
+//! Segregation) and Event Sourcing infrastructure for AllFrame.
 
 use std::sync::Arc;
-use tokio::sync::{mpsc, RwLock};
 
 // Re-export macros
 #[cfg(feature = "di")]
 pub use allframe_macros::{command, command_handler, event, query, query_handler};
+use tokio::sync::{mpsc, RwLock};
 
 // Backend abstraction
 mod backend;
@@ -30,27 +30,20 @@ mod event_versioning;
 mod saga_orchestrator;
 
 // Re-export backend types
-pub use backend::{BackendStats, EventStoreBackend};
-pub use memory_backend::InMemoryBackend;
-
 #[cfg(feature = "cqrs-allsource")]
 pub use allsource_backend::{AllSourceBackend, AllSourceConfig};
-
+pub use backend::{BackendStats, EventStoreBackend};
 // Re-export command bus types
 pub use command_bus::{
     Command, CommandBus, CommandError, CommandHandler, CommandResult, ValidationError,
 };
-
-// Re-export projection registry types
-pub use projection_registry::{
-    ProjectionMetadata, ProjectionPosition, ProjectionRegistry,
-};
-
 // Re-export event versioning types
 pub use event_versioning::{
     AutoUpcaster, MigrationPath, Upcaster, VersionRegistry, VersionedEvent,
 };
-
+pub use memory_backend::InMemoryBackend;
+// Re-export projection registry types
+pub use projection_registry::{ProjectionMetadata, ProjectionPosition, ProjectionRegistry};
 // Re-export saga orchestration types
 pub use saga_orchestrator::{
     SagaDefinition, SagaError, SagaMetadata, SagaOrchestrator, SagaResult, SagaStatus, SagaStep,
@@ -151,13 +144,13 @@ impl<E: Event, B: EventStoreBackend<E>> EventStore<E, B> {
     }
 
     /// Save a snapshot
-    pub async fn save_snapshot<A: Aggregate<Event = E>>(
+    pub async fn save_snapshot<A>(
         &self,
         aggregate_id: &str,
         snapshot: Snapshot<A>,
     ) -> Result<(), String>
     where
-        A: serde::Serialize,
+        A: Aggregate<Event = E> + serde::Serialize,
     {
         let snapshot_data = serde_json::to_vec(&snapshot.aggregate)
             .map_err(|e| format!("Failed to serialize snapshot: {}", e))?;
@@ -168,12 +161,9 @@ impl<E: Event, B: EventStoreBackend<E>> EventStore<E, B> {
     }
 
     /// Get latest snapshot
-    pub async fn get_latest_snapshot<A: Aggregate<Event = E>>(
-        &self,
-        aggregate_id: &str,
-    ) -> Result<Snapshot<A>, String>
+    pub async fn get_latest_snapshot<A>(&self, aggregate_id: &str) -> Result<Snapshot<A>, String>
     where
-        A: serde::de::DeserializeOwned,
+        A: Aggregate<Event = E> + serde::de::DeserializeOwned,
     {
         let (snapshot_data, version) = self.backend.get_latest_snapshot(aggregate_id).await?;
 
@@ -259,7 +249,9 @@ mod tests {
     async fn test_event_store_append_and_retrieve() {
         let store = EventStore::new();
 
-        let events = vec![TestEvent { id: "1".to_string() }];
+        let events = vec![TestEvent {
+            id: "1".to_string(),
+        }];
         store.append("test-aggregate", events).await.unwrap();
 
         let retrieved = store.get_events("test-aggregate").await.unwrap();
@@ -271,8 +263,24 @@ mod tests {
     async fn test_event_store_multiple_aggregates() {
         let store = EventStore::new();
 
-        store.append("agg1", vec![TestEvent { id: "1".to_string() }]).await.unwrap();
-        store.append("agg2", vec![TestEvent { id: "2".to_string() }]).await.unwrap();
+        store
+            .append(
+                "agg1",
+                vec![TestEvent {
+                    id: "1".to_string(),
+                }],
+            )
+            .await
+            .unwrap();
+        store
+            .append(
+                "agg2",
+                vec![TestEvent {
+                    id: "2".to_string(),
+                }],
+            )
+            .await
+            .unwrap();
 
         let agg1_events = store.get_events("agg1").await.unwrap();
         let agg2_events = store.get_events("agg2").await.unwrap();

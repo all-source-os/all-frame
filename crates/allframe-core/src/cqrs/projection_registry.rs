@@ -6,11 +6,11 @@
 //! - Rebuild functionality
 //! - Multi-projection coordination
 
-use super::{Event, EventStore, EventStoreBackend, Projection};
-use std::collections::HashMap;
-use std::marker::PhantomData;
-use std::sync::Arc;
+use std::{collections::HashMap, marker::PhantomData, sync::Arc};
+
 use tokio::sync::{mpsc, RwLock};
+
+use super::{Event, EventStore, EventStoreBackend, Projection};
 
 /// Position tracker for projection consistency
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,7 +69,9 @@ struct ProjectionWrapper<P: Projection> {
 impl<P: Projection> ErasedProjection<P::Event> for ProjectionWrapper<P> {
     fn apply_event(&mut self, event: &P::Event) {
         self.projection.apply(event);
-        self.metadata.position.advance(self.metadata.position.version + 1);
+        self.metadata
+            .position
+            .advance(self.metadata.position.version + 1);
     }
 
     fn name(&self) -> &str {
@@ -85,9 +87,12 @@ impl<P: Projection> ErasedProjection<P::Event> for ProjectionWrapper<P> {
     }
 }
 
+/// Type alias for projection storage
+type ProjectionMap<E> = HashMap<String, Box<dyn ErasedProjection<E>>>;
+
 /// Projection Registry for managing multiple projections
 pub struct ProjectionRegistry<E: Event, B: EventStoreBackend<E>> {
-    projections: Arc<RwLock<HashMap<String, Box<dyn ErasedProjection<E>>>>>,
+    projections: Arc<RwLock<ProjectionMap<E>>>,
     event_store: Arc<EventStore<E, B>>,
     _phantom: PhantomData<E>,
 }
@@ -286,7 +291,9 @@ mod tests {
         let store = EventStore::<TestEvent, InMemoryBackend<TestEvent>>::new();
         let registry = ProjectionRegistry::new(store);
 
-        registry.register("test-projection", TestProjection::new()).await;
+        registry
+            .register("test-projection", TestProjection::new())
+            .await;
 
         assert_eq!(registry.count().await, 1);
     }
@@ -314,7 +321,9 @@ mod tests {
             .unwrap();
 
         let registry = ProjectionRegistry::new(store);
-        registry.register("test-projection", TestProjection::new()).await;
+        registry
+            .register("test-projection", TestProjection::new())
+            .await;
 
         // Rebuild projection
         registry.rebuild("test-projection").await.unwrap();

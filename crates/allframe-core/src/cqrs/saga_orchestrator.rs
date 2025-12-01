@@ -1,16 +1,14 @@
 //! Saga Orchestrator for distributed transaction coordination
 //!
 //! This module provides automatic saga orchestration, eliminating boilerplate
-//! for multi-aggregate transactions with automatic compensation and retry logic.
+//! for multi-aggregate transactions with automatic compensation and retry
+//! logic.
+
+use std::{collections::HashMap, fmt, marker::PhantomData, sync::Arc, time::Duration};
+
+use tokio::{sync::RwLock, time::timeout};
 
 use super::Event;
-use std::collections::HashMap;
-use std::fmt;
-use std::marker::PhantomData;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::RwLock;
-use tokio::time::timeout;
 
 /// Result type for saga operations
 pub type SagaResult<T> = Result<T, SagaError>;
@@ -50,13 +48,20 @@ pub enum SagaError {
 impl fmt::Display for SagaError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SagaError::StepFailed { step_index, step_name, error } => {
+            SagaError::StepFailed {
+                step_index,
+                step_name,
+                error,
+            } => {
                 write!(f, "Step {} ({}) failed: {}", step_index, step_name, error)
             }
             SagaError::CompensationFailed { step_index, error } => {
                 write!(f, "Compensation for step {} failed: {}", step_index, error)
             }
-            SagaError::Timeout { step_index, duration } => {
+            SagaError::Timeout {
+                step_index,
+                duration,
+            } => {
                 write!(f, "Step {} timed out after {:?}", step_index, duration)
             }
             SagaError::InvalidStep(index) => write!(f, "Invalid step index: {}", index),
@@ -427,11 +432,10 @@ mod tests {
     async fn test_saga_metadata() {
         let orchestrator = SagaOrchestrator::<TestEvent>::new();
 
-        let saga = SagaDefinition::new("transfer-2")
-            .add_step(DebitStep {
-                account: "A".to_string(),
-                amount: 50.0,
-            });
+        let saga = SagaDefinition::new("transfer-2").add_step(DebitStep {
+            account: "A".to_string(),
+            amount: 50.0,
+        });
 
         assert_eq!(saga.id(), "transfer-2");
         assert_eq!(saga.status(), SagaStatus::NotStarted);
@@ -464,17 +468,15 @@ mod tests {
     async fn test_multiple_sagas() {
         let orchestrator = SagaOrchestrator::<TestEvent>::new();
 
-        let saga1 = SagaDefinition::new("transfer-1")
-            .add_step(DebitStep {
-                account: "A".to_string(),
-                amount: 100.0,
-            });
+        let saga1 = SagaDefinition::new("transfer-1").add_step(DebitStep {
+            account: "A".to_string(),
+            amount: 100.0,
+        });
 
-        let saga2 = SagaDefinition::new("transfer-2")
-            .add_step(DebitStep {
-                account: "B".to_string(),
-                amount: 200.0,
-            });
+        let saga2 = SagaDefinition::new("transfer-2").add_step(DebitStep {
+            account: "B".to_string(),
+            amount: 200.0,
+        });
 
         orchestrator.execute(saga1).await.unwrap();
         orchestrator.execute(saga2).await.unwrap();

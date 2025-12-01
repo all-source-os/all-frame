@@ -1,13 +1,18 @@
 //! Command Bus for CQRS command dispatch and routing
 //!
-//! The CommandBus provides automatic command routing, validation, and error handling.
+//! The CommandBus provides automatic command routing, validation, and error
+//! handling.
+
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+    sync::Arc,
+};
+
+use async_trait::async_trait;
+use tokio::sync::RwLock;
 
 use super::Event;
-use async_trait::async_trait;
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
 
 /// Command trait marker
 pub trait Command: Send + Sync + 'static {}
@@ -119,9 +124,12 @@ impl<C: Command, E: Event, H: CommandHandler<C, E>> ErasedHandler<E> for Handler
     }
 }
 
+/// Type alias for handler storage
+type HandlerMap<E> = HashMap<TypeId, Arc<dyn ErasedHandler<E>>>;
+
 /// Command Bus for dispatching commands to handlers
 pub struct CommandBus<E: Event> {
-    handlers: Arc<RwLock<HashMap<TypeId, Arc<dyn ErasedHandler<E>>>>>,
+    handlers: Arc<RwLock<HandlerMap<E>>>,
     idempotency_keys: Arc<RwLock<HashMap<String, Vec<E>>>>,
 }
 

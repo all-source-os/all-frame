@@ -34,7 +34,11 @@ pub struct RouteMetadata {
 
 impl RouteMetadata {
     /// Create a new RouteMetadata
-    pub fn new(path: impl Into<String>, method: impl Into<String>, protocol: impl Into<String>) -> Self {
+    pub fn new(
+        path: impl Into<String>,
+        method: impl Into<String>,
+        protocol: impl Into<String>,
+    ) -> Self {
         Self {
             path: path.into(),
             method: method.into(),
@@ -82,8 +86,8 @@ mod tests {
 
     #[test]
     fn test_route_metadata_with_description() {
-        let metadata = RouteMetadata::new("/users", "POST", "rest")
-            .with_description("Create a new user");
+        let metadata =
+            RouteMetadata::new("/users", "POST", "rest").with_description("Create a new user");
 
         assert_eq!(metadata.description, Some("Create a new user".to_string()));
     }
@@ -129,8 +133,8 @@ mod tests {
 
     #[test]
     fn test_route_metadata_graphql_protocol() {
-        let metadata = RouteMetadata::new("users", "query", "graphql")
-            .with_description("Query users");
+        let metadata =
+            RouteMetadata::new("users", "query", "graphql").with_description("Query users");
 
         assert_eq!(metadata.protocol, "graphql");
         assert_eq!(metadata.method, "query");
@@ -147,8 +151,7 @@ mod tests {
 
     #[test]
     fn test_route_metadata_clone() {
-        let metadata1 = RouteMetadata::new("/test", "GET", "rest")
-            .with_description("Test route");
+        let metadata1 = RouteMetadata::new("/test", "GET", "rest").with_description("Test route");
 
         let metadata2 = metadata1.clone();
 
@@ -157,8 +160,7 @@ mod tests {
 
     #[test]
     fn test_route_metadata_serialization() {
-        let metadata = RouteMetadata::new("/users", "POST", "rest")
-            .with_description("Create user");
+        let metadata = RouteMetadata::new("/users", "POST", "rest").with_description("Create user");
 
         let json = serde_json::to_string(&metadata).unwrap();
         let deserialized: RouteMetadata = serde_json::from_str(&json).unwrap();

@@ -12,40 +12,6 @@ keywords.workspace = true
 categories.workspace = true
 description = "The composable Rust API framework - core library"
 
-[dependencies]
-tokio = { workspace = true }
-hyper = { workspace = true }
-async-trait = { workspace = true }
-thiserror = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-toml = { version = "0.8", optional = true }
-
-# Optional features
-allframe-macros = { path = "../allframe-macros", optional = true }
-
-# AllSource Core for CQRS + Event Sourcing
-allsource-core = { git = "https://github.com/all-source-os/chronos-monorepo", optional = true, default-features = false }
-
-# GraphQL support (production-ready)
-async-graphql = { version = "7.0", optional = true }
-async-graphql-parser = { version = "7.0", optional = true }
-
-# gRPC/Protobuf support (production-ready)
-tonic = { version = "0.14", optional = true, features = ["transport", "codegen"] }
-tonic-reflection = { version = "0.14", optional = true }
-prost = { version = "0.14", optional = true }
-prost-types = { version = "0.14", optional = true }
-tokio-stream = { version = "0.1", optional = true }
-futures = { version = "0.3", optional = true }
-
-[build-dependencies]
-tonic-build = { version = "0.14", optional = true }
-
-[dev-dependencies]
-proptest = { workspace = true }
-mockall = { workspace = true }
-
 [features]
 default = ["di", "openapi", "router", "otel"]
 
@@ -57,7 +23,16 @@ otel = ["allframe-macros"]
 # Router features
 router = ["toml"]
 router-graphql = ["router", "async-graphql", "async-graphql-parser"]
-router-grpc = ["router", "tonic", "tonic-reflection", "prost", "prost-types", "tonic-build", "tokio-stream", "futures"]
+router-grpc = [
+    "router",
+    "tonic",
+    "tonic-reflection",
+    "prost",
+    "prost-types",
+    "tonic-build",
+    "tokio-stream",
+    "futures",
+]
 router-full = ["router-graphql", "router-grpc"]
 
 # CQRS + Event Sourcing features (optional, not in default)
@@ -70,3 +45,37 @@ cqrs-rocksdb = ["cqrs-allsource", "allsource-core/rocksdb-storage"]
 
 # Model Context Protocol (optional, not in default)
 mcp = []
+
+[dependencies]
+
+# Optional features
+allframe-macros = { path = "../allframe-macros", optional = true }
+
+# AllSource Core for CQRS + Event Sourcing
+allsource-core = { git = "https://github.com/all-source-os/chronos-monorepo", optional = true, default-features = false }
+
+# GraphQL support (production-ready)
+async-graphql = { version = "7.0", optional = true }
+async-graphql-parser = { version = "7.0", optional = true }
+async-trait = { workspace = true }
+futures = { version = "0.3", optional = true }
+hyper = { workspace = true }
+prost = { version = "0.14", optional = true }
+prost-types = { version = "0.14", optional = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { version = "0.1", optional = true }
+toml = { version = "0.8", optional = true }
+
+# gRPC/Protobuf support (production-ready)
+tonic = { version = "0.14", optional = true, features = ["transport", "codegen"] }
+tonic-reflection = { version = "0.14", optional = true }
+
+[build-dependencies]
+tonic-build = { version = "0.14", optional = true }
+
+[dev-dependencies]
+mockall = { workspace = true }
+proptest = { workspace = true }

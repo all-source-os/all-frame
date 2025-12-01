@@ -2,9 +2,9 @@
 //!
 //! Provides gRPC support for the protocol-agnostic router.
 
+use std::{future::Future, pin::Pin};
+
 use super::ProtocolAdapter;
-use std::future::Future;
-use std::pin::Pin;
 
 /// gRPC adapter for gRPC services and RPCs
 ///
@@ -95,10 +95,9 @@ message DeleteUserResponse {
                 // Parse simple JSON payload (real impl would use protobuf)
                 Ok(r#"{"id": 42, "name": "John Doe", "email": "john@example.com"}"#.to_string())
             }
-            "ListUsers" => {
-                Ok(r#"{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}"#
-                    .to_string())
-            }
+            "ListUsers" => Ok(
+                r#"{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}"#.to_string(),
+            ),
             "CreateUser" => {
                 Ok(r#"{"id": 3, "name": "Charlie", "email": "charlie@example.com"}"#.to_string())
             }
@@ -129,18 +128,18 @@ impl ProtocolAdapter for GrpcAdapter {
             // MVP: Simple request parsing - format is "method:payload"
             if let Some((method, _payload)) = request_owned.split_once(':') {
                 match method {
-                    "GetUser" => {
-                        Ok(r#"{"id": 42, "name": "John Doe", "email": "john@example.com"}"#
-                            .to_string())
-                    }
-                    "ListUsers" => {
-                        Ok(r#"{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}"#
-                            .to_string())
-                    }
-                    "CreateUser" => {
-                        Ok(r#"{"id": 3, "name": "Charlie", "email": "charlie@example.com"}"#
-                            .to_string())
-                    }
+                    "GetUser" => Ok(
+                        r#"{"id": 42, "name": "John Doe", "email": "john@example.com"}"#
+                            .to_string(),
+                    ),
+                    "ListUsers" => Ok(
+                        r#"{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}"#
+                            .to_string(),
+                    ),
+                    "CreateUser" => Ok(
+                        r#"{"id": 3, "name": "Charlie", "email": "charlie@example.com"}"#
+                            .to_string(),
+                    ),
                     "DeleteUser" => Ok(r#"{"deleted": true}"#.to_string()),
                     _ => Err(format!("UNIMPLEMENTED: Method '{}' not found", method)),
                 }

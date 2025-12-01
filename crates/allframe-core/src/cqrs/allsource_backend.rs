@@ -4,15 +4,17 @@
 //! event sourcing with persistence, performance, and advanced features.
 
 #[cfg(feature = "cqrs-allsource")]
-use super::backend::{BackendStats, EventStoreBackend};
-#[cfg(feature = "cqrs-allsource")]
-use super::Event;
-#[cfg(feature = "cqrs-allsource")]
-use async_trait::async_trait;
-#[cfg(feature = "cqrs-allsource")]
 use std::collections::HashMap;
 #[cfg(feature = "cqrs-allsource")]
 use std::sync::Arc;
+
+#[cfg(feature = "cqrs-allsource")]
+use async_trait::async_trait;
+
+#[cfg(feature = "cqrs-allsource")]
+use super::backend::{BackendStats, EventStoreBackend};
+#[cfg(feature = "cqrs-allsource")]
+use super::Event;
 
 #[cfg(feature = "cqrs-allsource")]
 /// AllSource Core backend for production event sourcing
@@ -181,11 +183,7 @@ impl<E: Event> EventStoreBackend<E> for AllSourceBackend<E> {
         Ok(events)
     }
 
-    async fn get_events_after(
-        &self,
-        aggregate_id: &str,
-        version: u64,
-    ) -> Result<Vec<E>, String> {
+    async fn get_events_after(&self, aggregate_id: &str, version: u64) -> Result<Vec<E>, String> {
         let all_events = self.get_events(aggregate_id).await?;
         Ok(all_events.into_iter().skip(version as usize).collect())
     }
@@ -224,10 +222,7 @@ impl<E: Event> EventStoreBackend<E> for AllSourceBackend<E> {
         Ok(())
     }
 
-    async fn get_latest_snapshot(
-        &self,
-        aggregate_id: &str,
-    ) -> Result<(Vec<u8>, u64), String> {
+    async fn get_latest_snapshot(&self, aggregate_id: &str) -> Result<(Vec<u8>, u64), String> {
         let snapshot_json = self
             .store
             .get_snapshot(aggregate_id)

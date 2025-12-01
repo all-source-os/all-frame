@@ -2,9 +2,9 @@
 //!
 //! Provides GraphQL support for the protocol-agnostic router.
 
+use std::{future::Future, pin::Pin};
+
 use super::ProtocolAdapter;
-use std::future::Future;
-use std::pin::Pin;
 
 /// GraphQL adapter for GraphQL queries and mutations
 ///

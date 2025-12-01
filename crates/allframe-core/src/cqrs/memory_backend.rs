@@ -3,18 +3,24 @@
 //! This is the default backend for AllFrame CQRS, providing a simple
 //! HashMap-based storage suitable for testing, development, and MVPs.
 
-use super::backend::{BackendStats, EventStoreBackend};
-use super::Event;
+use std::{collections::HashMap, sync::Arc};
+
 use async_trait::async_trait;
-use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::sync::RwLock;
+
+use super::{
+    backend::{BackendStats, EventStoreBackend},
+    Event,
+};
+
+/// Type alias for snapshot storage (snapshot data + version)
+type SnapshotMap = HashMap<String, (Vec<u8>, u64)>;
 
 /// In-memory event store backend
 #[derive(Clone)]
 pub struct InMemoryBackend<E: Event> {
     events: Arc<RwLock<HashMap<String, Vec<E>>>>,
-    snapshots: Arc<RwLock<HashMap<String, (Vec<u8>, u64)>>>,
+    snapshots: Arc<RwLock<SnapshotMap>>,
 }
 
 impl<E: Event> InMemoryBackend<E> {
@@ -58,11 +64,7 @@ impl<E: Event> EventStoreBackend<E> for InMemoryBackend<E> {
         Ok(all_events)
     }
 
-    async fn get_events_after(
-        &self,
-        aggregate_id: &str,
-        version: u64,
-    ) -> Result<Vec<E>, String> {
+    async fn get_events_after(&self, aggregate_id: &str, version: u64) -> Result<Vec<E>, String> {
         let events = self.get_events(aggregate_id).await?;
         Ok(events.into_iter().skip(version as usize).collect())
     }
@@ -78,10 +80,7 @@ impl<E: Event> EventStoreBackend<E> for InMemoryBackend<E> {
         Ok(())
     }
 
-    async fn get_latest_snapshot(
-        &self,
-        aggregate_id: &str,
-    ) -> Result<(Vec<u8>, u64), String> {
+    async fn get_latest_snapshot(&self, aggregate_id: &str) -> Result<(Vec<u8>, u64), String> {
         let snapshots = self.snapshots.read().await;
         snapshots
             .get(aggregate_id)

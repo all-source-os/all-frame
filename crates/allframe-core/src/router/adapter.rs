@@ -1,7 +1,6 @@
 //! Protocol adapter trait for supporting multiple protocols
 
-use std::future::Future;
-use std::pin::Pin;
+use std::{future::Future, pin::Pin};
 
 /// Protocol adapter trait
 ///

@@ -1,0 +1,167 @@
+# AllFrame - cargo-make task configuration
+# Install: cargo install cargo-make
+# Usage: cargo make <task>
+
+[config]
+default_to_workspace = false
+min_version = "0.36.0"
+
+[env]
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+RUST_BACKTRACE = 0
+
+# Default task - show help
+[tasks.default]
+alias = "help"
+
+# Help - List all available tasks
+[tasks.help]
+description = "Show available tasks"
+script = '''
+echo "AllFrame Development Tasks"
+echo ""
+echo "Quality Gates:"
+echo "  cargo make lint          - Check formatting and run clippy (CI mode)"
+echo "  cargo make lint-check    - Check code formatting without modifying files"
+echo "  cargo make lint-sort     - Check if Cargo.toml dependencies are sorted"
+echo "  cargo make format        - Format all Rust code"
+echo "  cargo make format-sort   - Sort Cargo.toml dependencies"
+echo ""
+echo "Testing:"
+echo "  cargo make test          - Run all tests with main features"
+echo "  cargo make test-all      - Run all tests with all features"
+echo "  cargo make test-minimal  - Run tests with no features"
+echo ""
+echo "Building:"
+echo "  cargo make build         - Build in debug mode"
+echo "  cargo make build-release - Build in release mode"
+echo "  cargo make clean         - Clean build artifacts"
+echo ""
+echo "Tools:"
+echo "  cargo make install-tools - Install required development tools"
+echo ""
+echo "CI/CD:"
+echo "  cargo make ci            - Run all CI checks (lint + test + build)"
+'''
+
+# Quality Gates
+
+[tasks.lint-check]
+description = "Check code formatting without modifying files"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["fmt", "--check"]
+
+[tasks.lint-clippy]
+description = "Run clippy with warnings as errors"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["clippy", "--features", "di,openapi,router,cqrs,otel,mcp", "--", "-D", "warnings"]
+
+[tasks.lint]
+description = "Run both format check and clippy (CI mode)"
+dependencies = ["lint-check", "lint-clippy"]
+
+[tasks.lint-sort]
+description = "Check if Cargo.toml dependencies are sorted"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["sort", "--check"]
+
+[tasks.format]
+description = "Format all Rust code"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["fmt"]
+
+[tasks.format-sort]
+description = "Sort Cargo.toml dependencies"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["sort", "-w"]
+
+# Testing
+
+[tasks.test]
+description = "Run tests with main features"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["test", "--features", "di,openapi,router,cqrs"]
+
+[tasks.test-all]
+description = "Run tests with all features (excluding allsource)"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["test", "--features", "di,openapi,router,cqrs,otel,mcp"]
+
+[tasks.test-minimal]
+description = "Run tests with no features"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["test", "--no-default-features"]
+
+# Building
+
+[tasks.build]
+description = "Build in debug mode"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["build"]
+
+[tasks.build-release]
+description = "Build in release mode"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["build", "--release"]
+
+[tasks.clean]
+description = "Clean build artifacts"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["clean"]
+
+# Tools
+
+[tasks.install-tools]
+description = "Install required development tools"
+script = '''
+echo "Installing development tools..."
+cargo install cargo-sort --quiet || true
+cargo install cargo-bloat --quiet || true
+cargo install cargo-make --quiet || true
+echo "✅ Tools installed!"
+'''
+
+# CI/CD
+
+[tasks.ci]
+description = "Run all CI checks"
+dependencies = ["lint", "lint-sort", "test", "build"]
+script = '''
+echo ""
+echo "✅ All CI checks passed!"
+'''
+
+# Size monitoring
+
+[tasks.size-minimal]
+description = "Measure minimal binary size"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["bloat", "--release", "--example", "minimal", "--no-default-features", "--crates"]
+
+[tasks.size-default]
+description = "Measure default features binary size"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["bloat", "--release", "--example", "default_features", "--features", "di,openapi,router", "--crates"]
+
+[tasks.size-all]
+description = "Measure all features binary size"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["bloat", "--release", "--example", "all_features", "--features", "di,openapi,router,cqrs,otel,mcp", "--crates"]
+
+[tasks.size]
+description = "Measure binary sizes for all configurations"
+dependencies = ["size-minimal", "size-default", "size-all"]

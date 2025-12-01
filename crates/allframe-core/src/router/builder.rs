@@ -3,8 +3,9 @@
 //! This module provides a builder pattern for configuring routes with
 //! metadata, tags, descriptions, and other OpenAPI properties.
 
-use crate::router::{Method, RouteMetadata};
 use serde_json::Value;
+
+use crate::router::{Method, RouteMetadata};
 
 /// Builder for configuring a route with metadata
 ///
@@ -65,8 +66,9 @@ impl RouteBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_route_builder_basic() {
@@ -80,8 +82,7 @@ mod tests {
 
     #[test]
     fn test_route_builder_with_description() {
-        let builder = RouteBuilder::new("/users", Method::GET)
-            .description("Get all users");
+        let builder = RouteBuilder::new("/users", Method::GET).description("Get all users");
         let metadata = builder.build();
 
         assert_eq!(metadata.description, Some("Get all users".to_string()));
@@ -96,8 +97,7 @@ mod tests {
             }
         });
 
-        let builder = RouteBuilder::new("/users", Method::POST)
-            .request_schema(schema.clone());
+        let builder = RouteBuilder::new("/users", Method::POST).request_schema(schema.clone());
         let metadata = builder.build();
 
         assert_eq!(metadata.request_schema, Some(schema));
@@ -112,8 +112,7 @@ mod tests {
             }
         });
 
-        let builder = RouteBuilder::new("/users", Method::GET)
-            .response_schema(schema.clone());
+        let builder = RouteBuilder::new("/users", Method::GET).response_schema(schema.clone());
         let metadata = builder.build();
 
         assert_eq!(metadata.response_schema, Some(schema));

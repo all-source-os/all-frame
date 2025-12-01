@@ -3,12 +3,11 @@
 //! This module provides automatic event versioning and migration, eliminating
 //! the need for manual version checking and conversion code.
 
-use super::Event;
-use std::any::TypeId;
-use std::collections::HashMap;
-use std::marker::PhantomData;
-use std::sync::Arc;
+use std::{any::TypeId, collections::HashMap, marker::PhantomData, sync::Arc};
+
 use tokio::sync::RwLock;
+
+use super::Event;
 
 /// Trait for versioned events
 pub trait VersionedEvent: Event {
@@ -74,7 +73,9 @@ struct UpcasterWrapper<From: Event, To: Event, U: Upcaster<From, To>> {
     _phantom: PhantomData<(From, To)>,
 }
 
-impl<From: Event, To: Event, U: Upcaster<From, To>> ErasedUpcaster<To> for UpcasterWrapper<From, To, U> {
+impl<From: Event, To: Event, U: Upcaster<From, To>> ErasedUpcaster<To>
+    for UpcasterWrapper<From, To, U>
+{
     fn upcast_erased(&self, event: Box<dyn std::any::Any>) -> Option<To> {
         match event.downcast::<From>() {
             Ok(from_event) => Some(self.upcaster.upcast(*from_event)),
@@ -82,6 +83,9 @@ impl<From: Event, To: Event, U: Upcaster<From, To>> ErasedUpcaster<To> for Upcas
         }
     }
 }
+
+/// Type alias for upcaster storage
+type UpcasterMap<E> = HashMap<(TypeId, TypeId), Box<dyn ErasedUpcaster<E>>>;
 
 /// Migration path from one event version to another
 #[derive(Debug, Clone)]
@@ -108,7 +112,7 @@ impl MigrationPath {
 /// Version registry for managing event versions and migrations
 pub struct VersionRegistry<E: Event> {
     /// Registered upcasters by (from_type, to_type)
-    upcasters: Arc<RwLock<HashMap<(TypeId, TypeId), Box<dyn ErasedUpcaster<E>>>>>,
+    upcasters: Arc<RwLock<UpcasterMap<E>>>,
     /// Migration paths by event type
     migrations: Arc<RwLock<HashMap<String, Vec<MigrationPath>>>>,
     _phantom: PhantomData<E>,
@@ -159,10 +163,7 @@ impl<E: Event> VersionRegistry<E> {
     /// Get migrations for a specific event type
     pub async fn get_migrations_for(&self, event_type: &str) -> Vec<MigrationPath> {
         let migrations = self.migrations.read().await;
-        migrations
-            .get(event_type)
-            .map(|paths| paths.clone())
-            .unwrap_or_default()
+        migrations.get(event_type).cloned().unwrap_or_default()
     }
 
     /// Check if an upcaster is registered
@@ -280,7 +281,11 @@ mod tests {
             .await;
 
         assert_eq!(registry.upcaster_count().await, 1);
-        assert!(registry.has_upcaster::<UserCreatedV1, UserCreatedV2>().await);
+        assert!(
+            registry
+                .has_upcaster::<UserCreatedV1, UserCreatedV2>()
+                .await
+        );
     }
 
     #[tokio::test]
@@ -303,8 +308,12 @@ mod tests {
         let registry: VersionRegistry<TestEvent> = VersionRegistry::new();
 
         // Register migration chain: v1 -> v2 -> v3
-        registry.register_migration(MigrationPath::new(1, 2, "UserCreated")).await;
-        registry.register_migration(MigrationPath::new(2, 3, "UserCreated")).await;
+        registry
+            .register_migration(MigrationPath::new(1, 2, "UserCreated"))
+            .await;
+        registry
+            .register_migration(MigrationPath::new(2, 3, "UserCreated"))
+            .await;
 
         assert_eq!(registry.migration_count().await, 2);
 

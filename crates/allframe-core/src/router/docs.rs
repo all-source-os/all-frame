@@ -5,7 +5,6 @@
 //! (Axum, Actix, etc.), but this module provides the data and formatting.
 
 use crate::router::Router;
-use serde_json::Value;
 
 /// Documentation configuration
 ///
@@ -24,7 +23,11 @@ pub struct DocsConfig {
 
 impl DocsConfig {
     /// Create a new documentation configuration
-    pub fn new(path: impl Into<String>, title: impl Into<String>, version: impl Into<String>) -> Self {
+    pub fn new(
+        path: impl Into<String>,
+        title: impl Into<String>,
+        version: impl Into<String>,
+    ) -> Self {
         Self {
             path: path.into(),
             title: title.into(),
@@ -139,6 +142,8 @@ impl Router {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::Value;
+
     use super::*;
 
     #[test]
@@ -153,8 +158,7 @@ mod tests {
 
     #[test]
     fn test_docs_config_with_description() {
-        let config = DocsConfig::new("/docs", "My API", "1.0.0")
-            .with_description("A great API");
+        let config = DocsConfig::new("/docs", "My API", "1.0.0").with_description("A great API");
 
         assert_eq!(config.description, Some("A great API".to_string()));
     }
@@ -196,11 +200,7 @@ mod tests {
     #[tokio::test]
     async fn test_openapi_json_with_description() {
         let router = Router::new();
-        let json = router.openapi_json_with_description(
-            "Test API",
-            "1.0.0",
-            "A test API",
-        );
+        let json = router.openapi_json_with_description("Test API", "1.0.0", "A test API");
 
         assert!(json.contains("\"description\": \"A test API\""));
     }
@@ -219,8 +219,7 @@ mod tests {
     #[tokio::test]
     async fn test_docs_html_with_description() {
         let router = Router::new();
-        let config = DocsConfig::new("/docs", "My API", "1.0.0")
-            .with_description("A great API");
+        let config = DocsConfig::new("/docs", "My API", "1.0.0").with_description("A great API");
         let html = router.docs_html(&config);
 
         assert!(html.contains("A great API"));

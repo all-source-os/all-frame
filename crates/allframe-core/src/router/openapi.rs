@@ -1,10 +1,12 @@
 //! OpenAPI 3.1 specification generation
 //!
 //! This module provides functionality to generate OpenAPI 3.1 specifications
-//! from router metadata. This enables automatic API documentation for REST endpoints.
+//! from router metadata. This enables automatic API documentation for REST
+//! endpoints.
+
+use serde_json::{json, Value};
 
 use crate::router::{RouteMetadata, Router};
-use serde_json::{json, Value};
 
 /// OpenAPI specification generator
 ///
@@ -63,9 +65,7 @@ impl OpenApiGenerator {
                 continue;
             }
 
-            let path_item = paths
-                .entry(route.path.clone())
-                .or_insert_with(|| json!({}));
+            let path_item = paths.entry(route.path.clone()).or_insert_with(|| json!({}));
 
             let method = route.method.to_lowercase();
             let operation = self.build_operation(route);
@@ -159,8 +159,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_openapi_with_description() {
-        let generator = OpenApiGenerator::new("Test API", "1.0.0")
-            .with_description("A test API");
+        let generator = OpenApiGenerator::new("Test API", "1.0.0").with_description("A test API");
         let router = Router::new();
 
         let spec = generator.generate(&router);
@@ -197,8 +196,8 @@ mod tests {
     #[tokio::test]
     async fn test_openapi_route_with_description() {
         let mut router = Router::new();
-        let metadata = RouteMetadata::new("/users", "GET", "rest")
-            .with_description("Get all users");
+        let metadata =
+            RouteMetadata::new("/users", "GET", "rest").with_description("Get all users");
         router.add_route(metadata);
 
         let spec = router.to_openapi("Test API", "1.0.0");
@@ -226,8 +225,7 @@ mod tests {
         let spec = router.to_openapi("Test API", "1.0.0");
 
         assert_eq!(
-            spec["paths"]["/users"]["post"]["requestBody"]["content"]["application/json"]
-                ["schema"],
+            spec["paths"]["/users"]["post"]["requestBody"]["content"]["application/json"]["schema"],
             request_schema
         );
     }
@@ -288,8 +286,7 @@ mod tests {
         let mut router = Router::new();
         router.get("/test", || async { "Test".to_string() });
 
-        let spec =
-            router.to_openapi_with_description("My API", "2.0.0", "A great API");
+        let spec = router.to_openapi_with_description("My API", "2.0.0", "A great API");
 
         assert_eq!(spec["info"]["description"], "A great API");
     }

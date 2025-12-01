@@ -2,9 +2,9 @@
 //!
 //! Provides REST/HTTP support for the protocol-agnostic router.
 
+use std::{future::Future, pin::Pin};
+
 use super::ProtocolAdapter;
-use std::future::Future;
-use std::pin::Pin;
 
 /// REST adapter for HTTP requests
 ///

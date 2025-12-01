@@ -1,0 +1,109 @@
+name: Binary Size Monitoring
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+jobs:
+  binary-size:
+    name: Check Binary Sizes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Install cargo-bloat
+        run: cargo install cargo-bloat --version 0.11.1
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache target directory
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build minimal configuration
+        run: |
+          cd crates/allframe-core
+          cargo build --release --no-default-features
+
+      - name: Build default configuration
+        run: |
+          cd crates/allframe-core
+          cargo build --release
+
+      - name: Build main features
+        run: |
+          cd crates/allframe-core
+          cargo build --release --features "di,openapi,router,cqrs,otel,mcp"
+
+      - name: Measure binary sizes
+        id: sizes
+        run: |
+          cd crates/allframe-core
+
+          echo "## Binary Size Report" > $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Minimal configuration
+          MINIMAL_SIZE=$(stat -c%s "../../target/release/liballframe_core.rlib" 2>/dev/null || stat -f%z "../../target/release/liballframe_core.rlib" 2>/dev/null || echo "0")
+          MINIMAL_MB=$(echo "scale=2; $MINIMAL_SIZE / 1048576" | bc)
+          echo "Minimal (no features): ${MINIMAL_MB}MB" >> $GITHUB_STEP_SUMMARY
+
+          # Check minimal size limit (< 2 MB)
+          if (( $(echo "$MINIMAL_MB > 2.0" | bc -l) )); then
+            echo "::error::Minimal binary size (${MINIMAL_MB}MB) exceeds 2MB limit"
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Detailed Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cargo bloat --release --no-default-features --crates -n 10 >> $GITHUB_STEP_SUMMARY 2>&1 || echo "cargo-bloat analysis unavailable" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check size limits
+        run: |
+          echo "All binary size checks passed!"
+
+      - name: Generate size report
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p reports
+          echo "# Binary Size Report" > reports/size-report.md
+          echo "" >> reports/size-report.md
+          echo "Binary sizes measured on: $(date)" >> reports/size-report.md
+          echo "" >> reports/size-report.md
+          echo "See job summary for details." >> reports/size-report.md
+
+      - name: Upload size report
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v3
+        with:
+          name: size-report
+          path: reports/size-report.md

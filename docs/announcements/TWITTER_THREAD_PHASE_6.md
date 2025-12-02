@@ -136,16 +136,57 @@ Every feature tested. Every test passing. Zero compromises.
 ### Tweet 9/12 (Competitive Analysis)
 How AllFrame compares to other Rust frameworks:
 
-| Framework | REST | GraphQL | gRPC | Tests |
-|-----------|------|---------|------|-------|
-| AllFrame  | ✅   | ✅      | ✅   | ✅    |
-| Axum      | 🟡   | 🟡      | ❌   | ❌    |
-| Actix     | 🟡   | 🟡      | ❌   | ❌    |
-| Rocket    | 🟡   | 🟡      | ❌   | ❌    |
+```
+╔═══════════╦══════╦═════════╦══════╦═══════╗
+║ Framework ║ REST ║ GraphQL ║ gRPC ║ Tests ║
+╠═══════════╬══════╬═════════╬══════╬═══════╣
+║ AllFrame  ║  ✅  ║    ✅   ║  ✅  ║   ✅  ║
+║ Axum      ║  🟡  ║    🟡   ║  ❌  ║   ❌  ║
+║ Actix     ║  🟡  ║    🟡   ║  ❌  ║   ❌  ║
+║ Rocket    ║  🟡  ║    🟡   ║  ❌  ║   ❌  ║
+╚═══════════╩══════╩═════════╩══════╩═══════╝
+```
 
-(🟡 = manual setup required)
+🟡 = manual setup required
+✅ = built-in & production-ready
 
 We're raising the bar.
+
+---
+
+**Alternative: Text-based (Better for Mobile)**
+
+Rust Framework API Documentation:
+
+AllFrame:  ✅ REST  ✅ GraphQL  ✅ gRPC  ✅ Tests
+Axum:      🟡 REST  🟡 GraphQL  ❌ gRPC  ❌ Tests
+Actix:     🟡 REST  🟡 GraphQL  ❌ gRPC  ❌ Tests
+Rocket:    🟡 REST  🟡 GraphQL  ❌ gRPC  ❌ Tests
+
+🟡 = manual setup
+✅ = built-in
+
+AllFrame is the clear leader.
+
+---
+
+**Alternative: Simple Format (X.com Optimized)**
+
+API Documentation Comparison:
+
+📦 AllFrame
+✅ REST docs (Scalar)
+✅ GraphQL docs (GraphiQL)
+✅ gRPC docs (Explorer)
+✅ Contract testing
+
+📦 Axum / Actix / Rocket
+🟡 REST (manual setup)
+🟡 GraphQL (manual setup)
+❌ gRPC (none)
+❌ Contract testing (none)
+
+AllFrame is the only complete solution.
 
 ---
 

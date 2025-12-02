@@ -48,14 +48,19 @@ We ship **one crate** (`allframe-core`) that gives you, out of the box and with 
   - TLS/SSL support
   - Custom metadata headers
   - Production-ready with 7 tests
+- ✅ **Contract Testing** - Built-in contract test generators **[COMPLETE!]**
+  - Automatic test generation from router
+  - Schema validation framework
+  - Coverage reporting (shows test coverage percentage)
+  - Breaking change detection
+  - Production-ready with 9 tests
 - 🚧 **Protocol-agnostic routing** - REST ↔ GraphQL ↔ gRPC (v0.3 - in progress)
-- 📋 **Contract Testing** - Built-in contract test generators (Phase 6 - planned)
 - 📋 **Native MCP server** - LLMs can call your API as tools (v0.5 - planned)
 - 📋 **LLM-powered code generation** - `allframe forge` CLI (v0.6 - planned)
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: **Complete API Documentation Suite!** 145 tests passing. Beautiful docs for REST, GraphQL & gRPC.
+**Current Status**: **Complete API Documentation Suite!** 147 tests passing. Beautiful docs for REST, GraphQL & gRPC + Contract Testing.
 **Latest**: [gRPC Service Explorer](crates/allframe-core/examples/grpc_docs.rs) - Interactive gRPC documentation!
 
 ---
@@ -202,6 +207,43 @@ let html = grpc_explorer_html(&config, "My gRPC API");
 - 📝 Custom metadata headers
 
 See example at `examples/grpc_docs.rs` for complete Tonic integration.
+
+### ✅ Contract Testing
+
+```rust
+use allframe::router::{Router, ContractTester, ContractTestConfig};
+
+let router = Router::new();
+
+// Simple usage - test all routes
+let results = router.generate_contract_tests();
+assert!(results.all_passed());
+println!("Coverage: {:.1}%", results.coverage);
+
+// Advanced usage with configuration
+let tester = ContractTester::with_config(
+    &router,
+    ContractTestConfig::new()
+        .validate_requests(true)
+        .validate_responses(true)
+        .detect_breaking_changes(true)
+        .fail_fast(false)
+);
+
+let results = tester.test_all_routes();
+println!("Passed: {}/{}", results.passed, results.total);
+
+// Test specific route
+let result = router.test_route_contract("/users", "GET");
+assert!(result.passed);
+```
+
+**Features**:
+- ✅ Automatic test generation from router
+- 📋 Schema validation (requests/responses)
+- 🔍 Breaking change detection
+- 📊 Coverage reporting
+- 🎯 Test specific routes or all at once
 
 ### 🔄 Protocol-Agnostic Handlers
 

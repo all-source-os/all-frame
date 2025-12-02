@@ -54,13 +54,17 @@ We ship **one crate** (`allframe-core`) that gives you, out of the box and with 
   - Coverage reporting (shows test coverage percentage)
   - Breaking change detection
   - Production-ready with 9 tests
-- 🚧 **Protocol-agnostic routing** - REST ↔ GraphQL ↔ gRPC (v0.3 - in progress)
+- 🚧 **Protocol-agnostic routing** - REST ↔ GraphQL ↔ gRPC (v0.3 - Phase 1/5 complete!)
+  - ✅ Adapter management system (register, retrieve, route requests)
+  - ✅ Protocol detection (REST, GraphQL, gRPC)
+  - ✅ Request routing infrastructure
+  - 🚧 Full protocol implementations (in progress)
 - 📋 **Native MCP server** - LLMs can call your API as tools (v0.5 - planned)
 - 📋 **LLM-powered code generation** - `allframe forge` CLI (v0.6 - planned)
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: **Complete API Documentation Suite!** 147 tests passing. Beautiful docs for REST, GraphQL & gRPC + Contract Testing.
+**Current Status**: **Complete API Documentation Suite!** 156 tests passing. Beautiful docs for REST, GraphQL & gRPC + Contract Testing + Protocol-Agnostic Routing Phase 1!
 **Latest**: [gRPC Service Explorer](crates/allframe-core/examples/grpc_docs.rs) - Interactive gRPC documentation!
 
 ---

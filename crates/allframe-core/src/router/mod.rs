@@ -37,12 +37,12 @@ pub use contract::{
     ContractTestConfig, ContractTestResult, ContractTestResults, ContractTestable, ContractTester,
 };
 pub use docs::DocsConfig;
-pub use graphql::GraphQLAdapter;
+pub use graphql::{GraphQLAdapter, GraphQLOperation, OperationType};
 pub use graphiql::{graphiql_html, GraphiQLConfig, GraphiQLTheme};
 // Re-export production adapters when features are enabled
 #[cfg(feature = "router-graphql")]
 pub use graphql_prod::GraphQLProductionAdapter;
-pub use grpc::{GrpcAdapter, GrpcRequest, GrpcStatus};
+pub use grpc::{GrpcAdapter, GrpcMethod, GrpcMethodType, GrpcRequest, GrpcStatus};
 pub use grpc_explorer::{grpc_explorer_html, GrpcExplorerConfig, GrpcExplorerTheme};
 #[cfg(feature = "router-grpc")]
 pub use grpc_prod::{protobuf, status, streaming, GrpcProductionAdapter, GrpcService};
@@ -50,7 +50,7 @@ pub use handler::{Handler, HandlerFn};
 pub use metadata::RouteMetadata;
 pub use method::Method;
 pub use openapi::{OpenApiGenerator, OpenApiServer};
-pub use rest::{RestAdapter, RestRequest, RestResponse};
+pub use rest::{RestAdapter, RestRequest, RestResponse, RestRoute};
 pub use scalar::{scalar_html, ScalarConfig, ScalarLayout, ScalarTheme};
 pub use schema::ToJsonSchema;
 
@@ -126,6 +126,24 @@ impl Router {
     /// Check if an adapter is registered
     pub fn has_adapter(&self, name: &str) -> bool {
         self.adapters.contains_key(name)
+    }
+
+    /// Get an adapter by name
+    pub fn get_adapter(&self, name: &str) -> Option<&Box<dyn ProtocolAdapter>> {
+        self.adapters.get(name)
+    }
+
+    /// Route a request through the appropriate protocol adapter
+    pub async fn route_request(
+        &self,
+        protocol: &str,
+        request: &str,
+    ) -> Result<String, String> {
+        let adapter = self
+            .get_adapter(protocol)
+            .ok_or_else(|| format!("Adapter not found: {}", protocol))?;
+
+        adapter.handle(request).await
     }
 
     /// Execute a handler by name
@@ -635,5 +653,381 @@ mod tests {
 
         // Should contain all routes in the OpenAPI spec
         assert!(html.contains("/users"));
+    }
+
+    // Tests for protocol adapter management
+    #[tokio::test]
+    async fn test_get_adapter_returns_adapter() {
+        let mut router = Router::new();
+        router.add_adapter(Box::new(RestAdapter::new()));
+
+        let adapter = router.get_adapter("rest");
+        assert!(adapter.is_some());
+        assert_eq!(adapter.unwrap().name(), "rest");
+    }
+
+    #[tokio::test]
+    async fn test_get_adapter_returns_none_for_missing() {
+        let router = Router::new();
+        let adapter = router.get_adapter("rest");
+        assert!(adapter.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_route_request_success() {
+        let mut router = Router::new();
+        router.register("test_handler", || async { "Success!".to_string() });
+
+        // Register adapter with a route
+        let mut rest_adapter = RestAdapter::new();
+        rest_adapter.route("GET", "/test", "test_handler");
+        router.add_adapter(Box::new(rest_adapter));
+
+        let result = router.route_request("rest", "GET /test").await;
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert!(response.contains("HTTP 200") || response.contains("test_handler"));
+    }
+
+    #[tokio::test]
+    async fn test_route_request_unknown_adapter() {
+        let router = Router::new();
+        let result = router.route_request("unknown", "test").await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Adapter not found"));
+    }
+
+    #[tokio::test]
+    async fn test_enabled_protocols_empty() {
+        let router = Router::new();
+        let protocols = router.enabled_protocols();
+        assert_eq!(protocols.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_enabled_protocols_multiple() {
+        let mut router = Router::new();
+        router.add_adapter(Box::new(RestAdapter::new()));
+        router.add_adapter(Box::new(GraphQLAdapter::new()));
+        router.add_adapter(Box::new(GrpcAdapter::new()));
+
+        let protocols = router.enabled_protocols();
+        assert_eq!(protocols.len(), 3);
+        assert!(protocols.contains(&"rest".to_string()));
+        assert!(protocols.contains(&"graphql".to_string()));
+        assert!(protocols.contains(&"grpc".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_can_handle_rest() {
+        let mut router = Router::new();
+        assert!(!router.can_handle_rest("test"));
+
+        router.add_adapter(Box::new(RestAdapter::new()));
+        assert!(router.can_handle_rest("test"));
+    }
+
+    #[tokio::test]
+    async fn test_can_handle_graphql() {
+        let mut router = Router::new();
+        assert!(!router.can_handle_graphql("test"));
+
+        router.add_adapter(Box::new(GraphQLAdapter::new()));
+        assert!(router.can_handle_graphql("test"));
+    }
+
+    #[tokio::test]
+    async fn test_can_handle_grpc() {
+        let mut router = Router::new();
+        assert!(!router.can_handle_grpc("test"));
+
+        router.add_adapter(Box::new(GrpcAdapter::new()));
+        assert!(router.can_handle_grpc("test"));
+    }
+
+    // ===== Integration Tests: Multi-Protocol Routing =====
+
+    #[tokio::test]
+    async fn test_integration_single_handler_rest() {
+        // Test: Single handler exposed via REST
+        let mut router = Router::new();
+        router.register("get_user", || async { "User data".to_string() });
+
+        // Configure REST adapter
+        let mut rest = RestAdapter::new();
+        rest.route("GET", "/users/:id", "get_user");
+        router.add_adapter(Box::new(rest));
+
+        // Route REST request
+        let response = router.route_request("rest", "GET /users/42").await;
+        assert!(response.is_ok());
+        assert!(response.unwrap().contains("get_user"));
+    }
+
+    #[tokio::test]
+    async fn test_integration_single_handler_graphql() {
+        // Test: Single handler exposed via GraphQL
+        let mut router = Router::new();
+        router.register("get_user", || async { "User data".to_string() });
+
+        // Configure GraphQL adapter
+        let mut graphql = GraphQLAdapter::new();
+        graphql.query("user", "get_user");
+        router.add_adapter(Box::new(graphql));
+
+        // Route GraphQL request
+        let response = router.route_request("graphql", "query { user }").await;
+        assert!(response.is_ok());
+        assert!(response.unwrap().contains("get_user"));
+    }
+
+    #[tokio::test]
+    async fn test_integration_single_handler_grpc() {
+        // Test: Single handler exposed via gRPC
+        let mut router = Router::new();
+        router.register("get_user", || async { "User data".to_string() });
+
+        // Configure gRPC adapter
+        let mut grpc = GrpcAdapter::new();
+        grpc.unary("UserService", "GetUser", "get_user");
+        router.add_adapter(Box::new(grpc));
+
+        // Route gRPC request
+        let response = router
+            .route_request("grpc", "UserService.GetUser:{\"id\":42}")
+            .await;
+        assert!(response.is_ok());
+        assert!(response.unwrap().contains("get_user"));
+    }
+
+    #[tokio::test]
+    async fn test_integration_single_handler_all_protocols() {
+        // Test: Single handler exposed via ALL protocols
+        let mut router = Router::new();
+        router.register("get_user", || async { "User data".to_string() });
+
+        // Configure REST adapter
+        let mut rest = RestAdapter::new();
+        rest.route("GET", "/users/:id", "get_user");
+        router.add_adapter(Box::new(rest));
+
+        // Configure GraphQL adapter
+        let mut graphql = GraphQLAdapter::new();
+        graphql.query("user", "get_user");
+        router.add_adapter(Box::new(graphql));
+
+        // Configure gRPC adapter
+        let mut grpc = GrpcAdapter::new();
+        grpc.unary("UserService", "GetUser", "get_user");
+        router.add_adapter(Box::new(grpc));
+
+        // Test REST
+        let rest_response = router.route_request("rest", "GET /users/42").await;
+        assert!(rest_response.is_ok());
+        assert!(rest_response.unwrap().contains("get_user"));
+
+        // Test GraphQL
+        let graphql_response = router.route_request("graphql", "query { user }").await;
+        assert!(graphql_response.is_ok());
+        assert!(graphql_response.unwrap().contains("get_user"));
+
+        // Test gRPC
+        let grpc_response = router
+            .route_request("grpc", "UserService.GetUser:{\"id\":42}")
+            .await;
+        assert!(grpc_response.is_ok());
+        assert!(grpc_response.unwrap().contains("get_user"));
+    }
+
+    #[tokio::test]
+    async fn test_integration_multiple_handlers_all_protocols() {
+        // Test: Multiple handlers, each exposed via all protocols
+        let mut router = Router::new();
+        router.register("get_user", || async { "User data".to_string() });
+        router.register("list_users", || async { "Users list".to_string() });
+        router.register("create_user", || async { "Created user".to_string() });
+
+        // Configure REST adapter
+        let mut rest = RestAdapter::new();
+        rest.route("GET", "/users/:id", "get_user");
+        rest.route("GET", "/users", "list_users");
+        rest.route("POST", "/users", "create_user");
+        router.add_adapter(Box::new(rest));
+
+        // Configure GraphQL adapter
+        let mut graphql = GraphQLAdapter::new();
+        graphql.query("user", "get_user");
+        graphql.query("users", "list_users");
+        graphql.mutation("createUser", "create_user");
+        router.add_adapter(Box::new(graphql));
+
+        // Configure gRPC adapter
+        let mut grpc = GrpcAdapter::new();
+        grpc.unary("UserService", "GetUser", "get_user");
+        grpc.unary("UserService", "ListUsers", "list_users");
+        grpc.unary("UserService", "CreateUser", "create_user");
+        router.add_adapter(Box::new(grpc));
+
+        // Test each handler via each protocol
+        assert!(router
+            .route_request("rest", "GET /users/42")
+            .await
+            .unwrap()
+            .contains("get_user"));
+        assert!(router
+            .route_request("graphql", "query { user }")
+            .await
+            .unwrap()
+            .contains("get_user"));
+        assert!(router
+            .route_request("grpc", "UserService.GetUser:{}")
+            .await
+            .unwrap()
+            .contains("get_user"));
+    }
+
+    #[tokio::test]
+    async fn test_integration_error_handling_rest_404() {
+        // Test: REST 404 error
+        let mut router = Router::new();
+
+        let mut rest = RestAdapter::new();
+        rest.route("GET", "/users/:id", "get_user");
+        router.add_adapter(Box::new(rest));
+
+        let response = router.route_request("rest", "GET /posts/42").await;
+        assert!(response.is_ok());
+        assert!(response.unwrap().contains("HTTP 404"));
+    }
+
+    #[tokio::test]
+    async fn test_integration_error_handling_graphql_not_found() {
+        // Test: GraphQL operation not found
+        let mut router = Router::new();
+
+        let mut graphql = GraphQLAdapter::new();
+        graphql.query("user", "get_user");
+        router.add_adapter(Box::new(graphql));
+
+        let response = router.route_request("graphql", "query { post }").await;
+        assert!(response.is_ok());
+        assert!(response.unwrap().contains("errors"));
+    }
+
+    #[tokio::test]
+    async fn test_integration_error_handling_grpc_unimplemented() {
+        // Test: gRPC method not implemented
+        let mut router = Router::new();
+
+        let mut grpc = GrpcAdapter::new();
+        grpc.unary("UserService", "GetUser", "get_user");
+        router.add_adapter(Box::new(grpc));
+
+        let response = router.route_request("grpc", "UserService.GetPost:{}").await;
+        assert!(response.is_ok());
+        assert!(response.unwrap().contains("grpc-status: 12")); // UNIMPLEMENTED
+    }
+
+    #[tokio::test]
+    async fn test_integration_unknown_protocol() {
+        // Test: Unknown protocol error
+        let router = Router::new();
+
+        let response = router.route_request("unknown", "request").await;
+        assert!(response.is_err());
+        assert!(response.unwrap_err().contains("Adapter not found"));
+    }
+
+    #[tokio::test]
+    async fn test_integration_protocol_specific_features_rest_methods() {
+        // Test: REST-specific HTTP methods
+        let mut router = Router::new();
+        router.register("get_users", || async { "Users".to_string() });
+        router.register("create_user", || async { "Created".to_string() });
+        router.register("update_user", || async { "Updated".to_string() });
+        router.register("delete_user", || async { "Deleted".to_string() });
+
+        let mut rest = RestAdapter::new();
+        rest.route("GET", "/users", "get_users");
+        rest.route("POST", "/users", "create_user");
+        rest.route("PUT", "/users/:id", "update_user");
+        rest.route("DELETE", "/users/:id", "delete_user");
+        router.add_adapter(Box::new(rest));
+
+        // Test different HTTP methods
+        assert!(router
+            .route_request("rest", "GET /users")
+            .await
+            .unwrap()
+            .contains("get_users"));
+        assert!(router
+            .route_request("rest", "POST /users")
+            .await
+            .unwrap()
+            .contains("create_user"));
+        assert!(router
+            .route_request("rest", "PUT /users/42")
+            .await
+            .unwrap()
+            .contains("update_user"));
+        assert!(router
+            .route_request("rest", "DELETE /users/42")
+            .await
+            .unwrap()
+            .contains("delete_user"));
+    }
+
+    #[tokio::test]
+    async fn test_integration_protocol_specific_features_graphql_types() {
+        // Test: GraphQL-specific query vs mutation
+        let mut router = Router::new();
+        router.register("get_user", || async { "User".to_string() });
+        router.register("create_user", || async { "Created".to_string() });
+
+        let mut graphql = GraphQLAdapter::new();
+        graphql.query("user", "get_user");
+        graphql.mutation("createUser", "create_user");
+        router.add_adapter(Box::new(graphql));
+
+        // Test query
+        assert!(router
+            .route_request("graphql", "query { user }")
+            .await
+            .unwrap()
+            .contains("get_user"));
+
+        // Test mutation
+        assert!(router
+            .route_request("graphql", "mutation { createUser }")
+            .await
+            .unwrap()
+            .contains("create_user"));
+    }
+
+    #[tokio::test]
+    async fn test_integration_protocol_specific_features_grpc_streaming() {
+        // Test: gRPC-specific streaming modes
+        let mut router = Router::new();
+        router.register("get_user", || async { "User".to_string() });
+        router.register("list_users", || async { "Users".to_string() });
+
+        let mut grpc = GrpcAdapter::new();
+        grpc.unary("UserService", "GetUser", "get_user");
+        grpc.server_streaming("UserService", "ListUsers", "list_users");
+        router.add_adapter(Box::new(grpc));
+
+        // Test unary
+        let unary_response = router
+            .route_request("grpc", "UserService.GetUser:{}")
+            .await
+            .unwrap();
+        assert!(unary_response.contains("unary"));
+
+        // Test server streaming
+        let streaming_response = router
+            .route_request("grpc", "UserService.ListUsers:{}")
+            .await
+            .unwrap();
+        assert!(streaming_response.contains("server_streaming"));
     }
 }

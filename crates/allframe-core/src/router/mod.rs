@@ -9,6 +9,7 @@ pub mod adapter;
 pub mod builder;
 #[cfg(feature = "router")]
 pub mod config;
+pub mod contract;
 pub mod docs;
 pub mod graphql;
 pub mod graphiql;
@@ -32,6 +33,9 @@ pub use adapter::ProtocolAdapter;
 pub use builder::RouteBuilder;
 #[cfg(feature = "router")]
 pub use config::{GraphQLConfig, GrpcConfig, RestConfig, RouterConfig, ServerConfig};
+pub use contract::{
+    ContractTestConfig, ContractTestResult, ContractTestResults, ContractTestable, ContractTester,
+};
 pub use docs::DocsConfig;
 pub use graphql::GraphQLAdapter;
 pub use graphiql::{graphiql_html, GraphiQLConfig, GraphiQLTheme};

@@ -11,7 +11,9 @@ pub mod builder;
 pub mod config;
 pub mod docs;
 pub mod graphql;
+pub mod graphiql;
 pub mod grpc;
+pub mod grpc_explorer;
 pub mod handler;
 pub mod metadata;
 pub mod method;
@@ -32,10 +34,12 @@ pub use builder::RouteBuilder;
 pub use config::{GraphQLConfig, GrpcConfig, RestConfig, RouterConfig, ServerConfig};
 pub use docs::DocsConfig;
 pub use graphql::GraphQLAdapter;
+pub use graphiql::{graphiql_html, GraphiQLConfig, GraphiQLTheme};
 // Re-export production adapters when features are enabled
 #[cfg(feature = "router-graphql")]
 pub use graphql_prod::GraphQLProductionAdapter;
 pub use grpc::{GrpcAdapter, GrpcRequest, GrpcStatus};
+pub use grpc_explorer::{grpc_explorer_html, GrpcExplorerConfig, GrpcExplorerTheme};
 #[cfg(feature = "router-grpc")]
 pub use grpc_prod::{protobuf, status, streaming, GrpcProductionAdapter, GrpcService};
 pub use handler::{Handler, HandlerFn};

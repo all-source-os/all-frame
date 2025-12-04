@@ -55,19 +55,23 @@ keywords = ["web", "framework", "api", "tdd", "clean-architecture"]
 categories = ["web-programming::http-server", "asynchronous"]
 
 [workspace.dependencies]
-# Async runtime
+# === Async Runtime ===
+# Updated: 2025-12-04 - Latest stable for performance improvements
 tokio = { version = "1.48", features = ["full"] }
 
-# HTTP server
+# === HTTP Server ===
+# Updated: 2025-12-04 - HTTP/2 improvements and security fixes
 hyper = { version = "1.8", features = ["full"] }
 
-# Core utilities
+# === Core Utilities ===
+# Stable APIs - minor updates are safe
 async-trait = "0.1"
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# Testing
+# === Testing Dependencies ===
+# Updated: 2025-12-04 - Latest test utilities
 assert_cmd = "2.0"
 predicates = "3.1"
 tempfile = "3.15"
@@ -76,11 +80,12 @@ mockall = "0.13"
 trybuild = "1.0"
 criterion = "0.5"
 
-# CLI dependencies
+# === CLI Dependencies ===
+# Updated: 2025-12-04
 clap = "4.5"
-anyhow = "1.0.75"  # Minimum version for Rust 1.80 compatibility
+anyhow = "1.0.75"  # Minimum version for Rust 1.80+ compatibility
 
-# Proc macro dependencies
+# === Proc Macro Dependencies ===
 syn = "2.0"
 quote = "1.0"
 proc-macro2 = "1.0"

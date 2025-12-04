@@ -11,6 +11,10 @@ on:
     # Run weekly to catch breaking changes early
     - cron: '0 9 * * 1'  # Monday 9 AM UTC
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   # Test against different Rust versions
   rust-versions:
@@ -23,7 +27,7 @@ jobs:
           - stable
           - beta
           - nightly
-          - 1.85.0  # MSRV (Minimum Supported Rust Version - required for edition2024 deps)
+          - 1.86.0  # MSRV (Minimum Supported Rust Version - required for async-graphql 7.0.17)
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -82,6 +86,13 @@ jobs:
           for dep in ${{ matrix.profile.update }}; do
             cargo update -p $dep
           done
+
+      - name: Fix minimal versions for compatibility
+        if: matrix.profile.name == 'minimal'
+        run: |
+          # Pin tonic and http to minimum compatible versions with Rust 1.86+
+          cargo update -p http@1.0.0 --precise 1.1.0
+          cargo update -p tonic --precise 0.14.0
 
       - name: Build with ${{ matrix.profile.name }}
         # Exclude cqrs-allsource due to upstream compilation errors

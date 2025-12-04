@@ -5,7 +5,7 @@
 > *One frame to rule them all. Transform, compose, ignite.*
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/rust-1.86%2B-orange.svg)](https://www.rust-lang.org)
 [![TDD](https://img.shields.io/badge/TDD-100%25-green.svg)](docs/current/PRD_01.md)
 [![CQRS](https://img.shields.io/badge/CQRS-Complete-success.svg)](docs/announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)
 [![Tests](https://img.shields.io/badge/tests-291%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)

@@ -162,19 +162,17 @@ anyhow = { workspace = true }  # Changed from "1.0"
 
 ---
 
-### 7. ✅ Bumped MSRV to 1.85 for Edition2024
+### 7. ✅ Bumped MSRV to 1.86 for async-graphql 7.0.17
 
-**Problem**: `async-graphql-value 7.0.17` requires edition2024, which requires Rust 1.85+.
+**Problem**: `async-graphql 7.0.17` requires Rust 1.86+.
 
 **Error**:
 ```
-error: failed to parse manifest at `.../async-graphql-value-7.0.17/Cargo.toml`
-Caused by: feature `edition2024` is required
-The package requires the Cargo feature called `edition2024`, but that feature
-is not stabilized in this version of Cargo (1.80.0)
+error: rustc 1.85.0 is not supported by the following package:
+  async-graphql@7.0.17 requires rustc 1.86.0
 ```
 
-**Solution**: Bumped MSRV from 1.80 to 1.85.
+**Solution**: Bumped MSRV from 1.80 to 1.86.
 
 **Files Modified**:
 - `Cargo.toml` (workspace root)
@@ -186,7 +184,7 @@ is not stabilized in this version of Cargo (1.80.0)
 ```toml
 # Cargo.toml
 [workspace.package]
-rust-version = "1.85"  # Required for edition2024 dependencies (async-graphql 7.0+)
+rust-version = "1.86"  # Required for async-graphql 7.0.17
 ```
 
 ```yaml
@@ -196,13 +194,64 @@ matrix:
     - stable
     - beta
     - nightly
-    - 1.85.0  # Updated from 1.80.0
+    - 1.86.0  # Updated from 1.80.0
 ```
 
 ```markdown
 # README.md
-[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)]
+[![Rust](https://img.shields.io/badge/rust-1.86%2B-orange.svg)]
 ```
+
+---
+
+### 8. ✅ Fixed Minimal Versions Test
+
+**Problem**: `-Z minimal-versions` selects very old versions of tonic that are incompatible with current Rust.
+
+**Error**:
+```
+error[E0599]: no method named `try_insert` found for mutable reference `&mut HeaderMap`
+  --> tonic-0.14.0/src/transport/channel/service/user_agent.rs:44:14
+```
+
+**Solution**: Added a step to pin tonic and http to minimum compatible versions before running `-Z minimal-versions` build.
+
+**File Modified**: `.github/workflows/compatibility-matrix.yml`
+
+**Changes**:
+```yaml
+- name: Fix minimal versions for compatibility
+  if: matrix.profile.name == 'minimal'
+  run: |
+    # Pin tonic and http to minimum compatible versions with Rust 1.86+
+    cargo update -p http@1.0.0 --precise 1.1.0
+    cargo update -p tonic --precise 0.14.0
+```
+
+---
+
+### 9. ✅ Added Workflow Permissions for Issue Creation
+
+**Problem**: GitHub Actions lacks permissions to create issues automatically.
+
+**Error**:
+```
+RequestError [HttpError]: Resource not accessible by integration
+status: 403
+```
+
+**Solution**: Added explicit `permissions` block to grant `issues: write` permission.
+
+**File Modified**: `.github/workflows/compatibility-matrix.yml`
+
+**Changes**:
+```yaml
+permissions:
+  contents: read
+  issues: write
+```
+
+**Documentation**: See `docs/GITHUB_ACTIONS_PERMISSIONS.md` for detailed setup instructions.
 
 ---
 
@@ -237,11 +286,11 @@ cargo test -p allframe-core --lib --no-default-features
 ### Check Rust Version
 ```bash
 # Verify Rust version
-rustc --version  # Should be 1.85.0 or higher
+rustc --version  # Should be 1.86.0 or higher
 
 # Test with specific Rust version
-rustup toolchain install 1.85.0
-cargo +1.85.0 build -p allframe-core
+rustup toolchain install 1.86.0
+cargo +1.86.0 build -p allframe-core
 ```
 
 ---
@@ -269,11 +318,12 @@ test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured
    - Tests minimal, default, and full feature sets
 
 2. ✅ **compatibility-matrix.yml**
-   - Tests Rust versions: stable, beta, nightly, 1.85.0
-   - Tests dependency versions: latest, minimal
+   - Tests Rust versions: stable, beta, nightly, 1.86.0
+   - Tests dependency versions: latest, minimal (with pinned deps), async-graphql-v7, tonic-v0.13
    - Tests feature combinations
    - Tests platforms: ubuntu, macos, windows
    - All with `-p allframe-core --lib` flags
+   - Issue creation on failure enabled with `issues: write` permission
 
 3. ✅ **All other workflows**
    - No changes needed (don't reference mcp)

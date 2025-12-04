@@ -3,6 +3,7 @@ members = [
     "crates/allframe-core",
     "crates/allframe-macros",
     "crates/allframe-forge",
+    "crates/allframe-mcp",
 ]
 resolver = "2"
 
@@ -30,7 +31,6 @@ cqrs = ["allframe-core/cqrs"]
 cqrs-allsource = ["allframe-core/cqrs-allsource"]
 cqrs-postgres = ["allframe-core/cqrs-postgres"]
 cqrs-rocksdb = ["allframe-core/cqrs-rocksdb"]
-mcp = ["allframe-core/mcp"]
 
 [dev-dependencies]
 assert_cmd = "2.0"

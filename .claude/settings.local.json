@@ -26,7 +26,8 @@
       "Bash(make lint:*)",
       "Bash(make format:*)",
       "Bash(cargo make:*)",
-      "Bash(cargo format-code:*)"
+      "Bash(cargo format-code:*)",
+      "Bash(xargs ls:*)"
     ],
     "deny": [],
     "ask": []

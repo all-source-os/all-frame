@@ -43,9 +43,6 @@ cqrs-allsource = ["cqrs", "allsource-core"]
 cqrs-postgres = ["cqrs-allsource", "allsource-core/postgres"]
 cqrs-rocksdb = ["cqrs-allsource", "allsource-core/rocksdb-storage"]
 
-# Model Context Protocol (optional, not in default)
-mcp = []
-
 [dependencies]
 
 # Optional features

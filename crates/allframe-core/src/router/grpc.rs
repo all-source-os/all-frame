@@ -161,7 +161,7 @@ impl GrpcAdapter {
         for method in &self.methods {
             services
                 .entry(method.service.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(method);
         }
 

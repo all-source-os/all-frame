@@ -1,0 +1,22 @@
+[package]
+name = "allframe-mcp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords = ["mcp", "llm", "ai", "tools", "claude"]
+categories = ["development-tools", "api-bindings"]
+description = "MCP (Model Context Protocol) server for AllFrame - Expose APIs as LLM-callable tools"
+
+[dependencies]
+allframe-core = { path = "../allframe-core" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

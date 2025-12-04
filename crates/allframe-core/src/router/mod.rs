@@ -129,8 +129,8 @@ impl Router {
     }
 
     /// Get an adapter by name
-    pub fn get_adapter(&self, name: &str) -> Option<&Box<dyn ProtocolAdapter>> {
-        self.adapters.get(name)
+    pub fn get_adapter(&self, name: &str) -> Option<&dyn ProtocolAdapter> {
+        self.adapters.get(name).map(|b| &**b)
     }
 
     /// Route a request through the appropriate protocol adapter
@@ -152,6 +152,24 @@ impl Router {
             Some(handler) => handler.call().await,
             None => Err(format!("Handler '{}' not found", name)),
         }
+    }
+
+    /// List all registered handler names
+    ///
+    /// Returns a vector of all handler names that have been registered
+    /// with this router. Used by MCP server for tool discovery.
+    pub fn list_handlers(&self) -> Vec<String> {
+        self.handlers.keys().cloned().collect()
+    }
+
+    /// Call a handler by name with request data
+    ///
+    /// This is an alias for `execute()` that provides a more explicit
+    /// API for directly calling handlers. Used by MCP server.
+    pub async fn call_handler(&self, name: &str, _request: &str) -> Result<String, String> {
+        // For now, ignore request parameter and just execute the handler
+        // In Phase 2, we'll add proper parameter parsing
+        self.execute(name).await
     }
 
     /// Check if handler can be called via REST

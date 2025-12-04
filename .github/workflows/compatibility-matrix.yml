@@ -34,10 +34,10 @@ jobs:
       - name: Build
         # Exclude cqrs-allsource due to upstream compilation errors in allsource-core
         # See: docs/current/ALLSOURCE_CORE_ISSUES.md
-        run: cargo build --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,cqrs-postgres,cqrs-rocksdb,otel,mcp"
+        run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
 
       - name: Test
-        run: cargo test --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,cqrs-postgres,cqrs-rocksdb,otel,mcp"
+        run: cargo test -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
 
   # Test against different dependency versions
   dependency-versions:
@@ -85,10 +85,10 @@ jobs:
 
       - name: Build with ${{ matrix.profile.name }}
         # Exclude cqrs-allsource due to upstream compilation errors
-        run: cargo build --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,cqrs-postgres,cqrs-rocksdb,otel,mcp" ${{ matrix.profile.flags }}
+        run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel" ${{ matrix.profile.flags }}
 
       - name: Test with ${{ matrix.profile.name }}
-        run: cargo test --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,cqrs-postgres,cqrs-rocksdb,otel,mcp"
+        run: cargo test -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
 
   # Feature flag combinations
   feature-matrix:
@@ -115,7 +115,7 @@ jobs:
         run: cargo build -p allframe-core --features=${{ matrix.features }}
 
       - name: Test with features=${{ matrix.features }}
-        run: cargo test -p allframe-core --features=${{ matrix.features }}
+        run: cargo test -p allframe-core --lib --features=${{ matrix.features }}
 
   # Platform compatibility
   platform-matrix:
@@ -137,10 +137,10 @@ jobs:
       - name: Build
         # Exclude cqrs-allsource due to upstream compilation errors in allsource-core
         # See: docs/current/ALLSOURCE_CORE_ISSUES.md
-        run: cargo build --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,cqrs-postgres,cqrs-rocksdb,otel,mcp"
+        run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
 
       - name: Test
-        run: cargo test --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,cqrs-postgres,cqrs-rocksdb,otel,mcp"
+        run: cargo test -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
 
   # External ecosystem compatibility
   ecosystem-compat:

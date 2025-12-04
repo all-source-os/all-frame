@@ -60,7 +60,7 @@ jobs:
       - name: Build main features
         run: |
           cd crates/allframe-core
-          cargo build --release --features "di,openapi,router,cqrs,otel,mcp"
+          cargo build --release --features "di,openapi,router,cqrs,otel"
 
       - name: Measure binary sizes
         id: sizes

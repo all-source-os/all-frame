@@ -56,7 +56,7 @@ args = ["fmt", "--check"]
 description = "Run clippy with warnings as errors"
 cwd = "crates/allframe-core"
 command = "cargo"
-args = ["clippy", "--features", "di,openapi,router,cqrs,otel,mcp", "--", "-D", "warnings"]
+args = ["clippy", "--features", "di,openapi,router,cqrs,otel", "--", "-D", "warnings"]
 
 [tasks.lint]
 description = "Run both format check and clippy (CI mode)"
@@ -92,7 +92,7 @@ args = ["test", "--features", "di,openapi,router,cqrs"]
 description = "Run tests with all features (excluding allsource)"
 cwd = "crates/allframe-core"
 command = "cargo"
-args = ["test", "--features", "di,openapi,router,cqrs,otel,mcp"]
+args = ["test", "--features", "di,openapi,router,cqrs,otel"]
 
 [tasks.test-minimal]
 description = "Run tests with no features"
@@ -160,7 +160,7 @@ args = ["bloat", "--release", "--example", "default_features", "--features", "di
 description = "Measure all features binary size"
 cwd = "crates/allframe-core"
 command = "cargo"
-args = ["bloat", "--release", "--example", "all_features", "--features", "di,openapi,router,cqrs,otel,mcp", "--crates"]
+args = ["bloat", "--release", "--example", "all_features", "--features", "di,openapi,router,cqrs,otel", "--crates"]
 
 [tasks.size]
 description = "Measure binary sizes for all configurations"

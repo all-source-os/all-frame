@@ -45,7 +45,7 @@ async-trait = { workspace = true }
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.80"  # Required for edition2024 dependencies (async-graphql-derive)
+rust-version = "1.85"  # Required for edition2024 dependencies (async-graphql 7.0+)
 authors = ["AllFrame Contributors"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/all-source-os/all-frame"
@@ -78,7 +78,7 @@ criterion = "0.5"
 
 # CLI dependencies
 clap = "4.4"
-anyhow = "1.0"
+anyhow = "1.0.75"  # Minimum version for Rust 1.80 compatibility
 
 # Proc macro dependencies
 syn = "2.0"

@@ -5,10 +5,10 @@
 > *One frame to rule them all. Transform, compose, ignite.*
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.80%2B-orange.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
 [![TDD](https://img.shields.io/badge/TDD-100%25-green.svg)](docs/current/PRD_01.md)
 [![CQRS](https://img.shields.io/badge/CQRS-Complete-success.svg)](docs/announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)
-[![Tests](https://img.shields.io/badge/tests-258%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
+[![Tests](https://img.shields.io/badge/tests-291%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
 [![Routing](https://img.shields.io/badge/Protocol%20Agnostic-Complete-success.svg)](docs/phases/PROTOCOL_AGNOSTIC_ROUTING_COMPLETE.md)
 [![MCP](https://img.shields.io/badge/MCP%20Server-Zero%20Bloat-success.svg)](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md)
 

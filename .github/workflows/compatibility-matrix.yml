@@ -91,7 +91,7 @@ jobs:
         if: matrix.profile.name == 'minimal'
         run: |
           # Pin tonic and http to minimum compatible versions with Rust 1.86+
-          cargo update -p http@1.0.0 --precise 1.1.0
+          cargo update -p http --precise 1.1.0
           cargo update -p tonic --precise 0.14.0
 
       - name: Build with ${{ matrix.profile.name }}

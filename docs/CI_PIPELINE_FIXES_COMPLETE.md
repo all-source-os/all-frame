@@ -224,9 +224,11 @@ error[E0599]: no method named `try_insert` found for mutable reference `&mut Hea
   if: matrix.profile.name == 'minimal'
   run: |
     # Pin tonic and http to minimum compatible versions with Rust 1.86+
-    cargo update -p http@1.0.0 --precise 1.1.0
+    cargo update -p http --precise 1.1.0
     cargo update -p tonic --precise 0.14.0
 ```
+
+**Note**: After December 2025 dependency updates, the http package specification was corrected from `http@1.0.0` to `http` to match the current version (1.4.0).
 
 ---
 

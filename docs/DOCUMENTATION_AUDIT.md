@@ -15,6 +15,7 @@
 - **DEPENDENCY_UPDATES_DEC_2025.md** - Recent update summary ✅
 - **GITHUB_ACTIONS_PERMISSIONS.md** - CI permissions guide ✅
 - **CI_PIPELINE_FIXES_COMPLETE.md** - Important CI fixes documentation ✅
+- **MCP_DISTRIBUTION_MODEL.md** - MCP library distribution clarification ✅
 - **PROJECT_STATUS.md** - Current project state ✅
 - **README.md** - Documentation index ✅
 - **INDEX.md** - Alternative index (consider merging with README.md)
@@ -139,6 +140,7 @@ docs/
 ├── DEPENDENCY_UPDATES_DEC_2025.md         # Recent updates ✅
 ├── GITHUB_ACTIONS_PERMISSIONS.md          # CI permissions ✅
 ├── CI_PIPELINE_FIXES_COMPLETE.md          # CI fixes ✅
+├── MCP_DISTRIBUTION_MODEL.md              # MCP library distribution ✅
 ├── PROJECT_STATUS.md                      # Current status ✅
 │
 ├── upgrade-plans/                         # Dependency upgrade tracking ✅

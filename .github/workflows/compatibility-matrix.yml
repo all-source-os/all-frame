@@ -87,6 +87,13 @@ jobs:
             cargo update -p $dep
           done
 
+      - name: Fix minimal versions for tonic compatibility
+        if: matrix.profile.name == 'minimal'
+        run: |
+          # tonic 0.14.0 requires http 1.0+ with try_insert method
+          # Ensure http is at least 1.1.0 (introduced try_insert)
+          cargo update -p http --precise 1.1.0
+
       - name: Build with ${{ matrix.profile.name }}
         # Exclude cqrs-allsource due to upstream compilation errors
         run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel" ${{ matrix.profile.flags }}

@@ -206,7 +206,7 @@ matrix:
 
 ### 8. ✅ Fixed Minimal Versions Test
 
-**Problem**: `-Z minimal-versions` selects very old versions of tonic that are incompatible with current Rust.
+**Problem**: `-Z minimal-versions` selects very old versions of `http` (< 1.0) that are incompatible with tonic 0.14.0.
 
 **Error**:
 ```
@@ -214,21 +214,29 @@ error[E0599]: no method named `try_insert` found for mutable reference `&mut Hea
   --> tonic-0.14.0/src/transport/channel/service/user_agent.rs:44:14
 ```
 
-**Solution**: Added a step to pin tonic and http to minimum compatible versions before running `-Z minimal-versions` build.
+**Root Cause**:
+- tonic 0.14.0 uses `http::HeaderMap::try_insert()` method
+- `try_insert` was added in http 1.1.0
+- `-Z minimal-versions` selects http 0.x, which lacks this method
 
-**File Modified**: `.github/workflows/compatibility-matrix.yml`
+**Solution**: Pin http to minimum version 1.1.0 for tonic compatibility.
+
+**File Modified**: `.github/workflows/compatibility-matrix.yml:90-95`
 
 **Changes**:
 ```yaml
-- name: Fix minimal versions for compatibility
+- name: Fix minimal versions for tonic compatibility
   if: matrix.profile.name == 'minimal'
   run: |
-    # Pin tonic and http to minimum compatible versions with Rust 1.86+
+    # tonic 0.14.0 requires http 1.0+ with try_insert method
+    # Ensure http is at least 1.1.0 (introduced try_insert)
     cargo update -p http --precise 1.1.0
-    cargo update -p tonic --precise 0.14.0
 ```
 
-**Note**: After December 2025 dependency updates, the http package specification was corrected from `http@1.0.0` to `http` to match the current version (1.4.0).
+**Why This Works**:
+- http 1.1.0 is the minimum version with `try_insert()`
+- Still allows testing with older (but compatible) versions
+- Keeps http at reasonable baseline (not bleeding edge 1.4.0)
 
 ---
 
@@ -381,12 +389,45 @@ allframe-mcp = "0.1"
 
 ---
 
+## MCP Binary Distribution Clarification
+
+### Issue Identified
+
+The archived `docs/archive/LAUNCH_CHECKLIST.md` (lines 15-19, 398-402) mentions distributing pre-compiled binaries for `allframe-mcp`:
+
+```
+- [ ] Include compiled binaries (GitHub Actions - FREE)
+  - [ ] allframe-mcp-linux-x86_64
+  - [ ] allframe-mcp-macos-x86_64
+  - [ ] allframe-mcp-macos-aarch64
+  - [ ] allframe-mcp-windows-x86_64.exe
+```
+
+### Resolution
+
+**Status**: ✅ Clarified - No binary distribution needed
+
+**Reason**: `allframe-mcp` is a **library crate**, not a binary crate:
+- No `[[bin]]` section in `Cargo.toml`
+- Only has `lib.rs`, no `main.rs`
+- Designed to be embedded in user applications
+
+**Distribution Model**: Library via crates.io
+- Users add `allframe-mcp = "0.1"` to their `Cargo.toml`
+- Users create their own binary wrappers if needed
+- See `docs/MCP_DISTRIBUTION_MODEL.md` for complete details
+
+**CI Impact**: No release workflow needed for binaries ✅
+
+---
+
 ## Next Steps
 
-1. **Push changes** to trigger CI workflows
-2. **Monitor GitHub Actions** for all workflows to pass
-3. **Update badges** if test count changes (currently 258+ → 291+)
-4. **Document** in changelog for next release
+1. ✅ **Document MCP distribution model** - See `docs/MCP_DISTRIBUTION_MODEL.md`
+2. 📋 **Create allframe-mcp README** - Usage examples and patterns
+3. 📋 **Add stdio server example** - Reference implementation for users
+4. 📋 **Update root README** - Add installation instructions
+5. 📋 **Publish to crates.io** - When ready for v0.1.0 release
 
 ---
 
@@ -394,10 +435,11 @@ allframe-mcp = "0.1"
 
 If CI still fails after these fixes:
 1. Check the specific workflow logs in GitHub Actions
-2. Verify Rust version is 1.85.0+ on the runner
+2. Verify Rust version is 1.86.0+ on the runner
 3. Ensure `Cargo.lock` is up to date
 4. Check for any new dependency version conflicts
 
 ---
 
 **Status**: ✅ All fixes applied and verified locally. CI should pass on next push.
+**Binary Distribution**: ✅ Clarified - Library distribution only, no binaries needed

@@ -9,6 +9,7 @@ repository.workspace = true
 description = "Procedural macros for AllFrame framework"
 keywords = ["proc-macro", "macros", "framework", "web", "allframe"]
 categories = ["development-tools::procedural-macro-helpers"]
+readme = "README.md"
 
 [lib]
 proc-macro = true

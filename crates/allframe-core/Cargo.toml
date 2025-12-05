@@ -11,6 +11,7 @@ documentation.workspace = true
 keywords.workspace = true
 categories.workspace = true
 description = "The composable Rust API framework - core library"
+readme = "README.md"
 
 [features]
 default = ["di", "openapi", "router", "otel"]
@@ -46,7 +47,7 @@ cqrs-rocksdb = ["cqrs-allsource", "allsource-core/rocksdb-storage"]
 [dependencies]
 
 # Optional features
-allframe-macros = { version = "0.1.0", path = "../allframe-macros", optional = true }
+allframe-macros = { version = "0.1.1", path = "../allframe-macros", optional = true }
 
 # AllSource Core for CQRS + Event Sourcing
 allsource-core = { version = "0.1.0", optional = true, default-features = false }

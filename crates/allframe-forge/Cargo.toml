@@ -11,6 +11,7 @@ documentation.workspace = true
 description = "AllFrame CLI - Project scaffolding and code generation"
 keywords = ["cli", "scaffold", "generator", "allframe", "web"]
 categories = ["command-line-utilities", "development-tools"]
+readme = "README.md"
 
 [[bin]]
 name = "allframe"

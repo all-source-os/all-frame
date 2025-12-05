@@ -11,6 +11,7 @@ documentation.workspace = true
 keywords = ["mcp", "llm", "ai", "tools", "claude"]
 categories = ["development-tools", "api-bindings"]
 description = "MCP (Model Context Protocol) server for AllFrame - Expose APIs as LLM-callable tools"
+readme = "README.md"
 
 [dependencies]
 allframe-core = { path = "../allframe-core" }

@@ -6,9 +6,9 @@
 //! These tests verify that the architecture system works end-to-end
 //! with DI, routing, and other AllFrame features.
 
+use std::{collections::HashMap, sync::Arc};
+
 use allframe_core::arch::{domain, handler, repository, use_case};
-use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::sync::Mutex;
 
 /// Test full clean architecture flow from handler to domain

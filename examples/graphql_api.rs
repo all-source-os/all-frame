@@ -1,6 +1,7 @@
 //! GraphQL API Example
 //!
-//! This example demonstrates how to use AllFrame's GraphQL adapter to build a GraphQL API.
+//! This example demonstrates how to use AllFrame's GraphQL adapter to build a
+//! GraphQL API.
 //!
 //! Key concepts:
 //! - Router setup with GraphQL adapter
@@ -50,7 +51,10 @@ async fn main() {
     let adapter = GraphQLAdapter::new();
     router.add_adapter(Box::new(adapter));
 
-    println!("✓ Router initialized with {} handlers", router.handlers_count());
+    println!(
+        "✓ Router initialized with {} handlers",
+        router.handlers_count()
+    );
     println!("✓ GraphQL adapter registered\n");
 
     // Demonstrate the GraphQL adapter capabilities

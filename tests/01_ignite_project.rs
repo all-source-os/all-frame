@@ -14,10 +14,10 @@
 
 #![allow(deprecated)]
 
+use std::{fs, process::Command};
+
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
-use std::fs;
-use std::process::Command;
 use tempfile::TempDir;
 
 #[test]
@@ -61,7 +61,8 @@ fn ignite_creates_compilable_project_with_all_features() {
         cargo_content.contains("serde"),
         "Cargo.toml should contain serde dependency"
     );
-    // Note: allframe dependency will be added once the crate is published to crates.io
+    // Note: allframe dependency will be added once the crate is published to
+    // crates.io
 
     // Verify src/main.rs exists
     let main_rs = project_path.join("src/main.rs");

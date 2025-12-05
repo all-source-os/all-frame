@@ -4,13 +4,15 @@
 //!
 //! Tests for Clean Architecture violation detection.
 //! For MVP, these tests pass and document the intended behavior.
-//! Future versions will implement compile-time enforcement that makes violations fail to compile.
+//! Future versions will implement compile-time enforcement that makes
+//! violations fail to compile.
 
 /// Test that domain CANNOT depend on repository (Future: compile error)
 #[test]
 fn test_domain_cannot_depend_on_repository() {
     // MVP: This documents the intended behavior
-    // Future: Will be enforced at compile time using advanced proc macro type analysis
+    // Future: Will be enforced at compile time using advanced proc macro type
+    // analysis
     //
     // When fully implemented, this code should FAIL TO COMPILE:
     //
@@ -111,7 +113,8 @@ fn test_use_case_cannot_depend_on_handler() {
     assert!(true); // GREEN - documenting future behavior
 }
 
-/// Test multiple violations in same struct (Future: compile error with multiple messages)
+/// Test multiple violations in same struct (Future: compile error with multiple
+/// messages)
 #[test]
 fn test_multiple_violations_reported() {
     // MVP: Documents intended behavior

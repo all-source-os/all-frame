@@ -1,7 +1,8 @@
 //! Simplified DI Container Tests for v0.2 MVP
 //!
 //! These tests use #[provide] attributes for explicit dependency specification.
-//! This is the MVP approach for v0.2 - automatic dependency resolution will come in v0.3.
+//! This is the MVP approach for v0.2 - automatic dependency resolution will
+//! come in v0.3.
 
 use allframe_macros::di_container;
 

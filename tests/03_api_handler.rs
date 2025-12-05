@@ -14,14 +14,14 @@
 //! - Swagger UI loads and displays endpoints
 //! - MCP schema present for LLM integration
 
-// Allow dead code - testing #[api_handler] macro expansion and schema generation.
-// Test fixtures (CreateUserRequest, CreateUserResponse, etc.) define request/response
-// types that the macro introspects to generate OpenAPI schemas. The macro generates
-// functions like `create_user_openapi_schema()` which the tests call to verify schema
-// correctness. Unused structs/functions are intentional test fixtures demonstrating
-// different API patterns (POST, GET, query params, path params, validation, errors).
+// Allow dead code - testing #[api_handler] macro expansion and schema
+// generation. Test fixtures (CreateUserRequest, CreateUserResponse, etc.)
+// define request/response types that the macro introspects to generate OpenAPI
+// schemas. The macro generates functions like `create_user_openapi_schema()`
+// which the tests call to verify schema correctness. Unused structs/functions
+// are intentional test fixtures demonstrating different API patterns (POST,
+// GET, query params, path params, validation, errors).
 #[allow(dead_code)]
-
 use allframe_macros::api_handler;
 use serde::{Deserialize, Serialize};
 

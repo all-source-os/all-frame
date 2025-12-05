@@ -3,7 +3,8 @@
 //! GREEN PHASE: Tests now pass with implementation
 //!
 //! Tests for configuration-driven protocol selection.
-//! This is the key differentiator - same handler, multiple protocols via config.
+//! This is the key differentiator - same handler, multiple protocols via
+//! config.
 //!
 //! Acceptance criteria from PRD:
 //! - "Same handler works as REST, GraphQL, gRPC via config"
@@ -178,10 +179,13 @@ fn test_config_change_no_code_change() {
     use allframe_core::router::Router;
 
     // Config 1: REST only
-    let config1 = RouterConfig::from_str(r#"
+    let config1 = RouterConfig::from_str(
+        r#"
         [server]
         protocols = ["rest"]
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let mut router1 = Router::with_config(config1);
     router1.register("get_user", || async move {
@@ -191,10 +195,13 @@ fn test_config_change_no_code_change() {
     assert_eq!(router1.enabled_protocols().len(), 1);
 
     // Config 2: All protocols (same handler code)
-    let config2 = RouterConfig::from_str(r#"
+    let config2 = RouterConfig::from_str(
+        r#"
         [server]
         protocols = ["rest", "graphql", "grpc"]
-    "#).unwrap();
+    "#,
+    )
+    .unwrap();
 
     let mut router2 = Router::with_config(config2);
     router2.register("get_user", || async move {

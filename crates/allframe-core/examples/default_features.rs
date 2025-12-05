@@ -7,8 +7,7 @@
 //! - OpenAPI spec generation with server configuration
 //! - Scalar documentation with "Try It" functionality
 
-use allframe_core::prelude::*;
-use allframe_core::router::OpenApiGenerator;
+use allframe_core::{prelude::*, router::OpenApiGenerator};
 
 fn main() {
     // Create a router with routes

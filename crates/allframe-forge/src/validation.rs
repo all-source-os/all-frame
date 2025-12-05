@@ -38,7 +38,10 @@ pub fn validate_project_name(name: &str) -> Result<()> {
         .chars()
         .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
     {
-        anyhow::bail!("Invalid project name: only alphanumeric characters, underscores, and hyphens are allowed");
+        anyhow::bail!(
+            "Invalid project name: only alphanumeric characters, underscores, and hyphens are \
+             allowed"
+        );
     }
 
     Ok(())

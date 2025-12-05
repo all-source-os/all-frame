@@ -58,7 +58,10 @@ fn main() {
 
     let grpc_html = grpc_explorer_html(&grpc_config, "AllFrame gRPC API");
 
-    println!("✅ gRPC Explorer HTML generated ({} bytes)\n", grpc_html.len());
+    println!(
+        "✅ gRPC Explorer HTML generated ({} bytes)\n",
+        grpc_html.len()
+    );
 
     // Show what the HTML contains
     println!("📦 Generated documentation includes:");

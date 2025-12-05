@@ -15,10 +15,12 @@
 /// - Core dependencies: tokio, serde, anyhow, async-trait
 /// - Binary configuration
 ///
-/// Note: The `allframe` crate dependency will be added once it's published to crates.io.
+/// Note: The `allframe` crate dependency will be added once it's published to
+/// crates.io.
 ///
 /// # Arguments
-/// * `project_name` - Name of the project (used for package name and binary name)
+/// * `project_name` - Name of the project (used for package name and binary
+///   name)
 ///
 /// # Returns
 /// A formatted Cargo.toml file content as a String

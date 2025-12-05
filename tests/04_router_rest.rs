@@ -6,7 +6,8 @@
 //! Builds on the OpenAPI work from Milestone 0.2.
 //!
 //! Note: For Phase 2 MVP, we're using simplified implementations.
-//! Advanced features (parameter extraction, body parsing) will come in later phases.
+//! Advanced features (parameter extraction, body parsing) will come in later
+//! phases.
 
 use allframe_core::router::{ProtocolAdapter, RestAdapter, RestResponse, Router};
 

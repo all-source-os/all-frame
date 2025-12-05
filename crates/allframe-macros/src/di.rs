@@ -1,11 +1,12 @@
 //! Dependency Injection Container Macro Implementation
 //!
-//! This module implements the `#[di_container]` procedural macro for compile-time
-//! dependency injection with zero runtime reflection.
+//! This module implements the `#[di_container]` procedural macro for
+//! compile-time dependency injection with zero runtime reflection.
+
+use std::collections::{HashMap, HashSet};
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::collections::{HashMap, HashSet};
 use syn::{parse2, Data, DeriveInput, Error, Fields, Result, Type};
 
 /// Represents information about a field in the DI container
@@ -89,7 +90,8 @@ pub fn di_container_impl(_attr: TokenStream, item: TokenStream) -> Result<TokenS
     }
 
     // Generate field initializations in dependency order
-    // Strategy: Create Arc instances for dependencies, unwrap when passing to constructors
+    // Strategy: Create Arc instances for dependencies, unwrap when passing to
+    // constructors
     let mut let_bindings = Vec::new();
 
     for field_info in &init_order {
@@ -160,10 +162,10 @@ pub fn di_container_impl(_attr: TokenStream, item: TokenStream) -> Result<TokenS
     }
 
     // Only include fields in the struct that aren't consumed by other fields
-    // i.e., fields that have no outgoing edges in the reverse_graph (from topological sort)
-    // Actually, we need to include ALL fields as they're declared in the struct
-    // The issue is that we're passing ownership. We need to keep the fields in the container
-    // but also pass them to constructors.
+    // i.e., fields that have no outgoing edges in the reverse_graph (from
+    // topological sort) Actually, we need to include ALL fields as they're
+    // declared in the struct The issue is that we're passing ownership. We need
+    // to keep the fields in the container but also pass them to constructors.
     //
     // SOLUTION: Don't pass the container's own fields to constructors
     // Instead, create temporary instances that get moved
@@ -326,8 +328,10 @@ fn compute_initialization_order(fields: &[FieldInfo]) -> Result<(Vec<FieldInfo>,
 ///
 /// This uses several heuristics:
 /// 1. Sequential dependency: A field at position N depends on the field at N-1
-/// 2. Type name matching: If field name contains type name (e.g., "user_repository" and "UserRepository")
-/// 3. Common patterns: Repository depends on Database/DataSource, Service depends on Repository
+/// 2. Type name matching: If field name contains type name (e.g.,
+///    "user_repository" and "UserRepository")
+/// 3. Common patterns: Repository depends on Database/DataSource, Service
+///    depends on Repository
 ///
 /// For example:
 /// ```ignore

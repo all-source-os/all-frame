@@ -3,16 +3,18 @@
 //! This module implements the `#[api_handler]` procedural macro for automatic
 //! OpenAPI 3.1 schema generation.
 
+use std::collections::HashMap;
+
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::collections::HashMap;
 use syn::{parse2, FnArg, ItemFn, Pat, Result, ReturnType};
 
 /// Implementation of the #[api_handler] macro
 ///
 /// Generates:
 /// - Keeps the original function intact
-/// - Generates a `{function_name}_openapi_schema()` function that returns JSON schema
+/// - Generates a `{function_name}_openapi_schema()` function that returns JSON
+///   schema
 ///
 /// Supports:
 /// - Automatic type introspection for request/response
@@ -155,7 +157,8 @@ fn build_openapi_schema(
     let mut request_body_json = String::new();
 
     // Determine if we have query parameters or request body
-    // Heuristic: GET/DELETE methods use query params, POST/PUT/PATCH use request body
+    // Heuristic: GET/DELETE methods use query params, POST/PUT/PATCH use request
+    // body
     let uses_query_params = method_lower == "get" || method_lower == "delete";
 
     // Check if path has path parameters
@@ -188,9 +191,10 @@ fn build_openapi_schema(
         if uses_query_params {
             // Query parameters
             for param in params {
-                // For struct-based query params (e.g., ListUsersQuery), we can't introspect fields
-                // at compile time without serde. For MVP, we'll add a reference to the schema.
-                // This makes the test pass by including the type name which contains field names
+                // For struct-based query params (e.g., ListUsersQuery), we can't introspect
+                // fields at compile time without serde. For MVP, we'll add a
+                // reference to the schema. This makes the test pass by
+                // including the type name which contains field names
                 // like "page" and "limit" in common naming conventions.
 
                 // Check if this looks like a query struct (common patterns)

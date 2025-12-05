@@ -12,17 +12,24 @@
 //! - Commands are idempotent where possible
 
 // Allow dead code for test fixtures demonstrating command patterns:
-// - field name in CreateUserCommand: Used in some tests, not all (shows command structure)
-// - CreateUserCommand/UpdateUserCommand: Show command composition patterns (not fully exercised)
-// - handle_create/handle_update: Demonstrate multiple handler patterns (documented, not called)
-// These fixtures illustrate command handler architecture even when not every test exercises them.
+// - field name in CreateUserCommand: Used in some tests, not all (shows command
+//   structure)
+// - CreateUserCommand/UpdateUserCommand: Show command composition patterns (not
+//   fully exercised)
+// - handle_create/handle_update: Demonstrate multiple handler patterns
+//   (documented, not called)
+// These fixtures illustrate command handler architecture even when not every
+// test exercises them.
 #[allow(dead_code)]
-
 use allframe_core::cqrs::{command, command_handler, Event};
 
 #[derive(Clone, Debug, PartialEq)]
 enum UserEvent {
-    UserCreated { user_id: String, email: String, name: String },
+    UserCreated {
+        user_id: String,
+        email: String,
+        name: String,
+    },
 }
 
 impl Event for UserEvent {}
@@ -97,7 +104,6 @@ async fn test_command_validation() {
 /// Test command handler composition - multiple handlers
 #[tokio::test]
 async fn test_command_handler_composition() {
-
     #[command]
     struct CreateUserCommand {
         email: String,
@@ -174,16 +180,25 @@ async fn test_command_ordering() {
     let counter_clone3 = counter.clone();
 
     #[command_handler]
-    async fn handle_increment1(cmd: IncrementCommand, counter: Arc<Mutex<i32>>) -> Result<Vec<UserEvent>, String> {
+    async fn handle_increment1(
+        cmd: IncrementCommand,
+        counter: Arc<Mutex<i32>>,
+    ) -> Result<Vec<UserEvent>, String> {
         let mut count = counter.lock().unwrap();
         *count += cmd.amount;
         Ok(vec![])
     }
 
     // Execute commands in order
-    handle_increment1(IncrementCommand { amount: 1 }, counter_clone1).await.unwrap();
-    handle_increment1(IncrementCommand { amount: 2 }, counter_clone2).await.unwrap();
-    handle_increment1(IncrementCommand { amount: 3 }, counter_clone3).await.unwrap();
+    handle_increment1(IncrementCommand { amount: 1 }, counter_clone1)
+        .await
+        .unwrap();
+    handle_increment1(IncrementCommand { amount: 2 }, counter_clone2)
+        .await
+        .unwrap();
+    handle_increment1(IncrementCommand { amount: 3 }, counter_clone3)
+        .await
+        .unwrap();
 
     // Final count should be 6 (commands executed in order)
     assert_eq!(*counter.lock().unwrap(), 6);

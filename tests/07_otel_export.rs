@@ -4,8 +4,10 @@
 //!
 //! Tests for OpenTelemetry data export to different backends.
 
-use allframe_core::otel::{traced, configure_exporter, ExporterType, configure_batch_export,
-    get_export_count, configure_sampling};
+use allframe_core::otel::{
+    configure_batch_export, configure_exporter, configure_sampling, get_export_count, traced,
+    ExporterType,
+};
 
 /// Test export to stdout/console
 #[tokio::test]

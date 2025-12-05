@@ -4,9 +4,12 @@
 //!
 //! Tests for OpenTelemetry context propagation.
 
-use allframe_core::otel::{traced, current_trace_id, start_trace, set_baggage, get_baggage,
-    inject_context, extract_context, SpanContext};
 use std::collections::HashMap;
+
+use allframe_core::otel::{
+    current_trace_id, extract_context, get_baggage, inject_context, set_baggage, start_trace,
+    traced, SpanContext,
+};
 
 /// Test context propagation through DI
 #[tokio::test]
@@ -87,7 +90,7 @@ async fn test_context_extraction_from_headers() {
     let mut headers = HashMap::new();
     headers.insert(
         "traceparent".to_string(),
-        "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01".to_string()
+        "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01".to_string(),
     );
 
     let context = extract_context(&headers);

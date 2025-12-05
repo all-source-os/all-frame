@@ -9,6 +9,8 @@ repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
 description = "AllFrame CLI - Project scaffolding and code generation"
+keywords = ["cli", "scaffold", "generator", "allframe", "web"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "allframe"

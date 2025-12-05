@@ -1,6 +1,7 @@
 //! REST API Example
 //!
-//! This example demonstrates how to use AllFrame's REST adapter to build a REST API.
+//! This example demonstrates how to use AllFrame's REST adapter to build a REST
+//! API.
 //!
 //! Key concepts:
 //! - Router setup with REST adapter
@@ -57,7 +58,10 @@ async fn main() {
     let adapter = RestAdapter::new();
     router.add_adapter(Box::new(adapter));
 
-    println!("✓ Router initialized with {} handlers", router.handlers_count());
+    println!(
+        "✓ Router initialized with {} handlers",
+        router.handlers_count()
+    );
     println!("✓ REST adapter registered\n");
 
     // Demonstrate the REST adapter capabilities
@@ -85,12 +89,8 @@ async fn main() {
 
     println!("--- Example 3: GET Request with Query Parameters ---");
     // Build a GET request with query parameters
-    let query_request = rest_adapter.build_request(
-        "GET",
-        "/users/search?name=John&limit=10",
-        None,
-        None,
-    );
+    let query_request =
+        rest_adapter.build_request("GET", "/users/search?name=John&limit=10", None, None);
     println!("Request: {} {}", query_request.method, query_request.path);
     println!("Note: Full query parameter parsing coming in future phases\n");
 

@@ -11,13 +11,21 @@
 //! - Projections are updated from events
 //! - Multiple projections can exist for same events
 
-use allframe_core::cqrs::{query, query_handler, Event, EventStore, Projection};
 use std::collections::HashMap;
+
+use allframe_core::cqrs::{query, query_handler, Event, EventStore, Projection};
 
 #[derive(Clone, Debug)]
 enum UserEvent {
-    Created { user_id: String, email: String, country: String },
-    Updated { user_id: String, email: String },
+    Created {
+        user_id: String,
+        email: String,
+        country: String,
+    },
+    Updated {
+        user_id: String,
+        email: String,
+    },
 }
 
 impl Event for UserEvent {}
@@ -67,10 +75,13 @@ async fn test_query_projection_update() {
         fn apply(&mut self, event: &Self::Event) {
             match event {
                 UserEvent::Created { user_id, email, .. } => {
-                    self.users.insert(user_id.clone(), User {
-                        id: user_id.clone(),
-                        email: email.clone(),
-                    });
+                    self.users.insert(
+                        user_id.clone(),
+                        User {
+                            id: user_id.clone(),
+                            email: email.clone(),
+                        },
+                    );
                 }
                 UserEvent::Updated { user_id, email } => {
                     if let Some(user) = self.users.get_mut(user_id) {
@@ -104,7 +115,9 @@ async fn test_query_eventual_consistency() {
 
     impl UserProjection {
         fn new() -> Self {
-            Self { users: HashMap::new() }
+            Self {
+                users: HashMap::new(),
+            }
         }
 
         fn get_user(&self, id: &str) -> Option<&User> {
@@ -118,10 +131,13 @@ async fn test_query_eventual_consistency() {
         fn apply(&mut self, event: &Self::Event) {
             match event {
                 UserEvent::Created { user_id, email, .. } => {
-                    self.users.insert(user_id.clone(), User {
-                        id: user_id.clone(),
-                        email: email.clone(),
-                    });
+                    self.users.insert(
+                        user_id.clone(),
+                        User {
+                            id: user_id.clone(),
+                            email: email.clone(),
+                        },
+                    );
                 }
                 UserEvent::Updated { user_id, email } => {
                     if let Some(user) = self.users.get_mut(user_id) {
@@ -134,13 +150,17 @@ async fn test_query_eventual_consistency() {
 
     // Write side: Events stored
     let event_store = EventStore::new();
-    event_store.append("user-123", vec![
-        UserEvent::Created {
-            user_id: "123".to_string(),
-            email: "user@example.com".to_string(),
-            country: "US".to_string(),
-        },
-    ]).await.unwrap();
+    event_store
+        .append(
+            "user-123",
+            vec![UserEvent::Created {
+                user_id: "123".to_string(),
+                email: "user@example.com".to_string(),
+                country: "US".to_string(),
+            }],
+        )
+        .await
+        .unwrap();
 
     let events = event_store.get_events("user-123").await.unwrap();
     assert_eq!(events.len(), 1);
@@ -170,10 +190,13 @@ async fn test_multiple_projections() {
         fn apply(&mut self, event: &Self::Event) {
             match event {
                 UserEvent::Created { user_id, email, .. } => {
-                    self.users.insert(user_id.clone(), User {
-                        id: user_id.clone(),
-                        email: email.clone(),
-                    });
+                    self.users.insert(
+                        user_id.clone(),
+                        User {
+                            id: user_id.clone(),
+                            email: email.clone(),
+                        },
+                    );
                 }
                 UserEvent::Updated { user_id, email } => {
                     if let Some(user) = self.users.get_mut(user_id) {
@@ -194,8 +217,15 @@ async fn test_multiple_projections() {
 
         fn apply(&mut self, event: &Self::Event) {
             match event {
-                UserEvent::Created { user_id, email, country } => {
-                    let users = self.countries.entry(country.clone()).or_insert_with(Vec::new);
+                UserEvent::Created {
+                    user_id,
+                    email,
+                    country,
+                } => {
+                    let users = self
+                        .countries
+                        .entry(country.clone())
+                        .or_insert_with(Vec::new);
                     users.push(User {
                         id: user_id.clone(),
                         email: email.clone(),
@@ -214,8 +244,12 @@ async fn test_multiple_projections() {
         country: "US".to_string(),
     };
 
-    let mut projection1 = UserByIdProjection { users: HashMap::new() };
-    let mut projection2 = UsersByCountryProjection { countries: HashMap::new() };
+    let mut projection1 = UserByIdProjection {
+        users: HashMap::new(),
+    };
+    let mut projection2 = UsersByCountryProjection {
+        countries: HashMap::new(),
+    };
 
     // Same event updates both projections
     projection1.apply(&event);
@@ -234,7 +268,9 @@ async fn test_projection_rebuild() {
 
     impl UserProjection {
         fn new() -> Self {
-            Self { users: HashMap::new() }
+            Self {
+                users: HashMap::new(),
+            }
         }
 
         fn get_user(&self, id: &str) -> Option<&User> {
@@ -248,10 +284,13 @@ async fn test_projection_rebuild() {
         fn apply(&mut self, event: &Self::Event) {
             match event {
                 UserEvent::Created { user_id, email, .. } => {
-                    self.users.insert(user_id.clone(), User {
-                        id: user_id.clone(),
-                        email: email.clone(),
-                    });
+                    self.users.insert(
+                        user_id.clone(),
+                        User {
+                            id: user_id.clone(),
+                            email: email.clone(),
+                        },
+                    );
                 }
                 UserEvent::Updated { user_id, email } => {
                     if let Some(user) = self.users.get_mut(user_id) {
@@ -265,27 +304,39 @@ async fn test_projection_rebuild() {
     let event_store = EventStore::new();
 
     // Store many events over time
-    event_store.append("user-123", vec![
-        UserEvent::Created {
-            user_id: "123".to_string(),
-            email: "v1@example.com".to_string(),
-            country: "US".to_string(),
-        },
-    ]).await.unwrap();
+    event_store
+        .append(
+            "user-123",
+            vec![UserEvent::Created {
+                user_id: "123".to_string(),
+                email: "v1@example.com".to_string(),
+                country: "US".to_string(),
+            }],
+        )
+        .await
+        .unwrap();
 
-    event_store.append("user-123", vec![
-        UserEvent::Updated {
-            user_id: "123".to_string(),
-            email: "v2@example.com".to_string(),
-        },
-    ]).await.unwrap();
+    event_store
+        .append(
+            "user-123",
+            vec![UserEvent::Updated {
+                user_id: "123".to_string(),
+                email: "v2@example.com".to_string(),
+            }],
+        )
+        .await
+        .unwrap();
 
-    event_store.append("user-123", vec![
-        UserEvent::Updated {
-            user_id: "123".to_string(),
-            email: "v3@example.com".to_string(),
-        },
-    ]).await.unwrap();
+    event_store
+        .append(
+            "user-123",
+            vec![UserEvent::Updated {
+                user_id: "123".to_string(),
+                email: "v3@example.com".to_string(),
+            }],
+        )
+        .await
+        .unwrap();
 
     // Rebuild projection from scratch by replaying all events
     let all_events = event_store.get_all_events().await.unwrap();

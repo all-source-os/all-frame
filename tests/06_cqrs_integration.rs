@@ -5,18 +5,18 @@
 //! Integration tests for CQRS + Event Sourcing.
 //! These tests verify the full CQRS flow works end-to-end.
 
-// Allow dead code for test fixtures that demonstrate patterns but aren't fully exercised.
-// These include: variant Deleted (shows enum patterns), struct ArchUser (demonstrates
-// architecture integration), event fields (show event structure), saga step fields (demonstrate
-// saga patterns). The tests validate core CQRS flows, not every possible code path.
-#[allow(dead_code)]
-
-use allframe_core::cqrs::{
-    command, command_handler, query, query_handler,
-    Event, EventStore, Projection, Aggregate, Snapshot,
-    SagaDefinition, SagaOrchestrator, SagaStep,
-};
+// Allow dead code for test fixtures that demonstrate patterns but aren't fully
+// exercised. These include: variant Deleted (shows enum patterns), struct
+// ArchUser (demonstrates architecture integration), event fields (show event
+// structure), saga step fields (demonstrate saga patterns). The tests validate
+// core CQRS flows, not every possible code path.
 use std::collections::HashMap;
+
+#[allow(dead_code)]
+use allframe_core::cqrs::{
+    command, command_handler, query, query_handler, Aggregate, Event, EventStore, Projection,
+    SagaDefinition, SagaOrchestrator, SagaStep, Snapshot,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 enum UserEvent {
@@ -45,7 +45,10 @@ async fn test_full_cqrs_flow() {
     }
 
     #[command_handler]
-    async fn handle_create_user(cmd: CreateUserCommand, store: &EventStore<UserEvent>) -> Result<(), String> {
+    async fn handle_create_user(
+        cmd: CreateUserCommand,
+        store: &EventStore<UserEvent>,
+    ) -> Result<(), String> {
         let event = UserEvent::Created {
             user_id: cmd.user_id.clone(),
             email: cmd.email.clone(),
@@ -66,10 +69,13 @@ async fn test_full_cqrs_flow() {
         fn apply(&mut self, event: &Self::Event) {
             match event {
                 UserEvent::Created { user_id, email } => {
-                    self.users.insert(user_id.clone(), User {
-                        id: user_id.clone(),
-                        email: email.clone(),
-                    });
+                    self.users.insert(
+                        user_id.clone(),
+                        User {
+                            id: user_id.clone(),
+                            email: email.clone(),
+                        },
+                    );
                 }
                 _ => {}
             }
@@ -89,13 +95,20 @@ async fn test_full_cqrs_flow() {
 
     // Execute full flow
     let event_store = EventStore::new();
-    let mut projection = UserProjection { users: HashMap::new() };
+    let mut projection = UserProjection {
+        users: HashMap::new(),
+    };
 
     // 1. Execute command
-    handle_create_user(CreateUserCommand {
-        user_id: "123".to_string(),
-        email: "user@example.com".to_string(),
-    }, &event_store).await.unwrap();
+    handle_create_user(
+        CreateUserCommand {
+            user_id: "123".to_string(),
+            email: "user@example.com".to_string(),
+        },
+        &event_store,
+    )
+    .await
+    .unwrap();
 
     // 2. Get events from store
     let events = event_store.get_events("123").await.unwrap();
@@ -106,9 +119,13 @@ async fn test_full_cqrs_flow() {
     }
 
     // 4. Execute query
-    let user = handle_get_user(GetUserQuery {
-        user_id: "123".to_string(),
-    }, &projection).await;
+    let user = handle_get_user(
+        GetUserQuery {
+            user_id: "123".to_string(),
+        },
+        &projection,
+    )
+    .await;
 
     assert!(user.is_some());
     let user_val = user.unwrap();
@@ -265,13 +282,17 @@ async fn test_snapshot_optimization() {
     let snapshot = Snapshot::create(aggregate.clone(), 1000);
 
     // Add more events after snapshot
-    event_store.append("counter-123", vec![
-        UserEvent::Incremented { amount: 1 },
-    ]).await.unwrap();
+    event_store
+        .append("counter-123", vec![UserEvent::Incremented { amount: 1 }])
+        .await
+        .unwrap();
 
     // Rebuild: Load snapshot + replay only new events (much faster)
     let mut rebuilt_aggregate = snapshot.into_aggregate();
-    let new_events = event_store.get_events_after("counter-123", 1000).await.unwrap();
+    let new_events = event_store
+        .get_events_after("counter-123", 1000)
+        .await
+        .unwrap();
 
     for event in new_events {
         rebuilt_aggregate.apply_event(&event);

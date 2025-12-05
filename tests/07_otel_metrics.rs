@@ -70,10 +70,8 @@ async fn test_metric_labels() {
     api_call("POST", 201).await.unwrap();
 
     // For MVP, labels are not yet tracked
-    let get_200 = metrics.get_counter_with_labels(
-        "api_call.requests",
-        &[("method", "GET"), ("status", "200")]
-    );
+    let get_200 = metrics
+        .get_counter_with_labels("api_call.requests", &[("method", "GET"), ("status", "200")]);
     assert_eq!(get_200, 0); // MVP returns 0
 }
 

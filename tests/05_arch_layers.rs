@@ -5,12 +5,12 @@
 //! Tests for Clean Architecture layer enforcement.
 //! AllFrame enforces architectural boundaries at compile time.
 
-// Allow dead code - these tests verify architectural layer markers compile correctly,
-// not that all fields/methods are used at runtime
-#[allow(dead_code)]
-
-use allframe_core::arch::{domain, handler, repository, use_case};
+// Allow dead code - these tests verify architectural layer markers compile
+// correctly, not that all fields/methods are used at runtime
 use std::sync::Arc;
+
+#[allow(dead_code)]
+use allframe_core::arch::{domain, handler, repository, use_case};
 
 /// Test that domain entities have no dependencies
 #[test]

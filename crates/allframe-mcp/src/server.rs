@@ -1,8 +1,10 @@
 //! MCP Server implementation
 
-use allframe_core::router::Router;
-use super::tools::McpTool;
 use std::sync::Arc;
+
+use allframe_core::router::Router;
+
+use super::tools::McpTool;
 
 /// MCP Server that exposes Router handlers as LLM-callable tools
 pub struct McpServer {
@@ -40,7 +42,11 @@ impl McpServer {
     }
 
     /// Call a tool by name with given arguments
-    pub async fn call_tool(&self, name: &str, args: serde_json::Value) -> Result<serde_json::Value, String> {
+    pub async fn call_tool(
+        &self,
+        name: &str,
+        args: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
         // Check if tool exists
         if !self.tools.iter().any(|t| t.name == name) {
             return Err(format!("Tool not found: {}", name));

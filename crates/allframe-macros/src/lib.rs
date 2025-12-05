@@ -14,7 +14,8 @@ mod otel;
 use proc_macro::TokenStream;
 
 // Note: The `provide` attribute is handled directly by `di_container` macro
-// It doesn't need a separate proc_macro_attribute since it's consumed during parsing
+// It doesn't need a separate proc_macro_attribute since it's consumed during
+// parsing
 
 /// Compile-time dependency injection container
 ///
@@ -66,7 +67,8 @@ pub fn api_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Marks a type as part of the Domain layer (Layer 1)
 ///
-/// Domain entities contain pure business logic with no infrastructure dependencies.
+/// Domain entities contain pure business logic with no infrastructure
+/// dependencies.
 ///
 /// # Example
 /// ```ignore
@@ -109,7 +111,8 @@ pub fn repository(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Marks a type as part of the Use Case layer (Layer 3)
 ///
-/// Use cases orchestrate application logic and can depend on Repositories and Domain.
+/// Use cases orchestrate application logic and can depend on Repositories and
+/// Domain.
 ///
 /// # Example
 /// ```ignore
@@ -130,8 +133,9 @@ pub fn use_case(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Marks a type as part of the Handler layer (Layer 4)
 ///
-/// Handlers are entry points (HTTP/gRPC/GraphQL) and can only depend on Use Cases.
-/// Handlers CANNOT depend on Repositories directly - they must go through Use Cases.
+/// Handlers are entry points (HTTP/gRPC/GraphQL) and can only depend on Use
+/// Cases. Handlers CANNOT depend on Repositories directly - they must go
+/// through Use Cases.
 ///
 /// # Example
 /// ```ignore

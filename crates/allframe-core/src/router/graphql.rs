@@ -58,11 +58,8 @@ impl GraphQLAdapter {
 
     /// Register a GraphQL query
     pub fn query(&mut self, name: &str, handler: &str) -> &mut Self {
-        self.operations.push(GraphQLOperation::new(
-            OperationType::Query,
-            name,
-            handler,
-        ));
+        self.operations
+            .push(GraphQLOperation::new(OperationType::Query, name, handler));
         self
     }
 
@@ -149,7 +146,8 @@ impl GraphQLAdapter {
 
     /// Generate GraphQL schema for registered operations
     ///
-    /// Generates GraphQL Schema Definition Language (SDL) from registered operations.
+    /// Generates GraphQL Schema Definition Language (SDL) from registered
+    /// operations.
     pub fn generate_schema(&self) -> String {
         let mut schema = String::new();
 
@@ -283,7 +281,10 @@ mod tests {
         adapter.mutation("createUser", "create_user_handler");
 
         assert_eq!(adapter.operations.len(), 1);
-        assert_eq!(adapter.operations[0].operation_type, OperationType::Mutation);
+        assert_eq!(
+            adapter.operations[0].operation_type,
+            OperationType::Mutation
+        );
         assert_eq!(adapter.operations[0].name, "createUser");
         assert_eq!(adapter.operations[0].handler, "create_user_handler");
     }

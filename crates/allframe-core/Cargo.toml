@@ -46,7 +46,7 @@ cqrs-rocksdb = ["cqrs-allsource", "allsource-core/rocksdb-storage"]
 [dependencies]
 
 # Optional features
-allframe-macros = { path = "../allframe-macros", optional = true }
+allframe-macros = { version = "0.1.0", path = "../allframe-macros", optional = true }
 
 # AllSource Core for CQRS + Event Sourcing
 allsource-core = { git = "https://github.com/all-source-os/chronos-monorepo", optional = true, default-features = false }

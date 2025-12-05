@@ -13,11 +13,13 @@
 
 // Allow dead code for test fixtures demonstrating event patterns:
 // - variant Deleted: Shows deletion events in enum (not exercised in all tests)
-// - field version in V1: Demonstrates versioning structure (used in conversion, not directly read)
-// - StreamUserEvent.user_id: Shows event streaming patterns (not fully exercised)
-// These fixtures document event sourcing patterns even when not every field is validated.
+// - field version in V1: Demonstrates versioning structure (used in conversion,
+//   not directly read)
+// - StreamUserEvent.user_id: Shows event streaming patterns (not fully
+//   exercised)
+// These fixtures document event sourcing patterns even when not every field is
+// validated.
 #[allow(dead_code)]
-
 use allframe_core::cqrs::{Event, EventStore};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -35,12 +37,16 @@ async fn test_event_store_append() {
     let store = EventStore::new();
 
     // Append events
-    store.append("user-123", vec![
-        UserEvent::Created {
-            user_id: "123".to_string(),
-            email: "user@example.com".to_string(),
-        },
-    ]).await.unwrap();
+    store
+        .append(
+            "user-123",
+            vec![UserEvent::Created {
+                user_id: "123".to_string(),
+                email: "user@example.com".to_string(),
+            }],
+        )
+        .await
+        .unwrap();
 
     // Retrieve events
     let events = store.get_events("user-123").await.unwrap();
@@ -76,16 +82,22 @@ async fn test_event_store_replay() {
     let store = EventStore::new();
 
     // Store events
-    store.append("user-123", vec![
-        UserEvent::Created {
-            user_id: "123".to_string(),
-            email: "old@example.com".to_string(),
-        },
-        UserEvent::EmailUpdated {
-            user_id: "123".to_string(),
-            new_email: "new@example.com".to_string(),
-        },
-    ]).await.unwrap();
+    store
+        .append(
+            "user-123",
+            vec![
+                UserEvent::Created {
+                    user_id: "123".to_string(),
+                    email: "old@example.com".to_string(),
+                },
+                UserEvent::EmailUpdated {
+                    user_id: "123".to_string(),
+                    new_email: "new@example.com".to_string(),
+                },
+            ],
+        )
+        .await
+        .unwrap();
 
     // Replay events to rebuild state
     let events = store.get_events("user-123").await.unwrap();
@@ -146,7 +158,7 @@ fn test_event_versioning() {
 /// Test event serialization - events persist correctly
 #[tokio::test]
 async fn test_event_serialization() {
-    use serde::{Serialize, Deserialize};
+    use serde::{Deserialize, Serialize};
 
     #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
     enum SerializableUserEvent {
@@ -188,11 +200,15 @@ async fn test_event_stream_subscribe() {
     store.subscribe(tx).await;
 
     // Append event
-    store.append("user-123", vec![
-        StreamUserEvent::Created {
-            user_id: "123".to_string(),
-        },
-    ]).await.unwrap();
+    store
+        .append(
+            "user-123",
+            vec![StreamUserEvent::Created {
+                user_id: "123".to_string(),
+            }],
+        )
+        .await
+        .unwrap();
 
     // Subscriber receives event
     let received = rx.recv().await;

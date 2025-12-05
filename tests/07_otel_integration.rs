@@ -4,8 +4,11 @@
 //!
 //! Integration tests for OpenTelemetry with other AllFrame features.
 
-use allframe_core::otel::{traced, enable_tracing, disable_tracing, configure_from_file, get_config};
 use std::time::Instant;
+
+use allframe_core::otel::{
+    configure_from_file, disable_tracing, enable_tracing, get_config, traced,
+};
 
 /// Test OTEL with protocol-agnostic router
 #[tokio::test]
@@ -25,8 +28,9 @@ async fn test_otel_with_router() {
 /// Test OTEL with Clean Architecture layers
 #[tokio::test]
 async fn test_otel_with_clean_arch() {
-    use allframe_core::arch::{handler, use_case, repository, domain};
     use std::sync::Arc;
+
+    use allframe_core::arch::{domain, handler, repository, use_case};
 
     #[domain]
     struct User {
@@ -98,7 +102,7 @@ async fn test_otel_with_cqrs() {
     #[traced]
     async fn handle_create_user(
         cmd: CreateUserCommand,
-        store: &EventStore<UserEvent>
+        store: &EventStore<UserEvent>,
     ) -> Result<(), String> {
         let event = UserEvent::Created {
             user_id: cmd.user_id.clone(),
@@ -110,9 +114,13 @@ async fn test_otel_with_cqrs() {
     let store = EventStore::new();
 
     handle_create_user(
-        CreateUserCommand { user_id: "123".to_string() },
-        &store
-    ).await.unwrap();
+        CreateUserCommand {
+            user_id: "123".to_string(),
+        },
+        &store,
+    )
+    .await
+    .unwrap();
 
     // Verify event was stored
     let events = store.get_events("123").await.unwrap();
@@ -154,7 +162,8 @@ async fn test_otel_performance_overhead() {
 
     // For MVP, overhead is minimal since tracing is passive
     let overhead_pct = ((with_tracing.as_micros() as f64 - without_tracing.as_micros() as f64)
-        / without_tracing.as_micros() as f64) * 100.0;
+        / without_tracing.as_micros() as f64)
+        * 100.0;
 
     // MVP has very low overhead (< 5%)
     assert!(overhead_pct < 10.0, "Overhead: {}%", overhead_pct);
@@ -164,7 +173,9 @@ async fn test_otel_performance_overhead() {
 #[tokio::test]
 async fn test_otel_configuration() {
     // For MVP, configuration is placeholders
-    configure_from_file("tests/fixtures/otel_config.toml").await.ok();
+    configure_from_file("tests/fixtures/otel_config.toml")
+        .await
+        .ok();
 
     let config = get_config();
 

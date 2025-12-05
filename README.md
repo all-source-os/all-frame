@@ -305,24 +305,48 @@ orchestrator.execute(saga).await?;
 
 ### 🤖 MCP Server (LLM Tool Calling)
 
+Expose your AllFrame APIs as LLM-callable tools using the [Model Context Protocol](https://modelcontextprotocol.io).
+
+**Installation:**
+
 ```toml
 # Opt-in to MCP server (zero overhead if not used!)
 [dependencies]
 allframe-core = "0.1"
 allframe-mcp = "0.1"  # Separate crate - 100% zero bloat!
+tokio = { version = "1.48", features = ["full"] }
 ```
+
+**Quick Start:**
 
 ```rust
 use allframe_core::router::Router;
 use allframe_mcp::McpServer;
 
-let mut router = Router::new();
-router.register("get_user", || async { "user data".to_string() });
+#[tokio::main]
+async fn main() {
+    // Create router with handlers
+    let mut router = Router::new();
+    router.register("get_user", |user_id: String| async move {
+        format!("User: {}", user_id)
+    });
+    router.register("create_order", |product: String| async move {
+        format!("Order created for: {}", product)
+    });
 
-// Handlers automatically become LLM-callable tools!
-let mcp_server = McpServer::new(router);
+    // Handlers automatically become LLM-callable tools!
+    let mcp = McpServer::new(router);
 
-// Now expose to Claude Desktop or other MCP clients
+    // List available tools
+    let tools = mcp.list_tools().await;
+    println!("Available tools: {}", tools.len());
+
+    // Call a tool
+    let result = mcp.call_tool(
+        "get_user",
+        serde_json::json!({"user_id": "123"})
+    ).await;
+}
 ```
 
 **Features:**
@@ -330,6 +354,17 @@ let mcp_server = McpServer::new(router);
 - ✅ JSON Schema generation and validation
 - ✅ Type coercion (string → number, boolean)
 - ✅ **100% zero overhead** when not used (opt-in only)
+- ✅ Flexible deployment (standalone, embedded, serverless)
+
+**Usage Patterns:**
+- 📱 Standalone MCP server binary for Claude Desktop
+- 🌐 Embedded in web applications (Axum, Actix, Rocket)
+- ☁️ Serverless deployment (AWS Lambda, etc.)
+
+**Documentation:**
+- [allframe-mcp README](crates/allframe-mcp/README.md) - Complete usage guide
+- [MCP Distribution Model](docs/MCP_DISTRIBUTION_MODEL.md) - Library vs binary distribution
+- [Example: STDIO Server](crates/allframe-mcp/examples/mcp_stdio_server.rs) - Full implementation
 
 ---
 

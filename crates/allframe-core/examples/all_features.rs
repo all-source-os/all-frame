@@ -11,8 +11,10 @@
 //!   - Custom theme and styling
 //!   - "Try It" functionality
 
-use allframe_core::prelude::*;
-use allframe_core::router::{OpenApiGenerator, ScalarConfig, ScalarTheme};
+use allframe_core::{
+    prelude::*,
+    router::{OpenApiGenerator, ScalarConfig, ScalarTheme},
+};
 
 #[tokio::main]
 async fn main() {
@@ -30,8 +32,8 @@ async fn main() {
         .with_server("https://staging.example.com", Some("Staging"))
         .generate(&router);
 
-    let openapi_json = serde_json::to_string_pretty(&openapi)
-        .expect("Failed to serialize OpenAPI spec");
+    let openapi_json =
+        serde_json::to_string_pretty(&openapi).expect("Failed to serialize OpenAPI spec");
 
     // Configure Scalar UI with all features
     let scalar_config = ScalarConfig::new()
@@ -51,11 +53,8 @@ async fn main() {
         );
 
     // Generate Scalar HTML documentation
-    let _scalar_html = allframe_core::router::scalar_html(
-        &scalar_config,
-        "AllFrame API",
-        &openapi_json,
-    );
+    let _scalar_html =
+        allframe_core::router::scalar_html(&scalar_config, "AllFrame API", &openapi_json);
 
     // Print info to prevent optimizations
     println!("Router handlers: {}", router.handlers_count());

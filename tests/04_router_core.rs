@@ -11,9 +11,9 @@
 //! - Protocol adapters can transform requests/responses
 //! - Type-safe handler execution
 
+use std::{future::Future, pin::Pin};
+
 use allframe_core::router::{ProtocolAdapter, Router};
-use std::future::Future;
-use std::pin::Pin;
 
 /// Test that we can register a simple handler
 #[tokio::test]

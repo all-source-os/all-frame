@@ -29,8 +29,9 @@
 //! // Serve this HTML at /graphql/playground
 //! ```
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 /// GraphiQL theme options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -289,11 +290,17 @@ mod tests {
             .add_header("Authorization", "Bearer token123");
 
         assert_eq!(config.endpoint_url, "/api/graphql");
-        assert_eq!(config.subscription_url, Some("ws://localhost:4000/graphql".to_string()));
+        assert_eq!(
+            config.subscription_url,
+            Some("ws://localhost:4000/graphql".to_string())
+        );
         assert_eq!(config.theme, GraphiQLTheme::Light);
         assert!(!config.enable_explorer);
         assert!(!config.enable_history);
-        assert_eq!(config.headers.get("Authorization"), Some(&"Bearer token123".to_string()));
+        assert_eq!(
+            config.headers.get("Authorization"),
+            Some(&"Bearer token123".to_string())
+        );
     }
 
     #[test]
@@ -350,8 +357,7 @@ mod tests {
 
     #[test]
     fn test_graphiql_custom_css() {
-        let config = GraphiQLConfig::new()
-            .custom_css("body { background: #1a1a1a; }");
+        let config = GraphiQLConfig::new().custom_css("body { background: #1a1a1a; }");
 
         let html = graphiql_html(&config, "Test API");
 

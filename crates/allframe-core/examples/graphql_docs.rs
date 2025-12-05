@@ -59,7 +59,10 @@ fn main() {
 
     let graphiql_html = graphiql_html(&graphiql_config, "AllFrame GraphQL API");
 
-    println!("✅ GraphiQL HTML generated ({} bytes)\n", graphiql_html.len());
+    println!(
+        "✅ GraphiQL HTML generated ({} bytes)\n",
+        graphiql_html.len()
+    );
 
     // Show what the HTML contains
     println!("📦 Generated documentation includes:");

@@ -9,10 +9,11 @@
 //! - Infrastructure layer (external implementations)
 //! - Presentation layer (HTTP/API handlers)
 
-use crate::templates;
+use std::{fs, path::Path};
+
 use anyhow::Result;
-use std::fs;
-use std::path::Path;
+
+use crate::templates;
 
 /// Create the Clean Architecture directory structure
 ///

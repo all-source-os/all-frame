@@ -9,7 +9,8 @@
 //! - Verify feature combinations
 //! - Verify production features are truly optional
 
-// These tests are compile-time checks - the fact that they compile proves the feature flags work
+// These tests are compile-time checks - the fact that they compile proves the
+// feature flags work
 
 #[test]
 fn test_minimal_router_without_config() {
@@ -79,7 +80,7 @@ fn test_full_router_features() {
 #[test]
 fn test_mvp_adapters_always_available() {
     // MVP adapters should always be available regardless of features
-    use allframe_core::router::{RestAdapter, GraphQLAdapter, GrpcAdapter};
+    use allframe_core::router::{GraphQLAdapter, GrpcAdapter, RestAdapter};
 
     let _rest = RestAdapter::new();
     let _graphql = GraphQLAdapter::new();
@@ -92,7 +93,8 @@ fn test_mvp_adapters_always_available() {
 #[cfg(not(feature = "router"))]
 fn test_config_not_available_without_router_feature() {
     // This test verifies that config types are NOT available without router feature
-    // We can't directly test absence, but the compilation succeeds if the types aren't used
+    // We can't directly test absence, but the compilation succeeds if the types
+    // aren't used
 
     use allframe_core::router::Router;
     let _router = Router::new();
@@ -106,8 +108,9 @@ fn test_config_not_available_without_router_feature() {
 #[test]
 #[cfg(all(not(feature = "router-graphql"), not(feature = "router-grpc")))]
 fn test_production_adapters_not_available() {
-    // This test verifies production adapters are NOT available without their features
-    // We can't directly test absence, but the compilation succeeds if types aren't used
+    // This test verifies production adapters are NOT available without their
+    // features We can't directly test absence, but the compilation succeeds if
+    // types aren't used
 
     use allframe_core::router::Router;
     let _router = Router::new();

@@ -139,8 +139,7 @@ impl GrpcAdapter {
         if let Some((method, payload)) = request.split_once(':') {
             Ok((method.to_string(), payload.to_string()))
         } else {
-            Err("Invalid gRPC request format. Expected: ServiceName.MethodName:payload"
-                .to_string())
+            Err("Invalid gRPC request format. Expected: ServiceName.MethodName:payload".to_string())
         }
     }
 
@@ -241,7 +240,8 @@ impl ProtocolAdapter for GrpcAdapter {
             let (method_name, _payload) = match parse_result {
                 Ok(parsed) => parsed,
                 Err(e) => {
-                    let response = format!("grpc-status: {} {}", GrpcStatus::InvalidArgument as u32, e);
+                    let response =
+                        format!("grpc-status: {} {}", GrpcStatus::InvalidArgument as u32, e);
                     return Ok(response);
                 }
             };
@@ -467,8 +467,11 @@ mod tests {
         adapter.bidirectional_streaming("ChatService", "Chat", "chat");
 
         let proto = adapter.generate_proto();
-        assert!(proto.contains("rpc CreateUsers(stream CreateUsersRequest) returns (CreateUsersResponse);"));
-        assert!(proto.contains("rpc ListUsers(ListUsersRequest) returns (stream ListUsersResponse);"));
+        assert!(proto
+            .contains("rpc CreateUsers(stream CreateUsersRequest) returns (CreateUsersResponse);"));
+        assert!(
+            proto.contains("rpc ListUsers(ListUsersRequest) returns (stream ListUsersResponse);")
+        );
         assert!(proto.contains("rpc Chat(stream ChatRequest) returns (stream ChatResponse);"));
     }
 
@@ -506,9 +509,7 @@ mod tests {
         let mut adapter = GrpcAdapter::new();
         adapter.unary("UserService", "GetUser", "get_user_handler");
 
-        let result = adapter
-            .handle("UserService.GetUser:{\"id\":42}")
-            .await;
+        let result = adapter.handle("UserService.GetUser:{\"id\":42}").await;
         assert!(result.is_ok());
 
         let response = result.unwrap();

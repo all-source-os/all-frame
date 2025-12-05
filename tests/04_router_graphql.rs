@@ -5,7 +5,8 @@
 //! Tests for GraphQL protocol adapter.
 //!
 //! Note: For Phase 3 MVP, we're using simplified GraphQL parsing.
-//! Full GraphQL query parsing and schema introspection will come in later phases.
+//! Full GraphQL query parsing and schema introspection will come in later
+//! phases.
 
 use allframe_core::router::{GraphQLAdapter, ProtocolAdapter, Router};
 

@@ -1,7 +1,7 @@
 //! MCP Server Example
 //!
-//! This example demonstrates how to create an MCP (Model Context Protocol) server
-//! that exposes AllFrame Router handlers as LLM-callable tools.
+//! This example demonstrates how to create an MCP (Model Context Protocol)
+//! server that exposes AllFrame Router handlers as LLM-callable tools.
 //!
 //! Run with:
 //! ```bash
@@ -93,7 +93,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test 1: Get user
     println!("   1. Calling 'get_user'...");
-    match mcp_server.call_tool("get_user", serde_json::json!({})).await {
+    match mcp_server
+        .call_tool("get_user", serde_json::json!({}))
+        .await
+    {
         Ok(result) => println!("      ✅ Result: {}\n", result),
         Err(e) => println!("      ❌ Error: {}\n", e),
     }
@@ -138,7 +141,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("🎉 MCP Server Ready!\n");
     println!("To use with Claude Desktop, configure:");
-    println!(r#"
+    println!(
+        r#"
 {{
   "mcpServers": {{
     "allframe-api": {{
@@ -147,7 +151,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }}
   }}
 }}
-"#);
+"#
+    );
 
     Ok(())
 }

@@ -1,6 +1,7 @@
 //! gRPC API Example
 //!
-//! This example demonstrates how to use AllFrame's gRPC adapter to build a gRPC service.
+//! This example demonstrates how to use AllFrame's gRPC adapter to build a gRPC
+//! service.
 //!
 //! Key concepts:
 //! - Router setup with gRPC adapter
@@ -24,7 +25,8 @@ async fn main() {
     let mut router = Router::new();
 
     // Register RPC method handlers
-    // Each handler is a simple async function that returns JSON (protobuf in production)
+    // Each handler is a simple async function that returns JSON (protobuf in
+    // production)
 
     // RPC: GetUser(GetUserRequest) returns (GetUserResponse)
     router.register("GetUser", || async move {
@@ -50,7 +52,10 @@ async fn main() {
     let adapter = GrpcAdapter::new();
     router.add_adapter(Box::new(adapter));
 
-    println!("✓ Router initialized with {} handlers", router.handlers_count());
+    println!(
+        "✓ Router initialized with {} handlers",
+        router.handlers_count()
+    );
     println!("✓ gRPC adapter registered\n");
 
     // Demonstrate the gRPC adapter capabilities
@@ -81,8 +86,10 @@ async fn main() {
 
     println!("--- Example 4: Unary RPC Call (CreateUser) ---");
     // Execute CreateUser RPC
-    let create_request =
-        grpc_adapter.build_request("CreateUser", r#"{"name": "Charlie", "email": "charlie@example.com"}"#);
+    let create_request = grpc_adapter.build_request(
+        "CreateUser",
+        r#"{"name": "Charlie", "email": "charlie@example.com"}"#,
+    );
     println!("Method: {}", create_request.method);
     println!("Payload: {}", create_request.payload);
 
@@ -100,7 +107,11 @@ async fn main() {
     println!("--- Example 6: gRPC Status Codes ---");
     // gRPC uses specific status codes for errors
     println!("Available gRPC status codes:");
-    println!("  {:?} = {}", GrpcStatus::Ok as i32, GrpcStatus::Ok.code_name());
+    println!(
+        "  {:?} = {}",
+        GrpcStatus::Ok as i32,
+        GrpcStatus::Ok.code_name()
+    );
     println!(
         "  {:?} = {}",
         GrpcStatus::InvalidArgument as i32,
@@ -162,5 +173,8 @@ async fn main() {
     println!("- See examples/rest_api.rs for REST support");
     println!("- See examples/graphql_api.rs for GraphQL support");
     println!("- See examples/multi_protocol.rs for multi-protocol routing");
-    println!("- Full protobuf encoding, streaming RPCs, and bidirectional communication coming in future phases");
+    println!(
+        "- Full protobuf encoding, streaming RPCs, and bidirectional communication coming in \
+         future phases"
+    );
 }

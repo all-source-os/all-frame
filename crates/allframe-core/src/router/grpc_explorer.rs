@@ -26,8 +26,9 @@
 //! // Serve this HTML at /grpc/explorer
 //! ```
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 /// gRPC Explorer theme options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -438,17 +439,61 @@ Server::builder()
         theme_class = theme_class,
         config_json = config_json,
         custom_css = custom_css,
-        bg_color = if matches!(config.theme, GrpcExplorerTheme::Dark) { "#1a1a1a" } else { "#ffffff" },
-        text_color = if matches!(config.theme, GrpcExplorerTheme::Dark) { "#e5e5e5" } else { "#1a1a1a" },
-        header_bg = if matches!(config.theme, GrpcExplorerTheme::Dark) { "#252525" } else { "#f5f5f5" },
-        sidebar_bg = if matches!(config.theme, GrpcExplorerTheme::Dark) { "#1f1f1f" } else { "#fafafa" },
-        border_color = if matches!(config.theme, GrpcExplorerTheme::Dark) { "#333" } else { "#e5e5e5" },
-        item_bg = if matches!(config.theme, GrpcExplorerTheme::Dark) { "#2a2a2a" } else { "#ffffff" },
-        item_hover_bg = if matches!(config.theme, GrpcExplorerTheme::Dark) { "#333" } else { "#f0f0f0" },
-        info_bg = if matches!(config.theme, GrpcExplorerTheme::Dark) { "#1f2937" } else { "#f0f9ff" },
-        accent_color = if matches!(config.theme, GrpcExplorerTheme::Dark) { "#60a5fa" } else { "#3b82f6" },
-        reflection_status = if config.enable_reflection { "✓ Enabled" } else { "✗ Disabled" },
-        tls_status = if config.enable_tls { "✓ Enabled" } else { "✗ Disabled" },
+        bg_color = if matches!(config.theme, GrpcExplorerTheme::Dark) {
+            "#1a1a1a"
+        } else {
+            "#ffffff"
+        },
+        text_color = if matches!(config.theme, GrpcExplorerTheme::Dark) {
+            "#e5e5e5"
+        } else {
+            "#1a1a1a"
+        },
+        header_bg = if matches!(config.theme, GrpcExplorerTheme::Dark) {
+            "#252525"
+        } else {
+            "#f5f5f5"
+        },
+        sidebar_bg = if matches!(config.theme, GrpcExplorerTheme::Dark) {
+            "#1f1f1f"
+        } else {
+            "#fafafa"
+        },
+        border_color = if matches!(config.theme, GrpcExplorerTheme::Dark) {
+            "#333"
+        } else {
+            "#e5e5e5"
+        },
+        item_bg = if matches!(config.theme, GrpcExplorerTheme::Dark) {
+            "#2a2a2a"
+        } else {
+            "#ffffff"
+        },
+        item_hover_bg = if matches!(config.theme, GrpcExplorerTheme::Dark) {
+            "#333"
+        } else {
+            "#f0f0f0"
+        },
+        info_bg = if matches!(config.theme, GrpcExplorerTheme::Dark) {
+            "#1f2937"
+        } else {
+            "#f0f9ff"
+        },
+        accent_color = if matches!(config.theme, GrpcExplorerTheme::Dark) {
+            "#60a5fa"
+        } else {
+            "#3b82f6"
+        },
+        reflection_status = if config.enable_reflection {
+            "✓ Enabled"
+        } else {
+            "✗ Disabled"
+        },
+        tls_status = if config.enable_tls {
+            "✓ Enabled"
+        } else {
+            "✗ Disabled"
+        },
         timeout = config.timeout_seconds,
     )
 }
@@ -482,7 +527,10 @@ mod tests {
         assert!(config.enable_tls);
         assert_eq!(config.theme, GrpcExplorerTheme::Light);
         assert_eq!(config.timeout_seconds, 60);
-        assert_eq!(config.headers.get("Authorization"), Some(&"Bearer token123".to_string()));
+        assert_eq!(
+            config.headers.get("Authorization"),
+            Some(&"Bearer token123".to_string())
+        );
     }
 
     #[test]
@@ -536,8 +584,7 @@ mod tests {
 
     #[test]
     fn test_grpc_explorer_custom_css() {
-        let config = GrpcExplorerConfig::new()
-            .custom_css("body { background: #000; }");
+        let config = GrpcExplorerConfig::new().custom_css("body { background: #000; }");
 
         let html = grpc_explorer_html(&config, "Custom API");
 

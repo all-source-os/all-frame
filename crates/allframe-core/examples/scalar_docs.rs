@@ -1,7 +1,8 @@
 //! Scalar API Documentation Example
 //!
 //! This example demonstrates how to use AllFrame's Scalar integration
-//! to generate beautiful, interactive API documentation with "Try It" functionality.
+//! to generate beautiful, interactive API documentation with "Try It"
+//! functionality.
 //!
 //! Features demonstrated:
 //! - REST API with multiple endpoints
@@ -62,16 +63,16 @@ fn main() {
 
     let openapi_spec = OpenApiGenerator::new("AllFrame Users API", "1.0.0")
         .with_description(
-            "A sample REST API demonstrating AllFrame's Scalar integration. \
-             This API provides CRUD operations for user management."
+            "A sample REST API demonstrating AllFrame's Scalar integration. This API provides \
+             CRUD operations for user management.",
         )
         .with_server("http://localhost:3000", Some("Local Development"))
         .with_server("https://api.example.com", Some("Production"))
         .with_server("https://staging.example.com", Some("Staging"))
         .generate(&router);
 
-    let openapi_json = serde_json::to_string_pretty(&openapi_spec)
-        .expect("Failed to serialize OpenAPI spec");
+    let openapi_json =
+        serde_json::to_string_pretty(&openapi_spec).expect("Failed to serialize OpenAPI spec");
 
     println!("✅ OpenAPI spec generated ({} bytes)\n", openapi_json.len());
 
@@ -117,11 +118,8 @@ fn main() {
     // Generate Scalar HTML
     println!("🎭 Generating Scalar HTML documentation...");
 
-    let scalar_html = allframe_core::router::scalar_html(
-        &scalar_config,
-        "AllFrame Users API",
-        &openapi_json,
-    );
+    let scalar_html =
+        allframe_core::router::scalar_html(&scalar_config, "AllFrame Users API", &openapi_json);
 
     println!("✅ Scalar HTML generated ({} bytes)\n", scalar_html.len());
 
@@ -145,7 +143,8 @@ fn main() {
 
     // Example integration code
     println!("💡 Example Integration (Axum):");
-    println!(r#"
+    println!(
+        r#"
     use axum::{{routing::get, Router, response::Html, Json}};
 
     #[tokio::main]
@@ -168,7 +167,8 @@ fn main() {
 
         axum::serve(listener, app).await.unwrap();
     }}
-    "#);
+    "#
+    );
 
     println!("\n✨ Example complete!");
 }

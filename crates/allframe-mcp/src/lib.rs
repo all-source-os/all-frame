@@ -18,18 +18,19 @@
 //! # }
 //! ```
 
+pub mod schema;
 pub mod server;
 pub mod tools;
-pub mod schema;
 
+pub use schema::{coerce_type, extract_enum_values, openapi_to_json_schema, validate_input};
 pub use server::McpServer;
 pub use tools::McpTool;
-pub use schema::{openapi_to_json_schema, validate_input, coerce_type, extract_enum_values};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use allframe_core::router::Router;
+
+    use super::*;
 
     // Phase 1 Tests: Core MCP Server Functionality
 
@@ -100,7 +101,9 @@ mod tests {
         let mcp_server = McpServer::new(router);
 
         // Call tool without arguments
-        let result = mcp_server.call_tool("get_user", serde_json::json!({})).await;
+        let result = mcp_server
+            .call_tool("get_user", serde_json::json!({}))
+            .await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), serde_json::json!("User data"));
     }
@@ -126,7 +129,9 @@ mod tests {
         let mcp_server = McpServer::new(router);
 
         // Try to call non-existent tool
-        let result = mcp_server.call_tool("unknown_tool", serde_json::json!({})).await;
+        let result = mcp_server
+            .call_tool("unknown_tool", serde_json::json!({}))
+            .await;
 
         // Should return error
         assert!(result.is_err());
@@ -143,17 +148,15 @@ mod tests {
         let mcp_server = McpServer::new(router);
 
         // Call should succeed but we can test error propagation later
-        let result = mcp_server.call_tool("failing_handler", serde_json::json!({})).await;
+        let result = mcp_server
+            .call_tool("failing_handler", serde_json::json!({}))
+            .await;
         assert!(result.is_ok()); // For now, handlers don't fail
     }
 
     #[test]
     fn test_mcp_tool_creation() {
-        let tool = McpTool::new(
-            "test_tool",
-            "A test tool",
-            r#"{"type": "object"}"#,
-        );
+        let tool = McpTool::new("test_tool", "A test tool", r#"{"type": "object"}"#);
 
         assert_eq!(tool.name, "test_tool");
         assert_eq!(tool.description, "A test tool");

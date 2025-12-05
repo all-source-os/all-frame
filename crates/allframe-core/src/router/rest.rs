@@ -19,7 +19,11 @@ pub struct RestRoute {
 
 impl RestRoute {
     /// Create a new REST route
-    pub fn new(method: impl Into<String>, path: impl Into<String>, handler: impl Into<String>) -> Self {
+    pub fn new(
+        method: impl Into<String>,
+        path: impl Into<String>,
+        handler: impl Into<String>,
+    ) -> Self {
         Self {
             method: method.into(),
             path: path.into(),
@@ -74,9 +78,7 @@ pub struct RestAdapter {
 impl RestAdapter {
     /// Create a new REST adapter
     pub fn new() -> Self {
-        Self {
-            routes: Vec::new(),
-        }
+        Self { routes: Vec::new() }
     }
 
     /// Register a REST route
@@ -173,8 +175,10 @@ impl ProtocolAdapter for RestAdapter {
                 Some(route) => {
                     // In full implementation, would call handler here
                     // For now, return success with handler name
-                    let response_body = format!("{{\"handler\":\"{}\",\"method\":\"{}\",\"path\":\"{}\"}}",
-                        route.handler, method, path);
+                    let response_body = format!(
+                        "{{\"handler\":\"{}\",\"method\":\"{}\",\"path\":\"{}\"}}",
+                        route.handler, method, path
+                    );
                     let response = format!("HTTP 200 {}", response_body);
                     Ok(response)
                 }

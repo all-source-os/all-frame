@@ -44,8 +44,7 @@ async fn main() {
 
     // Handler 3: Create a new user
     router.register("create_user", || async move {
-        r#"{"id": 4, "name": "David", "email": "david@example.com", "created": true}"#
-            .to_string()
+        r#"{"id": 4, "name": "David", "email": "david@example.com", "created": true}"#.to_string()
     });
 
     println!("✓ Registered {} handlers", router.handlers_count());
@@ -188,7 +187,10 @@ async fn main() {
 
     // gRPC unary RPC call for create
     println!("\ngRPC: CreateUser RPC");
-    let create_request = grpc.build_request("CreateUser", r#"{"name": "David", "email": "david@example.com"}"#);
+    let create_request = grpc.build_request(
+        "CreateUser",
+        r#"{"name": "David", "email": "david@example.com"}"#,
+    );
     println!("  Method: {}", create_request.method);
 
     let response = grpc.execute("CreateUser", "{}").await.unwrap();
@@ -259,7 +261,8 @@ async fn main() {
     println!();
     println!("In the future, you'll be able to configure protocols via YAML:");
     println!();
-    println!(r#"  protocols:
+    println!(
+        r#"  protocols:
     rest:
       enabled: true
       port: 8080
@@ -282,7 +285,8 @@ async fn main() {
       service: UserService
       methods:
         - rpc: GetUser
-          handler: get_user"#);
+          handler: get_user"#
+    );
     println!();
     println!("Stay tuned for Phase 5: Configuration System!");
     println!();

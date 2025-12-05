@@ -24,9 +24,11 @@
 //! assert!(results.all_passed());
 //! ```
 
-use crate::router::{RouteMetadata, Router};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
+
+use crate::router::{RouteMetadata, Router};
 
 /// Contract test result for a single route
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -248,11 +250,7 @@ impl<'a> ContractTester<'a> {
     pub fn test_route(&self, route: &RouteMetadata) -> ContractTestResult {
         // Basic validation: route must have path and method
         if route.path.is_empty() {
-            return ContractTestResult::failed(
-                &route.path,
-                &route.method,
-                "Route path is empty",
-            );
+            return ContractTestResult::failed(&route.path, &route.method, "Route path is empty");
         }
 
         let mut result = ContractTestResult::passed(&route.path, &route.method);
@@ -309,7 +307,11 @@ async fn test_{}_contract() {{
     assert!(result.passed, "Contract test failed: {{:?}}", result.failure_reason);
 }}
 "#,
-            route.path.replace('/', "_").replace('{', "").replace('}', ""),
+            route
+                .path
+                .replace('/', "_")
+                .replace('{', "")
+                .replace('}', ""),
             route.path,
             route.method
         )
@@ -347,7 +349,11 @@ impl ContractTestable for Router {
     fn test_route_contract(&self, path: &str, method: &str) -> ContractTestResult {
         let tester = ContractTester::new(self);
 
-        if let Some(route) = self.routes().iter().find(|r| r.path == path && r.method == method) {
+        if let Some(route) = self
+            .routes()
+            .iter()
+            .find(|r| r.path == path && r.method == method)
+        {
             tester.test_route(route)
         } else {
             ContractTestResult::failed(
@@ -381,8 +387,7 @@ mod tests {
 
     #[test]
     fn test_contract_test_result_with_error() {
-        let result = ContractTestResult::passed("/users", "GET")
-            .with_error("Missing field: name");
+        let result = ContractTestResult::passed("/users", "GET").with_error("Missing field: name");
 
         assert!(!result.passed);
         assert_eq!(result.errors.len(), 1);

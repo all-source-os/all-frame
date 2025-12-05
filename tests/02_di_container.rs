@@ -136,8 +136,7 @@ fn test_di_trait_injection() {
 /// Test that the DI container is thread-safe
 #[test]
 fn test_di_thread_safety() {
-    use std::sync::Arc;
-    use std::thread;
+    use std::{sync::Arc, thread};
 
     #[derive(Clone)]
     struct SharedService {

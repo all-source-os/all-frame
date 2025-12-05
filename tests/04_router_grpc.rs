@@ -12,7 +12,8 @@
 //! - gRPC status codes handled correctly
 //!
 //! Note: For Phase 4 MVP, we're using simplified gRPC implementations.
-//! Full protobuf encoding, streaming, and service generation will come in later phases.
+//! Full protobuf encoding, streaming, and service generation will come in later
+//! phases.
 
 use allframe_core::router::{GrpcAdapter, ProtocolAdapter, Router};
 

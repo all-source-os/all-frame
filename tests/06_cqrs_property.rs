@@ -5,8 +5,9 @@
 //! Property-based tests for CQRS invariants.
 //! These tests verify that CQRS properties hold for arbitrary inputs.
 
-use allframe_core::cqrs::{Event, EventStore, Projection, Aggregate};
 use std::collections::HashMap;
+
+use allframe_core::cqrs::{Aggregate, Event, EventStore, Projection};
 
 #[derive(Clone, Debug, PartialEq)]
 enum UserEvent {
@@ -69,10 +70,13 @@ fn proptest_projection_consistency() {
         fn apply(&mut self, event: &Self::Event) {
             match event {
                 UserEvent::Created { user_id, email } => {
-                    self.users.insert(user_id.clone(), User {
-                        id: user_id.clone(),
-                        email: email.clone(),
-                    });
+                    self.users.insert(
+                        user_id.clone(),
+                        User {
+                            id: user_id.clone(),
+                            email: email.clone(),
+                        },
+                    );
                 }
                 _ => {}
             }
@@ -81,24 +85,44 @@ fn proptest_projection_consistency() {
 
     // Test with multiple event sequences
     let test_sequences = vec![
+        vec![UserEvent::Created {
+            user_id: "1".to_string(),
+            email: "a@test.com".to_string(),
+        }],
         vec![
-            UserEvent::Created { user_id: "1".to_string(), email: "a@test.com".to_string() },
+            UserEvent::Created {
+                user_id: "1".to_string(),
+                email: "a@test.com".to_string(),
+            },
+            UserEvent::Created {
+                user_id: "2".to_string(),
+                email: "b@test.com".to_string(),
+            },
         ],
         vec![
-            UserEvent::Created { user_id: "1".to_string(), email: "a@test.com".to_string() },
-            UserEvent::Created { user_id: "2".to_string(), email: "b@test.com".to_string() },
-        ],
-        vec![
-            UserEvent::Created { user_id: "1".to_string(), email: "a@test.com".to_string() },
-            UserEvent::Created { user_id: "2".to_string(), email: "b@test.com".to_string() },
-            UserEvent::Created { user_id: "3".to_string(), email: "c@test.com".to_string() },
+            UserEvent::Created {
+                user_id: "1".to_string(),
+                email: "a@test.com".to_string(),
+            },
+            UserEvent::Created {
+                user_id: "2".to_string(),
+                email: "b@test.com".to_string(),
+            },
+            UserEvent::Created {
+                user_id: "3".to_string(),
+                email: "c@test.com".to_string(),
+            },
         ],
     ];
 
     for events in test_sequences {
         // Apply events to two separate projections
-        let mut projection1 = UserProjection { users: HashMap::new() };
-        let mut projection2 = UserProjection { users: HashMap::new() };
+        let mut projection1 = UserProjection {
+            users: HashMap::new(),
+        };
+        let mut projection2 = UserProjection {
+            users: HashMap::new(),
+        };
 
         for event in &events {
             projection1.apply(event);
@@ -144,17 +168,30 @@ async fn proptest_event_replay_deterministic() {
 
     // Test with different event sequences
     let test_sequences = vec![
+        vec![UserEvent::Created {
+            user_id: "123".to_string(),
+            email: "v1@test.com".to_string(),
+        }],
         vec![
-            UserEvent::Created { user_id: "123".to_string(), email: "v1@test.com".to_string() },
+            UserEvent::Created {
+                user_id: "123".to_string(),
+                email: "v1@test.com".to_string(),
+            },
+            UserEvent::EmailUpdated {
+                new_email: "v2@test.com".to_string(),
+            },
         ],
         vec![
-            UserEvent::Created { user_id: "123".to_string(), email: "v1@test.com".to_string() },
-            UserEvent::EmailUpdated { new_email: "v2@test.com".to_string() },
-        ],
-        vec![
-            UserEvent::Created { user_id: "123".to_string(), email: "v1@test.com".to_string() },
-            UserEvent::EmailUpdated { new_email: "v2@test.com".to_string() },
-            UserEvent::EmailUpdated { new_email: "v3@test.com".to_string() },
+            UserEvent::Created {
+                user_id: "123".to_string(),
+                email: "v1@test.com".to_string(),
+            },
+            UserEvent::EmailUpdated {
+                new_email: "v2@test.com".to_string(),
+            },
+            UserEvent::EmailUpdated {
+                new_email: "v3@test.com".to_string(),
+            },
         ],
     ];
 
@@ -186,11 +223,7 @@ async fn proptest_concurrent_commands() {
     let store = EventStore::new();
 
     // Test with different batch sizes
-    let test_batches = vec![
-        vec![1, 2, 3],
-        vec![5, 10, 15, 20],
-        vec![1, 1, 1, 1, 1],
-    ];
+    let test_batches = vec![vec![1, 2, 3], vec![5, 10, 15, 20], vec![1, 1, 1, 1, 1]];
 
     for amounts in test_batches {
         let store_clone = store.clone();
@@ -202,7 +235,9 @@ async fn proptest_concurrent_commands() {
             let amount_val = *amount;
             let handle = task::spawn(async move {
                 let event = UserEvent::Incremented { amount: amount_val };
-                store_ref.append(&format!("counter-{}", idx), vec![event]).await
+                store_ref
+                    .append(&format!("counter-{}", idx), vec![event])
+                    .await
             });
             handles.push(handle);
         }
@@ -221,11 +256,7 @@ async fn proptest_concurrent_commands() {
 #[tokio::test]
 async fn proptest_event_store_integrity() {
     // Test with different event counts
-    let test_cases = vec![
-        vec![1, 2, 3],
-        vec![5, 5, 5, 5],
-        vec![10, 20, 30],
-    ];
+    let test_cases = vec![vec![1, 2, 3], vec![5, 5, 5, 5], vec![10, 20, 30]];
 
     for (test_idx, event_counts) in test_cases.iter().enumerate() {
         // Create a new store for each test case to avoid cross-contamination
@@ -243,16 +274,17 @@ async fn proptest_event_store_integrity() {
 
             total_events += count;
 
-            store.append(
-                &format!("test{}-aggregate-{}", test_idx, batch_idx),
-                events
-            ).await.unwrap();
+            store
+                .append(&format!("test{}-aggregate-{}", test_idx, batch_idx), events)
+                .await
+                .unwrap();
         }
 
         // Property: All events are retrievable (no data loss)
         let mut retrieved_count = 0;
         for batch_idx in 0..event_counts.len() {
-            let events = store.get_events(&format!("test{}-aggregate-{}", test_idx, batch_idx))
+            let events = store
+                .get_events(&format!("test{}-aggregate-{}", test_idx, batch_idx))
                 .await
                 .unwrap();
             retrieved_count += events.len();
@@ -262,7 +294,8 @@ async fn proptest_event_store_integrity() {
 
         // Property: Events are in correct order
         for batch_idx in 0..event_counts.len() {
-            let events = store.get_events(&format!("test{}-aggregate-{}", test_idx, batch_idx))
+            let events = store
+                .get_events(&format!("test{}-aggregate-{}", test_idx, batch_idx))
                 .await
                 .unwrap();
 

@@ -15,7 +15,11 @@ pub struct McpTool {
 
 impl McpTool {
     /// Create a new MCP tool
-    pub fn new(name: impl Into<String>, description: impl Into<String>, input_schema: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        description: impl Into<String>,
+        input_schema: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
             description: description.into(),

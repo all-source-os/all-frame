@@ -9,8 +9,9 @@ mod scaffolding;
 mod templates;
 mod validation;
 
-use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
+
+use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "allframe")]

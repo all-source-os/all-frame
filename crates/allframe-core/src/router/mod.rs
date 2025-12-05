@@ -11,8 +11,8 @@ pub mod builder;
 pub mod config;
 pub mod contract;
 pub mod docs;
-pub mod graphql;
 pub mod graphiql;
+pub mod graphql;
 pub mod grpc;
 pub mod grpc_explorer;
 pub mod handler;
@@ -37,8 +37,8 @@ pub use contract::{
     ContractTestConfig, ContractTestResult, ContractTestResults, ContractTestable, ContractTester,
 };
 pub use docs::DocsConfig;
-pub use graphql::{GraphQLAdapter, GraphQLOperation, OperationType};
 pub use graphiql::{graphiql_html, GraphiQLConfig, GraphiQLTheme};
+pub use graphql::{GraphQLAdapter, GraphQLOperation, OperationType};
 // Re-export production adapters when features are enabled
 #[cfg(feature = "router-graphql")]
 pub use graphql_prod::GraphQLProductionAdapter;
@@ -134,11 +134,7 @@ impl Router {
     }
 
     /// Route a request through the appropriate protocol adapter
-    pub async fn route_request(
-        &self,
-        protocol: &str,
-        request: &str,
-    ) -> Result<String, String> {
+    pub async fn route_request(&self, protocol: &str, request: &str) -> Result<String, String> {
         let adapter = self
             .get_adapter(protocol)
             .ok_or_else(|| format!("Adapter not found: {}", protocol))?;

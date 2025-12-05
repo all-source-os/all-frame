@@ -50,7 +50,7 @@ echo "Publishing:"
 echo "  cargo make version-check   - Check which crates need publishing"
 echo "  cargo make version-bump    - Bump version (patch by default)"
 echo "  cargo make publish-dry-run - Verify all crates are ready to publish"
-echo "  cargo make publish         - Publish all crates (parallel, skips published)"
+echo "  cargo make publish-all     - Publish all crates (parallel, skips published)"
 '''
 
 # Quality Gates
@@ -329,7 +329,7 @@ sleep 30
 echo "✅ Done waiting"
 '''
 
-[tasks.publish]
+[tasks.publish-all]
 description = "Publish all crates to crates.io in dependency order (parallel where possible)"
 workspace = false
 script_runner = "@shell"

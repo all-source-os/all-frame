@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AllFrame - The Composable Rust API Framework</title>
+    <meta name="description" content="AllFrame is the first Rust web framework designed, built, and evolved exclusively through Test-Driven Development. Compile-time DI, CQRS, Protocol-agnostic routing, and more.">
+    <meta name="keywords" content="rust, web framework, tdd, cqrs, event sourcing, api, graphql, grpc, rest">
+    <link rel="canonical" href="https://all-source-os.github.io/all-frame">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="AllFrame - The Composable Rust API Framework">
+    <meta property="og:description" content="One frame to rule them all. Transform, compose, ignite.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://all-source-os.github.io/all-frame">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="AllFrame - The Composable Rust API Framework">
+    <meta name="twitter:description" content="One frame to rule them all. Transform, compose, ignite.">
+
+    <style>
+        :root {
+            --primary: #f74c00;
+            --primary-dark: #d94400;
+            --bg: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --border: #30363d;
+            --green: #3fb950;
+            --blue: #58a6ff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        a {
+            color: var(--blue);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            border-bottom: 1px solid var(--border);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 100;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo span {
+            color: var(--primary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .nav-links a:hover {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+            text-decoration: none;
+        }
+
+        /* Hero */
+        .hero {
+            padding: 80px 0;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--text) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .tagline {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .badges {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 32px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .badge.green {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        /* Code Block */
+        .code-block {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin: 40px auto;
+            max-width: 600px;
+            text-align: left;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .code-block .comment {
+            color: var(--text-muted);
+        }
+
+        .code-block .command {
+            color: var(--green);
+        }
+
+        /* Features */
+        .features {
+            padding: 80px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 48px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            transition: border-color 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--primary);
+        }
+
+        .feature-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .feature-card .tag {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            background: var(--green);
+            color: var(--bg);
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        /* Comparison */
+        .comparison {
+            padding: 80px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .comparison h2 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 48px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison-table th {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .comparison-table th:first-child,
+        .comparison-table td:first-child {
+            font-weight: 600;
+        }
+
+        .comparison-table .check {
+            color: var(--green);
+        }
+
+        .comparison-table .cross {
+            color: var(--text-muted);
+        }
+
+        .comparison-table .partial {
+            color: #d29922;
+        }
+
+        /* Stats */
+        .stats {
+            padding: 60px 0;
+            border-top: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 32px;
+            text-align: center;
+        }
+
+        .stat h3 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+
+        /* CTA */
+        .cta {
+            padding: 80px 0;
+            text-align: center;
+            border-top: 1px solid var(--border);
+        }
+
+        .cta h2 {
+            font-size: 2rem;
+            margin-bottom: 16px;
+        }
+
+        .cta p {
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        footer .links {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero .tagline {
+                font-size: 1.2rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .comparison-table {
+                font-size: 0.8rem;
+            }
+
+            .comparison-table th,
+            .comparison-table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <span>All</span>Frame
+            </div>
+            <div class="nav-links">
+                <a href="https://docs.rs/allframe">Docs</a>
+                <a href="https://github.com/all-source-os/all-frame">GitHub</a>
+                <a href="https://github.com/all-source-os/all-frame/blob/main/CONTRIBUTING.md">Contributing</a>
+                <a href="https://crates.io/crates/allframe" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 512 512" fill="currentColor"><path d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"/></svg>
+                    crates.io
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1>AllFrame</h1>
+                <p class="tagline">The Composable Rust API Framework</p>
+                <p class="subtitle">
+                    One frame to rule them all. Transform, compose, ignite.<br>
+                    The first Rust web framework built 100% through Test-Driven Development.
+                </p>
+                <div class="hero-buttons">
+                    <a href="https://github.com/all-source-os/all-frame" class="btn btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                        View on GitHub
+                    </a>
+                    <a href="https://docs.rs/allframe" class="btn btn-secondary">
+                        Read the Docs
+                    </a>
+                </div>
+
+                <div class="code-block">
+                    <div class="comment"># Install AllFrame CLI</div>
+                    <div class="command">cargo install allframe</div>
+                    <br>
+                    <div class="comment"># Create a new project</div>
+                    <div class="command">allframe ignite my-api</div>
+                    <br>
+                    <div class="comment"># Run your API</div>
+                    <div class="command">cd my-api && cargo run</div>
+                </div>
+
+                <div class="badges">
+                    <span class="badge green">100% TDD</span>
+                    <span class="badge green">291+ Tests</span>
+                    <span class="badge green">CQRS Complete</span>
+                    <span class="badge">Rust 1.86+</span>
+                    <span class="badge">MIT / Apache 2.0</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <h2>Why AllFrame?</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>Compile-Time DI</h3>
+                        <p>Dependency injection resolved entirely at compile time. Zero runtime overhead, zero reflection magic.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Protocol-Agnostic <span class="tag">NEW</span></h3>
+                        <p>Write once, expose via REST, GraphQL, and gRPC. Single handler, multiple protocols, automatic schema generation.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>CQRS + Event Sourcing</h3>
+                        <p>Production-ready infrastructure with 85% average boilerplate reduction. CommandBus, Projections, Sagas included.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Beautiful API Docs</h3>
+                        <p>Scalar UI for REST (10x smaller than Swagger), GraphiQL for GraphQL, interactive gRPC explorer. All built-in.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>MCP Server <span class="tag">ZERO BLOAT</span></h3>
+                        <p>Expose your API as LLM-callable tools. Separate crate means 100% zero overhead when not used.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Zero Runtime Deps</h3>
+                        <p>Only Tokio, Hyper, and std. No hidden bloat, no dependency hell. Binaries under 2MB.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="stats">
+            <div class="container">
+                <div class="stats-grid">
+                    <div class="stat">
+                        <h3>100%</h3>
+                        <p>TDD Coverage</p>
+                    </div>
+                    <div class="stat">
+                        <h3>291+</h3>
+                        <p>Tests Passing</p>
+                    </div>
+                    <div class="stat">
+                        <h3>85%</h3>
+                        <p>Less Boilerplate</p>
+                    </div>
+                    <div class="stat">
+                        <h3>&lt;2MB</h3>
+                        <p>Binary Size</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="comparison">
+            <div class="container">
+                <h2>Framework Comparison</h2>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>AllFrame</th>
+                            <th>Actix</th>
+                            <th>Axum</th>
+                            <th>Rocket</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>TDD-First</td>
+                            <td class="check">100%</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>Compile-time DI</td>
+                            <td class="check">Yes</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>Auto OpenAPI 3.1</td>
+                            <td class="check">Yes</td>
+                            <td class="partial">Manual</td>
+                            <td class="partial">Manual</td>
+                            <td class="partial">Manual</td>
+                        </tr>
+                        <tr>
+                            <td>CQRS + Event Sourcing</td>
+                            <td class="check">Built-in</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>Protocol-agnostic</td>
+                            <td class="check">Yes</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>MCP Server</td>
+                            <td class="check">Zero Bloat</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>Zero runtime deps</td>
+                            <td class="check">Yes</td>
+                            <td class="cross">-</td>
+                            <td class="check">Yes</td>
+                            <td class="cross">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="cta">
+            <div class="container">
+                <h2>Ready to build?</h2>
+                <p>
+                    AllFrame is open source under MIT and Apache 2.0 licenses.
+                    Join us in building the most developer-friendly Rust API framework.
+                </p>
+                <div class="hero-buttons">
+                    <a href="https://github.com/all-source-os/all-frame" class="btn btn-primary">
+                        Get Started
+                    </a>
+                    <a href="https://github.com/all-source-os/all-frame/blob/main/CONTRIBUTING.md" class="btn btn-secondary">
+                        Contribute
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="links">
+                <a href="https://github.com/all-source-os/all-frame">GitHub</a>
+                <a href="https://docs.rs/allframe">Docs</a>
+                <a href="https://crates.io/crates/allframe">crates.io</a>
+                <a href="https://github.com/all-source-os/all-frame/discussions">Discussions</a>
+            </div>
+            <p>AllFrame - One frame. Infinite transformations. Built with TDD, from day zero.</p>
+        </div>
+    </footer>
+</body>
+</html>

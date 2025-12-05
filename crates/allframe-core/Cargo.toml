@@ -47,7 +47,7 @@ cqrs-rocksdb = ["cqrs-allsource", "allsource-core/rocksdb-storage"]
 [dependencies]
 
 # Optional features
-allframe-macros = { version = "0.1.1", path = "../allframe-macros", optional = true }
+allframe-macros = { version = "0.1.4", path = "../allframe-macros", optional = true }
 
 # AllSource Core for CQRS + Event Sourcing
 allsource-core = { version = "0.1.0", optional = true, default-features = false }

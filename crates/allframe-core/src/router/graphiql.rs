@@ -34,19 +34,14 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 /// GraphiQL theme options
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum GraphiQLTheme {
     /// Light theme
     Light,
     /// Dark theme (default)
+    #[default]
     Dark,
-}
-
-impl Default for GraphiQLTheme {
-    fn default() -> Self {
-        Self::Dark
-    }
 }
 
 /// GraphiQL playground configuration

@@ -18,7 +18,8 @@
 //!
 //! - **Compile-time DI** - Dependency injection resolved at compile time
 //! - **Auto OpenAPI 3.1** - API documentation generated automatically
-//! - **CQRS + Event Sourcing** - Production-ready infrastructure (85% less boilerplate)
+//! - **CQRS + Event Sourcing** - Production-ready infrastructure (85% less
+//!   boilerplate)
 //! - **Protocol-Agnostic** - Write once, expose via REST, GraphQL, and gRPC
 //! - **Beautiful API Docs** - Scalar UI, GraphiQL, gRPC Explorer built-in
 //! - **Zero Runtime Deps** - Only Tokio, Hyper, and std

@@ -9,6 +9,7 @@ mod api;
 mod arch;
 mod cqrs;
 mod di;
+mod error;
 mod otel;
 
 use proc_macro::TokenStream;
@@ -280,6 +281,53 @@ pub fn traced(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = proc_macro2::TokenStream::from(item);
 
     otel::traced_impl(attr, item)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Derive macro for automatic gRPC status conversion
+///
+/// Generates `From<Error> for tonic::Status` implementation.
+/// Use `#[grpc(CODE)]` on variants to specify the gRPC status code.
+///
+/// # Example
+/// ```ignore
+/// use allframe_macros::GrpcError;
+/// use thiserror::Error;
+///
+/// #[derive(Error, Debug, GrpcError)]
+/// pub enum AppError {
+///     #[error("Unauthenticated: {0}")]
+///     #[grpc(UNAUTHENTICATED)]
+///     Unauthenticated(String),
+///
+///     #[error("Rate limited")]
+///     #[grpc(RESOURCE_EXHAUSTED)]
+///     RateLimited,
+///
+///     #[error("Not found: {0}")]
+///     #[grpc(NOT_FOUND)]
+///     NotFound(String),
+///
+///     #[error("Internal error: {0}")]
+///     #[grpc(INTERNAL)]
+///     Internal(String),
+/// }
+///
+/// // Auto-generates: impl From<AppError> for tonic::Status
+/// ```
+///
+/// # Supported gRPC Codes
+/// - `OK`, `CANCELLED`, `UNKNOWN`, `INVALID_ARGUMENT`
+/// - `DEADLINE_EXCEEDED`, `NOT_FOUND`, `ALREADY_EXISTS`
+/// - `PERMISSION_DENIED`, `RESOURCE_EXHAUSTED`, `FAILED_PRECONDITION`
+/// - `ABORTED`, `OUT_OF_RANGE`, `UNIMPLEMENTED`, `INTERNAL`
+/// - `UNAVAILABLE`, `DATA_LOSS`, `UNAUTHENTICATED`
+#[proc_macro_derive(GrpcError, attributes(grpc))]
+pub fn grpc_error(input: TokenStream) -> TokenStream {
+    let input = proc_macro2::TokenStream::from(input);
+
+    error::grpc_error_impl(input)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }

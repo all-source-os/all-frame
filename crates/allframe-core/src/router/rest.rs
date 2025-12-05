@@ -96,7 +96,7 @@ impl RestAdapter {
 
     /// Parse an HTTP request string
     ///
-    /// Format: "METHOD /path [body]"
+    /// Format: `METHOD /path [body]`
     /// Example: "GET /users", "POST /users {\"name\":\"John\"}"
     pub fn parse_request(&self, request: &str) -> Result<(String, String, Option<String>), String> {
         let parts: Vec<&str> = request.splitn(3, ' ').collect();

@@ -291,7 +291,7 @@ pub struct GrpcRequest {
 
 /// gRPC status codes
 ///
-/// Based on https://grpc.io/docs/guides/status-codes/
+/// Based on <https://grpc.io/docs/guides/status-codes/>
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GrpcStatus {
     /// Success

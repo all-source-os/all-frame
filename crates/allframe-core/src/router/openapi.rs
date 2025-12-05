@@ -14,7 +14,7 @@ use crate::router::{RouteMetadata, Router};
 /// Used in the "Try It" functionality to make actual API calls.
 #[derive(Debug, Clone)]
 pub struct OpenApiServer {
-    /// Server URL (e.g., "https://api.example.com")
+    /// Server URL (e.g., `https://api.example.com`)
     pub url: String,
     /// Optional description (e.g., "Production server")
     pub description: Option<String>,

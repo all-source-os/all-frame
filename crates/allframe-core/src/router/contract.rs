@@ -307,11 +307,7 @@ async fn test_{}_contract() {{
     assert!(result.passed, "Contract test failed: {{:?}}", result.failure_reason);
 }}
 "#,
-            route
-                .path
-                .replace('/', "_")
-                .replace('{', "")
-                .replace('}', ""),
+            route.path.replace('/', "_").replace(['{', '}'], ""),
             route.path,
             route.method
         )

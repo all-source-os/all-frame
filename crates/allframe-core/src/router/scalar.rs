@@ -1,6 +1,6 @@
 //! Scalar UI integration for interactive OpenAPI documentation.
 //!
-//! This module provides integration with Scalar (https://scalar.com), a modern
+//! This module provides integration with Scalar (<https://scalar.com>), a modern
 //! OpenAPI documentation UI that offers:
 //! - Beautiful dark mode by default
 //! - Interactive "Try It" functionality

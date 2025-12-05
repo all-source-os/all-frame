@@ -7,16 +7,24 @@ members = [
 ]
 resolver = "2"
 
-# Root package for workspace-level tests
+# Main allframe crate - re-exports allframe-core
 [package]
 name = "allframe"
-version = "0.1.0"
-edition = "2021"
-publish = false
+version = "0.1.3"
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "The Composable Rust API Framework - TDD-first, compile-time DI, CQRS, protocol-agnostic"
+readme = "README.md"
 
 [dependencies]
-allframe-core = { path = "crates/allframe-core", default-features = false, features = ["di", "openapi", "router", "otel", "cqrs"] }
-allframe-forge = { path = "crates/allframe-forge" }
+allframe-core = { version = "0.1.3", path = "crates/allframe-core", default-features = false, features = ["di", "openapi", "router", "otel", "cqrs"] }
 
 [features]
 default = ["di", "openapi", "router", "otel", "cqrs"]

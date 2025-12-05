@@ -28,7 +28,8 @@
       "Bash(cargo make:*)",
       "Bash(cargo format-code:*)",
       "Bash(xargs ls:*)",
-      "Bash(cargo update:*)"
+      "Bash(cargo update:*)",
+      "Bash(cargo publish:*)"
     ],
     "deny": [],
     "ask": []

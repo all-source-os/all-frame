@@ -1,8 +1,28 @@
 # Publishing to crates.io - Complete Guide
 
 **Date**: 2025-12-04
-**Status**: Ready for v0.1.0 release
-**Target**: Publish `allframe-core` and `allframe-mcp` to crates.io
+**Status**: ✅ Ready for v0.1.0 release
+**Crates**: allframe-macros, allframe-core, allframe-forge, allframe-mcp
+
+---
+
+## Quick Start
+
+```bash
+# 1. Ensure logged in
+cargo login <your-api-token>
+
+# 2. Publish in order (wait 120s between each)
+cd crates/allframe-macros && cargo publish && sleep 120
+cd ../allframe-core && cargo publish && sleep 120
+cd ../allframe-forge && cargo publish && sleep 120
+
+# 3. Update allframe-mcp Cargo.toml: change path to version "0.1.0"
+cd ../allframe-mcp && cargo publish
+
+# 4. Tag release
+cd ../.. && git tag -a v0.1.0 -m "Release v0.1.0" && git push origin v0.1.0
+```
 
 ---
 

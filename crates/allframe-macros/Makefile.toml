@@ -1,0 +1,2 @@
+# Extends workspace Makefile.toml
+extend = "../../Makefile.toml"

@@ -5,9 +5,12 @@
 [config]
 default_to_workspace = false
 min_version = "0.36.0"
+# Always run from workspace root
+main_project_member = "."
 
 [env]
 CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+CARGO_MAKE_WORKSPACE_MAKEFILE = true
 RUST_BACKTRACE = 0
 
 # Default task - show help
@@ -42,6 +45,12 @@ echo "  cargo make install-tools - Install required development tools"
 echo ""
 echo "CI/CD:"
 echo "  cargo make ci            - Run all CI checks (lint + test + build)"
+echo ""
+echo "Publishing:"
+echo "  cargo make version-check   - Check which crates need publishing"
+echo "  cargo make version-bump    - Bump version (patch by default)"
+echo "  cargo make publish-dry-run - Verify all crates are ready to publish"
+echo "  cargo make publish         - Publish all crates (parallel, skips published)"
 '''
 
 # Quality Gates
@@ -196,4 +205,238 @@ script = '''\n#!/usr/bin/env bash
 description = "Analyze main features binary size"
 script = '''\n#!/usr/bin/env bash
 ./scripts/analyze_size.sh all
+'''
+
+# Publishing to crates.io
+# Dependency graph:
+#   allframe-macros (no deps)     ─┬─► allframe-core ─► allframe-mcp
+#   allframe-forge (no deps)      ─┘
+
+[tasks.version-bump]
+description = "Bump workspace version (patch, minor, or major)"
+workspace = false
+script_runner = "@shell"
+script = '''
+#!/usr/bin/env bash
+set -e
+
+# Navigate to workspace root
+cd "$(git rev-parse --show-toplevel)"
+
+BUMP_TYPE=${1:-patch}
+CARGO_TOML="Cargo.toml"
+
+# Get current workspace.package version
+CURRENT=$(sed -n '/\[workspace\.package\]/,/\[/p' "$CARGO_TOML" | grep '^version' | cut -d'"' -f2)
+IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+case "$BUMP_TYPE" in
+    major)
+        MAJOR=$((MAJOR + 1))
+        MINOR=0
+        PATCH=0
+        ;;
+    minor)
+        MINOR=$((MINOR + 1))
+        PATCH=0
+        ;;
+    patch)
+        PATCH=$((PATCH + 1))
+        ;;
+    *)
+        echo "Usage: cargo make version-bump [patch|minor|major]"
+        exit 1
+        ;;
+esac
+
+NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+echo "Bumping version: ${CURRENT} → ${NEW_VERSION}"
+
+# Update workspace.package version (in [workspace.package] section only)
+sed -i '' "/\[workspace\.package\]/,/\[.*\]/{s/^version = \"${CURRENT}\"/version = \"${NEW_VERSION}\"/;}" "$CARGO_TOML"
+
+# Update allframe-mcp dependency on allframe-core
+sed -i '' "s/allframe-core = { version = \"${CURRENT}\"/allframe-core = { version = \"${NEW_VERSION}\"/" crates/allframe-mcp/Cargo.toml
+
+echo "✅ Version bumped to ${NEW_VERSION}"
+echo ""
+echo "Updated files:"
+echo "  - Cargo.toml (workspace.package.version)"
+echo "  - crates/allframe-mcp/Cargo.toml (allframe-core dependency)"
+'''
+
+[tasks.version-check]
+description = "Check which crates need publishing"
+workspace = false
+script_runner = "@shell"
+script = '''
+#!/usr/bin/env bash
+
+# Navigate to workspace root
+cd "$(git rev-parse --show-toplevel)"
+
+# Get workspace.package version (after [workspace.package] section)
+LOCAL_VERSION=$(sed -n '/\[workspace\.package\]/,/\[/p' Cargo.toml | grep '^version' | cut -d'"' -f2)
+echo "Workspace version: ${LOCAL_VERSION}"
+echo ""
+
+check_crate() {
+    local crate=$1
+    local published=$(curl -s "https://crates.io/api/v1/crates/${crate}" | grep -o "\"${LOCAL_VERSION}\"" | head -1)
+    if [ -n "$published" ]; then
+        echo "  ✅ ${crate}@${LOCAL_VERSION} - already published"
+    else
+        echo "  📦 ${crate}@${LOCAL_VERSION} - needs publishing"
+    fi
+}
+
+echo "Crate status:"
+check_crate "allframe-macros"
+check_crate "allframe-core"
+check_crate "allframe-mcp"
+check_crate "allframe-forge"
+'''
+
+[tasks.publish-macros]
+description = "Publish allframe-macros to crates.io"
+cwd = "crates/allframe-macros"
+command = "cargo"
+args = ["publish"]
+
+[tasks.publish-core]
+description = "Publish allframe-core to crates.io"
+cwd = "crates/allframe-core"
+command = "cargo"
+args = ["publish"]
+
+[tasks.publish-mcp]
+description = "Publish allframe-mcp to crates.io"
+cwd = "crates/allframe-mcp"
+command = "cargo"
+args = ["publish"]
+
+[tasks.publish-forge]
+description = "Publish allframe-forge to crates.io"
+cwd = "crates/allframe-forge"
+command = "cargo"
+args = ["publish"]
+
+[tasks.publish-wait]
+description = "Wait for crates.io indexing"
+script = '''
+echo "⏳ Waiting 30s for crates.io indexing..."
+sleep 30
+echo "✅ Done waiting"
+'''
+
+[tasks.publish]
+description = "Publish all crates to crates.io in dependency order (parallel where possible)"
+workspace = false
+script_runner = "@shell"
+script = '''
+#!/usr/bin/env bash
+set -e
+
+# Navigate to workspace root
+cd "$(git rev-parse --show-toplevel)"
+
+# Get workspace.package version
+LOCAL_VERSION=$(sed -n '/\[workspace\.package\]/,/\[/p' Cargo.toml | grep '^version' | cut -d'"' -f2)
+echo "🚀 Publishing AllFrame crates v${LOCAL_VERSION} to crates.io"
+echo ""
+
+# Function to check if version is already published
+is_published() {
+    local crate=$1
+    local version=$2
+    # Check crates.io API
+    local published=$(curl -s "https://crates.io/api/v1/crates/${crate}" | grep -o "\"${version}\"" | head -1)
+    [ -n "$published" ]
+}
+
+# Function to publish a crate if not already published
+publish_crate() {
+    local crate=$1
+    local path=$2
+
+    if is_published "$crate" "$LOCAL_VERSION"; then
+        echo "⏭️  ${crate}@${LOCAL_VERSION} already published, skipping"
+        return 0
+    fi
+
+    echo "📦 Publishing ${crate}@${LOCAL_VERSION}..."
+    cd "$path" && cargo publish --allow-dirty && cd - > /dev/null
+    echo "✅ ${crate}@${LOCAL_VERSION} published"
+}
+
+# Wave 1: No internal dependencies (parallel)
+echo "━━━ Wave 1: Independent crates (parallel) ━━━"
+publish_crate "allframe-macros" "crates/allframe-macros" &
+PID_MACROS=$!
+publish_crate "allframe-forge" "crates/allframe-forge" &
+PID_FORGE=$!
+
+# Wait for wave 1
+wait $PID_MACROS
+MACROS_EXIT=$?
+wait $PID_FORGE
+
+if [ $MACROS_EXIT -ne 0 ]; then
+    echo "❌ Failed to publish allframe-macros"
+    exit 1
+fi
+
+# Brief wait for crates.io indexing
+echo "⏳ Waiting 15s for crates.io indexing..."
+sleep 15
+
+# Wave 2: Depends on macros
+echo ""
+echo "━━━ Wave 2: allframe-core (depends on macros) ━━━"
+publish_crate "allframe-core" "crates/allframe-core"
+
+# Brief wait for crates.io indexing
+echo "⏳ Waiting 15s for crates.io indexing..."
+sleep 15
+
+# Wave 3: Depends on core
+echo ""
+echo "━━━ Wave 3: allframe-mcp (depends on core) ━━━"
+publish_crate "allframe-mcp" "crates/allframe-mcp"
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ All crates published successfully!"
+echo ""
+echo "  allframe-macros  @ ${LOCAL_VERSION}"
+echo "  allframe-core    @ ${LOCAL_VERSION}"
+echo "  allframe-mcp     @ ${LOCAL_VERSION}"
+echo "  allframe-forge   @ ${LOCAL_VERSION}"
+echo ""
+echo "View at: https://crates.io/crates/allframe-core"
+'''
+
+[tasks.publish-dry-run]
+description = "Dry-run publish all crates (no actual publish)"
+script = '''
+#!/usr/bin/env bash
+set -e
+
+echo "🔍 Dry-run publish for AllFrame crates"
+echo ""
+
+echo "📦 [1/4] Checking allframe-macros..."
+cd crates/allframe-macros && cargo publish --dry-run && cd ../..
+
+echo "📦 [2/4] Checking allframe-core..."
+cd crates/allframe-core && cargo publish --dry-run && cd ../..
+
+echo "📦 [3/4] Checking allframe-mcp..."
+cd crates/allframe-mcp && cargo publish --dry-run && cd ../..
+
+echo "📦 [4/4] Checking allframe-forge..."
+cd crates/allframe-forge && cargo publish --dry-run && cd ../..
+
+echo ""
+echo "✅ All crates ready for publishing!"
 '''

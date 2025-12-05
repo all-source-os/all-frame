@@ -14,7 +14,7 @@ description = "MCP (Model Context Protocol) server for AllFrame - Expose APIs as
 readme = "README.md"
 
 [dependencies]
-allframe-core = { version = "0.1.1", path = "../allframe-core" }
+allframe-core = { version = "0.1.3", path = "../allframe-core" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tokio = { workspace = true }

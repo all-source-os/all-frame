@@ -10,6 +10,7 @@ mod arch;
 mod cqrs;
 mod di;
 mod error;
+mod health;
 mod otel;
 
 use proc_macro::TokenStream;
@@ -22,7 +23,16 @@ use proc_macro::TokenStream;
 ///
 /// Generates a container with automatic dependency resolution at compile time.
 ///
-/// # Example
+/// # Attributes
+///
+/// - `#[provide(expr)]` - Use custom expression for initialization
+/// - `#[provide(from_env)]` - Load from environment using `FromEnv` trait
+/// - `#[provide(singleton)]` - Shared instance (default)
+/// - `#[provide(transient)]` - New instance on each access
+/// - `#[provide(async)]` - Async initialization using `AsyncInit` trait
+/// - `#[depends(field1, field2)]` - Explicit dependencies
+///
+/// # Example (Sync)
 /// ```ignore
 /// #[di_container]
 /// struct AppContainer {
@@ -31,6 +41,24 @@ use proc_macro::TokenStream;
 /// }
 ///
 /// let container = AppContainer::new();
+/// ```
+///
+/// # Example (Async)
+/// ```ignore
+/// #[di_container]
+/// struct AppContainer {
+///     #[provide(from_env)]
+///     config: Config,
+///
+///     #[provide(singleton, async)]
+///     #[depends(config)]
+///     database: DatabasePool,
+///
+///     #[provide(transient)]
+///     service: MyService,
+/// }
+///
+/// let container = AppContainer::build().await?;
 /// ```
 #[proc_macro_attribute]
 pub fn di_container(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -328,6 +356,51 @@ pub fn grpc_error(input: TokenStream) -> TokenStream {
     let input = proc_macro2::TokenStream::from(input);
 
     error::grpc_error_impl(input)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Derive macro for automatic HealthCheck implementation
+///
+/// Generates the `HealthCheck` trait implementation by collecting all fields
+/// that implement the `Dependency` trait.
+///
+/// # Example
+/// ```ignore
+/// use allframe_macros::HealthCheck;
+/// use allframe_core::health::{Dependency, DependencyStatus};
+///
+/// struct RedisDependency { /* ... */ }
+/// impl Dependency for RedisDependency { /* ... */ }
+///
+/// struct DatabaseDependency { /* ... */ }
+/// impl Dependency for DatabaseDependency { /* ... */ }
+///
+/// #[derive(HealthCheck)]
+/// struct AppHealth {
+///     #[health(timeout = "5s", critical = true)]
+///     redis: RedisDependency,
+///
+///     #[health(timeout = "10s", critical = false)]
+///     database: DatabaseDependency,
+///
+///     #[health(skip)]
+///     config: Config, // Not a dependency
+/// }
+///
+/// // Auto-generates:
+/// // impl HealthCheck for AppHealth { ... }
+/// ```
+///
+/// # Attributes
+/// - `#[health(skip)]` - Skip this field from health checks
+/// - `#[health(critical = true)]` - Mark dependency as critical (default: true)
+/// - `#[health(timeout = "5s")]` - Set check timeout (default: 5s)
+#[proc_macro_derive(HealthCheck, attributes(health))]
+pub fn health_check(input: TokenStream) -> TokenStream {
+    let input = proc_macro2::TokenStream::from(input);
+
+    health::health_check_impl(input)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }

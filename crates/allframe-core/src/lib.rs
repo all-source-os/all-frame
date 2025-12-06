@@ -32,11 +32,25 @@ pub mod cqrs;
 #[cfg(feature = "otel")]
 pub mod otel;
 
+/// Cache abstraction
+pub mod cache;
+
+/// Dependency injection infrastructure
+#[cfg(feature = "di")]
+pub mod di;
+
+/// Health check infrastructure
+pub mod health;
+
 /// Router module for protocol-agnostic request handling
 pub mod router;
 
 /// Graceful shutdown utilities
 pub mod shutdown;
+
+/// gRPC server infrastructure
+#[cfg(feature = "router-grpc")]
+pub mod grpc;
 
 // ============================================================================
 // Re-exported dependencies
@@ -45,6 +59,15 @@ pub mod shutdown;
 // them explicitly to their Cargo.toml. This ensures version consistency and
 // reduces boilerplate in downstream crates.
 
+// ============================================================================
+// Re-exported macros
+// ============================================================================
+/// Re-export GrpcError derive macro for automatic tonic::Status conversion
+#[cfg(feature = "router-grpc")]
+pub use allframe_macros::GrpcError;
+/// Re-export HealthCheck derive macro for automatic health check implementation
+#[cfg(feature = "di")]
+pub use allframe_macros::HealthCheck;
 /// Re-export async_graphql for GraphQL support
 #[cfg(feature = "router-graphql")]
 pub use async_graphql;
@@ -79,33 +102,38 @@ pub use tonic;
 /// Re-export tonic_reflection for gRPC reflection
 #[cfg(feature = "router-grpc")]
 pub use tonic_reflection;
-
 /// Re-export tracing for observability
 #[cfg(feature = "otel")]
 pub use tracing;
-
-// ============================================================================
-// Re-exported macros
-// ============================================================================
-
-/// Re-export GrpcError derive macro for automatic tonic::Status conversion
-#[cfg(feature = "router-grpc")]
-pub use allframe_macros::GrpcError;
 
 /// Prelude module for convenient imports
 ///
 /// Commonly used imports for AllFrame applications
 pub mod prelude {
+    /// Re-export cache utilities
+    pub use crate::cache::{Cache, CacheConfig, CacheKey, MemoryCache};
+    /// Re-export DI utilities
+    #[cfg(feature = "di")]
+    pub use crate::di::{
+        AsyncInit, AsyncInitWith, ContainerBuilder, DependencyError, DependencyRegistry, FromEnv,
+        Provider, Scope,
+    };
+    /// Re-export gRPC server utilities
+    #[cfg(feature = "router-grpc")]
+    pub use crate::grpc::{GrpcServer, GrpcServerBuilder, GrpcServerError, TlsConfig};
+    /// Re-export health check utilities
+    pub use crate::health::{
+        Dependency, DependencyStatus, HealthCheck, HealthReport, HealthServer, OverallStatus,
+        SimpleHealthCheck,
+    };
     pub use crate::router::{
         GraphQLAdapter, GrpcAdapter, GrpcRequest, GrpcStatus, Method, ProtocolAdapter, RestAdapter,
         RestRequest, RestResponse, RouteMetadata, Router, ToJsonSchema,
     };
     #[cfg(feature = "router")]
     pub use crate::router::{GraphQLConfig, GrpcConfig, RestConfig, RouterConfig, ServerConfig};
-
     /// Re-export shutdown utilities
     pub use crate::shutdown::{GracefulShutdown, ShutdownSignal, ShutdownToken};
-
     /// Re-export GrpcError for convenient error handling
     #[cfg(feature = "router-grpc")]
     pub use crate::GrpcError;

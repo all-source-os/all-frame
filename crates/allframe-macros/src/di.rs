@@ -2,6 +2,17 @@
 //!
 //! This module implements the `#[di_container]` procedural macro for
 //! compile-time dependency injection with zero runtime reflection.
+//!
+//! # Supported Attributes
+//!
+//! - `#[provide(expr)]` - Use custom expression for initialization
+//! - `#[provide(from_env)]` - Load from environment using FromEnv trait
+//! - `#[provide(singleton)]` - Shared instance (default)
+//! - `#[provide(transient)]` - New instance on each access
+//! - `#[provide(async)]` - Async initialization
+//! - `#[depends(field1, field2)]` - Explicit dependencies
+//!
+//! Multiple options can be combined: `#[provide(singleton, async)]`
 
 use std::collections::{HashMap, HashSet};
 
@@ -9,17 +20,87 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse2, Data, DeriveInput, Error, Fields, Result, Type};
 
+/// Configuration for a field's dependency injection behavior
+#[derive(Default, Clone)]
+struct ProvideConfig {
+    /// Custom expression for initialization
+    custom_expr: Option<syn::Expr>,
+    /// Load from environment using FromEnv trait
+    from_env: bool,
+    /// Scope: singleton (true) or transient (false)
+    singleton: bool,
+    /// Whether initialization is async
+    is_async: bool,
+}
+
 /// Represents information about a field in the DI container
+#[derive(Clone)]
 struct FieldInfo {
     name: syn::Ident,
     ty: Type,
-    provide_expr: Option<syn::Expr>,
+    config: ProvideConfig,
+    /// Explicit dependencies from #[depends(...)]
+    explicit_deps: Vec<syn::Ident>,
+}
+
+/// Parse #[provide(...)] attribute
+fn parse_provide_attr(attr: &syn::Attribute) -> Result<ProvideConfig> {
+    let mut config = ProvideConfig {
+        singleton: true, // Default to singleton
+        ..Default::default()
+    };
+
+    let result = attr.parse_nested_meta(|meta| {
+        if meta.path.is_ident("from_env") {
+            config.from_env = true;
+            Ok(())
+        } else if meta.path.is_ident("singleton") {
+            config.singleton = true;
+            Ok(())
+        } else if meta.path.is_ident("transient") {
+            config.singleton = false;
+            Ok(())
+        } else if meta.path.is_ident("async") {
+            config.is_async = true;
+            Ok(())
+        } else {
+            // Unknown option - will try to parse as expression below
+            Err(meta.error("unknown provide option"))
+        }
+    });
+
+    match result {
+        Ok(()) => Ok(config),
+        Err(_) => {
+            // If nested meta parsing fails, try to parse as expression
+            // This handles #[provide(MyType::new())]
+            config.custom_expr = Some(attr.parse_args::<syn::Expr>()?);
+            Ok(config)
+        }
+    }
+}
+
+/// Parse #[depends(...)] attribute
+fn parse_depends_attr(attr: &syn::Attribute) -> Result<Vec<syn::Ident>> {
+    let mut deps = Vec::new();
+
+    attr.parse_nested_meta(|meta| {
+        if let Some(ident) = meta.path.get_ident() {
+            deps.push(ident.clone());
+            Ok(())
+        } else {
+            Err(meta.error("expected identifier"))
+        }
+    })?;
+
+    Ok(deps)
 }
 
 /// Implementation of the #[di_container] macro
 ///
 /// Generates:
-/// - A `new()` associated function that creates the container
+/// - A `new()` associated function for sync containers
+/// - A `build()` async associated function for async containers
 /// - Accessor methods for each service
 /// - Automatic dependency resolution at compile time with topological sorting
 pub fn di_container_impl(_attr: TokenStream, item: TokenStream) -> Result<TokenStream> {
@@ -49,32 +130,35 @@ pub fn di_container_impl(_attr: TokenStream, item: TokenStream) -> Result<TokenS
 
     // Collect field information
     let mut field_infos = Vec::new();
-    let mut filtered_attrs_map: HashMap<syn::Ident, Vec<syn::Attribute>> = HashMap::new();
+    let mut has_async = false;
 
     for field in fields {
         let field_name = field.ident.as_ref().unwrap().clone();
         let field_type = field.ty.clone();
 
-        // Check for #[provide(...)] attribute and filter it out
-        let mut provide_expr = None;
-        let mut filtered_attrs = Vec::new();
+        let mut config = ProvideConfig {
+            singleton: true,
+            ..Default::default()
+        };
+        let mut explicit_deps = Vec::new();
 
         for attr in &field.attrs {
             if attr.path().is_ident("provide") {
-                // Parse the expression from #[provide(expr)]
-                provide_expr = Some(attr.parse_args::<syn::Expr>()?);
-                // Don't include this attribute in the output
-            } else {
-                filtered_attrs.push(attr.clone());
+                config = parse_provide_attr(attr)?;
+            } else if attr.path().is_ident("depends") {
+                explicit_deps = parse_depends_attr(attr)?;
             }
         }
 
-        filtered_attrs_map.insert(field_name.clone(), filtered_attrs);
+        if config.is_async {
+            has_async = true;
+        }
 
         field_infos.push(FieldInfo {
             name: field_name,
             ty: field_type,
-            provide_expr,
+            config,
+            explicit_deps,
         });
     }
 
@@ -90,26 +174,23 @@ pub fn di_container_impl(_attr: TokenStream, item: TokenStream) -> Result<TokenS
     }
 
     // Generate field initializations in dependency order
-    // Strategy: Create Arc instances for dependencies, unwrap when passing to
-    // constructors
     let mut let_bindings = Vec::new();
 
     for field_info in &init_order {
         let name = &field_info.name;
         let ty = &field_info.ty;
         let field_name_str = name.to_string();
+        let config = &field_info.config;
 
-        if let Some(expr) = &field_info.provide_expr {
+        let init_expr = if let Some(expr) = &config.custom_expr {
             // Use the provided expression
-            if is_dependency_of_others.contains(&field_name_str) {
-                // Wrap in Arc for dependencies
-                let_bindings.push(quote! {
-                    let #name = std::sync::Arc::new(#expr);
-                });
+            quote! { #expr }
+        } else if config.from_env {
+            // Use FromEnv trait
+            if config.is_async {
+                quote! { <#ty as ::allframe_core::di::FromEnv>::from_env()? }
             } else {
-                let_bindings.push(quote! {
-                    let #name = #expr;
-                });
+                quote! { <#ty as ::allframe_core::di::FromEnv>::from_env()? }
             }
         } else {
             // Get the dependencies for this field
@@ -124,51 +205,46 @@ pub fn di_container_impl(_attr: TokenStream, item: TokenStream) -> Result<TokenS
                 };
 
             if dep_infos.is_empty() {
-                // No dependencies - call new() with no arguments
-                if is_dependency_of_others.contains(&field_name_str) {
-                    let_bindings.push(quote! {
-                        let #name = std::sync::Arc::new(#ty::new());
-                    });
+                // No dependencies
+                if config.is_async {
+                    quote! { <#ty as ::allframe_core::di::AsyncInit>::init().await? }
                 } else {
-                    let_bindings.push(quote! {
-                        let #name = #ty::new();
-                    });
+                    quote! { #ty::new() }
                 }
             } else {
-                // Pass Arc::clone() of dependencies to constructor
+                // Pass dependencies to constructor
                 let dep_args: Vec<_> = dep_infos
                     .iter()
                     .map(|dep| {
                         let dep_field_name = &dep.name;
                         if is_dependency_of_others.contains(&dep.name.to_string()) {
-                            quote! { std::sync::Arc::clone(&#dep_field_name) }
+                            quote! { ::std::sync::Arc::clone(&#dep_field_name) }
                         } else {
-                            quote! { #dep_field_name }
+                            quote! { #dep_field_name.clone() }
                         }
                     })
                     .collect();
 
-                if is_dependency_of_others.contains(&field_name_str) {
-                    let_bindings.push(quote! {
-                        let #name = std::sync::Arc::new(#ty::new(#(#dep_args),*));
-                    });
+                if config.is_async {
+                    quote! { #ty::new(#(#dep_args),*).await? }
                 } else {
-                    let_bindings.push(quote! {
-                        let #name = #ty::new(#(#dep_args),*);
-                    });
+                    quote! { #ty::new(#(#dep_args),*) }
                 }
             }
+        };
+
+        // Wrap in Arc if this is a dependency of others
+        if is_dependency_of_others.contains(&field_name_str) && config.singleton {
+            let_bindings.push(quote! {
+                let #name = ::std::sync::Arc::new(#init_expr);
+            });
+        } else {
+            let_bindings.push(quote! {
+                let #name = #init_expr;
+            });
         }
     }
 
-    // Only include fields in the struct that aren't consumed by other fields
-    // i.e., fields that have no outgoing edges in the reverse_graph (from
-    // topological sort) Actually, we need to include ALL fields as they're
-    // declared in the struct The issue is that we're passing ownership. We need
-    // to keep the fields in the container but also pass them to constructors.
-    //
-    // SOLUTION: Don't pass the container's own fields to constructors
-    // Instead, create temporary instances that get moved
     let struct_fields: Vec<_> = init_order.iter().map(|f| &f.name).collect();
 
     // Generate accessor methods
@@ -178,13 +254,29 @@ pub fn di_container_impl(_attr: TokenStream, item: TokenStream) -> Result<TokenS
         let ty = &field_info.ty;
         let field_name_str = name.to_string();
 
-        if is_dependency_of_others.contains(&field_name_str) {
-            // Return cloned Arc for dependencies
+        if is_dependency_of_others.contains(&field_name_str) && field_info.config.singleton {
+            // Return cloned Arc for singleton dependencies
             accessors.push(quote! {
-                #vis fn #name(&self) -> std::sync::Arc<#ty> {
-                    std::sync::Arc::clone(&self.#name)
+                #vis fn #name(&self) -> ::std::sync::Arc<#ty> {
+                    ::std::sync::Arc::clone(&self.#name)
                 }
             });
+        } else if !field_info.config.singleton {
+            // Transient: create new instance each time
+            let ty_inner = ty;
+            if field_info.config.is_async {
+                accessors.push(quote! {
+                    #vis async fn #name(&self) -> Result<#ty_inner, ::allframe_core::di::DependencyError> {
+                        <#ty_inner as ::allframe_core::di::AsyncInit>::init().await
+                    }
+                });
+            } else {
+                accessors.push(quote! {
+                    #vis fn #name(&self) -> #ty_inner {
+                        #ty_inner::new()
+                    }
+                });
+            }
         } else {
             accessors.push(quote! {
                 #vis fn #name(&self) -> &#ty {
@@ -194,37 +286,59 @@ pub fn di_container_impl(_attr: TokenStream, item: TokenStream) -> Result<TokenS
         }
     }
 
-    // Generate the implementation
-    let expanded = quote! {
-        impl #struct_name {
-            /// Create a new instance of the container with all dependencies injected
-            #vis fn new() -> Self {
-                // Create each service/dependency in topological order
+    // Generate constructor method
+    let constructor = if has_async {
+        quote! {
+            /// Build a new instance of the container with all dependencies injected
+            #vis async fn build() -> Result<Self, ::allframe_core::di::DependencyError> {
                 #(#let_bindings)*
 
-                // Build the container
+                Ok(Self {
+                    #(#struct_fields,)*
+                })
+            }
+        }
+    } else {
+        quote! {
+            /// Create a new instance of the container with all dependencies injected
+            #vis fn new() -> Self {
+                #(#let_bindings)*
+
                 Self {
                     #(#struct_fields,)*
                 }
             }
+        }
+    };
+
+    // Generate the implementation
+    let expanded = quote! {
+        impl #struct_name {
+            #constructor
 
             #(#accessors)*
         }
     };
 
-    // Create a modified version of the input struct without `provide` attributes
-    // Wrap dependency fields in Arc
+    // Create a modified version of the input struct without DI attributes
     let mut modified_input = input.clone();
     if let Data::Struct(ref mut data_struct) = modified_input.data {
         if let Fields::Named(ref mut fields_named) = data_struct.fields {
             for field in fields_named.named.iter_mut() {
-                field.attrs.retain(|attr| !attr.path().is_ident("provide"));
+                // Remove DI-specific attributes
+                field.attrs.retain(|attr| {
+                    !attr.path().is_ident("provide") && !attr.path().is_ident("depends")
+                });
 
-                // Wrap dependencies in Arc
+                // Wrap singleton dependencies in Arc
                 if let Some(ident) = &field.ident {
-                    if is_dependency_of_others.contains(&ident.to_string()) {
-                        let original_ty = &field.ty;
-                        field.ty = syn::parse_quote! { std::sync::Arc<#original_ty> };
+                    let field_info = field_infos.iter().find(|f| &f.name == ident);
+                    if let Some(info) = field_info {
+                        if is_dependency_of_others.contains(&ident.to_string()) && info.config.singleton
+                        {
+                            let original_ty = &field.ty;
+                            field.ty = syn::parse_quote! { ::std::sync::Arc<#original_ty> };
+                        }
                     }
                 }
             }
@@ -247,9 +361,6 @@ type DependencyMap = HashMap<String, HashSet<String>>;
 /// 1. The initialization order (topologically sorted fields)
 /// 2. The dependency map (field name -> set of dependency field names)
 fn compute_initialization_order(fields: &[FieldInfo]) -> Result<(Vec<FieldInfo>, DependencyMap)> {
-    // Build TWO graphs:
-    // 1. Forward graph: X depends on Y means X -> Y (for returning dependencies)
-    // 2. Reverse graph: X depends on Y means Y -> X (for topological sort)
     let mut forward_graph: HashMap<String, HashSet<String>> = HashMap::new();
     let mut reverse_graph: HashMap<String, HashSet<String>> = HashMap::new();
     let mut field_map: HashMap<String, &FieldInfo> = HashMap::new();
@@ -260,17 +371,27 @@ fn compute_initialization_order(fields: &[FieldInfo]) -> Result<(Vec<FieldInfo>,
         forward_graph.insert(field_name.clone(), HashSet::new());
         reverse_graph.insert(field_name.clone(), HashSet::new());
 
-        // If no provide expression, find dependencies by analyzing type names
-        if field.provide_expr.is_none() {
-            let deps = find_dependencies(&field.ty, &field_name, fields);
-            for dep in deps {
-                let dep_name = dep.name.to_string();
-                // Forward: X depends on Y
+        // Use explicit dependencies if provided, otherwise use heuristics
+        if !field.explicit_deps.is_empty() {
+            for dep in &field.explicit_deps {
+                let dep_name = dep.to_string();
                 forward_graph
                     .get_mut(&field_name)
                     .unwrap()
                     .insert(dep_name.clone());
-                // Reverse: Y must come before X
+                if let Some(rev) = reverse_graph.get_mut(&dep_name) {
+                    rev.insert(field_name.clone());
+                }
+            }
+        } else if field.config.custom_expr.is_none() {
+            // Only use heuristics if no explicit deps and no custom expression
+            let deps = find_dependencies(&field.ty, &field_name, fields);
+            for dep in deps {
+                let dep_name = dep.name.to_string();
+                forward_graph
+                    .get_mut(&field_name)
+                    .unwrap()
+                    .insert(dep_name.clone());
                 reverse_graph
                     .get_mut(&dep_name)
                     .unwrap()
@@ -279,7 +400,7 @@ fn compute_initialization_order(fields: &[FieldInfo]) -> Result<(Vec<FieldInfo>,
         }
     }
 
-    // Topological sort using Kahn's algorithm on the reverse graph
+    // Topological sort using Kahn's algorithm
     let mut in_degree: HashMap<String, usize> = HashMap::new();
     for name in reverse_graph.keys() {
         in_degree.insert(name.clone(), 0);
@@ -314,33 +435,26 @@ fn compute_initialization_order(fields: &[FieldInfo]) -> Result<(Vec<FieldInfo>,
     }
 
     if result.len() != fields.len() {
+        // Find the cycle
+        let remaining: Vec<_> = in_degree
+            .iter()
+            .filter(|(_, &deg)| deg > 0)
+            .map(|(name, _)| name.clone())
+            .collect();
+
         return Err(Error::new_spanned(
             &fields[0].name,
-            "Circular dependency detected in DI container",
+            format!(
+                "Circular dependency detected in DI container involving: {:?}",
+                remaining
+            ),
         ));
     }
 
-    // Return the topologically sorted order and the FORWARD dependency map
     Ok((result, forward_graph))
 }
 
 /// Find dependencies for a given field by analyzing type relationships
-///
-/// This uses several heuristics:
-/// 1. Sequential dependency: A field at position N depends on the field at N-1
-/// 2. Type name matching: If field name contains type name (e.g.,
-///    "user_repository" and "UserRepository")
-/// 3. Common patterns: Repository depends on Database/DataSource, Service
-///    depends on Repository
-///
-/// For example:
-/// ```ignore
-/// struct Container {
-///     database: Database,        // position 0, no deps
-///     repository: Repository,    // position 1, depends on database
-///     service: Service,          // position 2, depends on repository
-/// }
-/// ```
 fn find_dependencies<'a>(
     ty: &Type,
     _field_name: &str,
@@ -348,7 +462,6 @@ fn find_dependencies<'a>(
 ) -> Vec<&'a FieldInfo> {
     let mut deps = Vec::new();
 
-    // Get the current field's position
     let current_type_str = quote!(#ty).to_string();
     let current_pos = all_fields.iter().position(|f| {
         let fty = &f.ty;
@@ -357,15 +470,8 @@ fn find_dependencies<'a>(
 
     if let Some(pos) = current_pos {
         if pos == 0 {
-            // First field - no dependencies
             return deps;
         }
-
-        // Strategy: Look for type name matches
-        // If field is UserService and there's a UserRepository field before it,
-        // assume UserService depends on UserRepository
-        //
-        // We look for common prefixes/stems in type names
 
         let current_type_base = current_type_str
             .split('<')
@@ -375,7 +481,6 @@ fn find_dependencies<'a>(
             .last()
             .unwrap_or(&current_type_str);
 
-        // Check all previous fields to see if any could be dependencies
         for prev_field in &all_fields[..pos] {
             let prev_type_str = {
                 let t = &prev_field.ty;
@@ -390,14 +495,8 @@ fn find_dependencies<'a>(
                 .last()
                 .unwrap_or(&prev_type_str);
 
-            // Heuristic: Check if type names suggest a relationship
-            // E.g., "UserService" and "UserRepository", or "Service" and "Repository"
             let current_lower = current_type_base.to_lowercase();
             let prev_lower = prev_type_base.to_lowercase();
-
-            // Check for common patterns:
-            // 1. Same prefix (User): UserService depends on UserRepository
-            // 2. Known dependency patterns: Service->Repository, Repository->Database
 
             let has_common_prefix = current_lower
                 .starts_with(&prev_lower[..prev_lower.len().min(4)])
@@ -417,14 +516,4 @@ fn find_dependencies<'a>(
     }
 
     deps
-}
-
-impl Clone for FieldInfo {
-    fn clone(&self) -> Self {
-        Self {
-            name: self.name.clone(),
-            ty: self.ty.clone(),
-            provide_expr: self.provide_expr.clone(),
-        }
-    }
 }

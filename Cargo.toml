@@ -10,7 +10,7 @@ resolver = "2"
 # Main allframe crate - re-exports allframe-core
 [package]
 name = "allframe"
-version = "0.1.4"
+version = "0.1.6"
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
@@ -24,8 +24,8 @@ description = "The Composable Rust API Framework - TDD-first, compile-time DI, C
 readme = "README.md"
 
 [dependencies]
-allframe-core = { version = "0.1.4", path = "crates/allframe-core", default-features = false, features = ["di", "openapi", "router", "otel", "cqrs"] }
-allframe-forge = { version = "0.1.4", path = "crates/allframe-forge" }
+allframe-core = { version = "0.1.6", path = "crates/allframe-core", default-features = false, features = ["di", "openapi", "router", "otel", "cqrs"] }
+allframe-forge = { version = "0.1.6", path = "crates/allframe-forge" }
 anyhow = { workspace = true }
 
 [[bin]]
@@ -57,7 +57,7 @@ tokio = { workspace = true }
 async-trait = { workspace = true }
 
 [workspace.package]
-version = "0.1.4"
+version = "0.1.6"
 edition = "2021"
 rust-version = "1.86"  # Required for async-graphql 7.0.17
 authors = ["AllFrame Contributors"]

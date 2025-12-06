@@ -150,13 +150,16 @@ fn ignite_creates_project_with_correct_structure() {
         .assert()
         .success();
 
-    // Verify expected directory structure
+    // Verify expected directory structure (Clean Architecture)
     let expected_files = vec![
         "Cargo.toml",
         "src/main.rs",
         "src/domain/mod.rs",
+        "src/domain/greeter.rs",
         "src/application/mod.rs",
+        "src/application/greeting_service.rs",
         "src/infrastructure/mod.rs",
+        "src/infrastructure/console_greeter.rs",
         "src/presentation/mod.rs",
         ".gitignore",
         "README.md",
@@ -170,6 +173,51 @@ fn ignite_creates_project_with_correct_structure() {
             file_path.display()
         );
     }
+}
+
+#[test]
+fn ignite_creates_project_with_zero_warnings() {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
+    let project_path = temp_dir.path().join("zero-warnings");
+
+    // Run `allframe ignite zero-warnings`
+    Command::cargo_bin("allframe")
+        .expect("Failed to find allframe binary")
+        .arg("ignite")
+        .arg(&project_path)
+        .current_dir(temp_dir.path())
+        .assert()
+        .success();
+
+    // Build with warnings as errors to ensure zero warnings
+    let build_output = std::process::Command::new("cargo")
+        .arg("build")
+        .env("RUSTFLAGS", "-D warnings")
+        .current_dir(&project_path)
+        .output()
+        .expect("Failed to run cargo build");
+
+    assert!(
+        build_output.status.success(),
+        "Generated project should compile with zero warnings.\nstderr: {}",
+        String::from_utf8_lossy(&build_output.stderr)
+    );
+
+    // Also run clippy to ensure code quality
+    let clippy_output = std::process::Command::new("cargo")
+        .arg("clippy")
+        .arg("--")
+        .arg("-D")
+        .arg("warnings")
+        .current_dir(&project_path)
+        .output()
+        .expect("Failed to run cargo clippy");
+
+    assert!(
+        clippy_output.status.success(),
+        "Generated project should pass clippy with zero warnings.\nstderr: {}",
+        String::from_utf8_lossy(&clippy_output.stderr)
+    );
 }
 
 #[test]

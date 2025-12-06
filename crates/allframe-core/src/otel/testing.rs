@@ -1,17 +1,12 @@
-//! OpenTelemetry automatic instrumentation
+//! Testing utilities for OpenTelemetry
 //!
-//! This module provides automatic distributed tracing, metrics, and context
-//! propagation for AllFrame applications with zero manual instrumentation
-//! required.
+//! This module provides in-memory recorders for spans and metrics
+//! that are useful for testing instrumented code.
 
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
-
-// Re-export macros
-#[cfg(feature = "otel")]
-pub use allframe_macros::traced;
 
 /// Span represents a unit of work in distributed tracing
 #[derive(Debug, Clone)]
@@ -60,70 +55,12 @@ impl SpanRecorder {
     pub fn spans(&self) -> Vec<Span> {
         self.spans.read().unwrap().clone()
     }
-}
 
-/// Get the current span ID (placeholder)
-pub fn current_span_id() -> String {
-    "span-placeholder".to_string()
-}
-
-/// Get the current trace ID (placeholder)
-pub fn current_trace_id() -> String {
-    "trace-placeholder".to_string()
-}
-
-/// Start a new trace (placeholder)
-pub fn start_trace(_trace_id: &str) {
-    // Placeholder for MVP
-}
-
-/// Set baggage value (placeholder)
-pub fn set_baggage(_key: &str, _value: &str) {
-    // Placeholder for MVP
-}
-
-/// Get baggage value (placeholder)
-pub fn get_baggage(_key: &str) -> Option<String> {
-    // Placeholder for MVP
-    None
-}
-
-/// SpanContext for distributed tracing
-#[derive(Debug, Clone)]
-pub struct SpanContext {
-    /// Trace ID
-    pub trace_id: String,
-    /// Parent span ID
-    pub parent_span_id: String,
-    /// Sampled flag
-    pub sampled: bool,
-}
-
-impl SpanContext {
-    /// Create a new span context
-    pub fn new(trace_id: &str, parent_span_id: &str) -> Self {
-        Self {
-            trace_id: trace_id.to_string(),
-            parent_span_id: parent_span_id.to_string(),
-            sampled: true,
-        }
+    /// Clear all recorded spans
+    pub fn clear(&self) {
+        let mut spans = self.spans.write().unwrap();
+        spans.clear();
     }
-}
-
-/// Inject context into headers (placeholder)
-pub fn inject_context(_context: &SpanContext) -> HashMap<String, String> {
-    let mut headers = HashMap::new();
-    headers.insert("traceparent".to_string(), "placeholder".to_string());
-    headers
-}
-
-/// Extract context from headers (placeholder)
-pub fn extract_context(headers: &HashMap<String, String>) -> Option<SpanContext> {
-    headers.get("traceparent").map(|_| SpanContext {
-        trace_id: "extracted-trace".to_string(),
-        parent_span_id: "extracted-span".to_string(),
-        sampled: true,
-    })
 }
 
 /// MetricsRecorder for testing - records all metrics
@@ -147,6 +84,27 @@ impl MetricsRecorder {
     /// Get current instance (placeholder)
     pub fn current() -> Self {
         Self::new()
+    }
+
+    /// Increment a counter
+    pub fn increment_counter(&self, name: &str, value: u64) {
+        let mut counters = self.counters.write().unwrap();
+        *counters.entry(name.to_string()).or_insert(0) += value;
+    }
+
+    /// Set a gauge value
+    pub fn set_gauge(&self, name: &str, value: i64) {
+        let mut gauges = self.gauges.write().unwrap();
+        gauges.insert(name.to_string(), value);
+    }
+
+    /// Record a histogram value
+    pub fn record_histogram(&self, name: &str, value: f64) {
+        let mut histograms = self.histograms.write().unwrap();
+        histograms
+            .entry(name.to_string())
+            .or_insert_with(Vec::new)
+            .push(value);
     }
 
     /// Get counter value
@@ -179,6 +137,28 @@ impl MetricsRecorder {
     /// Get counter with labels (placeholder)
     pub fn get_counter_with_labels(&self, name: &str, _labels: &[(&str, &str)]) -> u64 {
         self.get_counter(name)
+    }
+}
+
+/// SpanContext for distributed tracing
+#[derive(Debug, Clone)]
+pub struct SpanContext {
+    /// Trace ID
+    pub trace_id: String,
+    /// Parent span ID
+    pub parent_span_id: String,
+    /// Sampled flag
+    pub sampled: bool,
+}
+
+impl SpanContext {
+    /// Create a new span context
+    pub fn new(trace_id: &str, parent_span_id: &str) -> Self {
+        Self {
+            trace_id: trace_id.to_string(),
+            parent_span_id: parent_span_id.to_string(),
+            sampled: true,
+        }
     }
 }
 
@@ -229,82 +209,6 @@ impl Histogram {
     }
 }
 
-/// Exporter type
-#[derive(Debug, Clone, PartialEq)]
-pub enum ExporterType {
-    /// Stdout console exporter
-    Stdout,
-    /// Jaeger exporter
-    Jaeger {
-        /// Jaeger endpoint URL
-        endpoint: String,
-    },
-    /// OTLP exporter
-    Otlp {
-        /// OTLP endpoint URL
-        endpoint: String,
-    },
-}
-
-/// Configure exporter (placeholder)
-pub fn configure_exporter(_exporter: ExporterType) {
-    // Placeholder for MVP
-}
-
-/// Configure batch export (placeholder)
-pub fn configure_batch_export(_batch_size: usize, _flush_interval_ms: u64) {
-    // Placeholder for MVP
-}
-
-/// Get export count (placeholder)
-pub fn get_export_count() -> usize {
-    0
-}
-
-/// Configure sampling rate (placeholder)
-pub fn configure_sampling(_rate: f64) {
-    // Placeholder for MVP
-}
-
-/// Enable tracing (placeholder)
-pub fn enable_tracing() {
-    // Placeholder for MVP
-}
-
-/// Disable tracing (placeholder)
-pub fn disable_tracing() {
-    // Placeholder for MVP
-}
-
-/// OTel configuration
-#[derive(Debug, Clone)]
-pub struct OtelConfig {
-    /// Service name
-    pub service_name: String,
-    /// Exporter type
-    pub exporter_type: String,
-    /// Sampling rate
-    pub sampling_rate: f64,
-    /// Batch size
-    pub batch_size: usize,
-}
-
-/// Configure from file (placeholder)
-pub async fn configure_from_file(_path: &str) -> Result<(), String> {
-    // Placeholder for MVP
-    Ok(())
-}
-
-/// Get current config (placeholder)
-pub fn get_config() -> OtelConfig {
-    OtelConfig {
-        service_name: "allframe".to_string(),
-        exporter_type: "stdout".to_string(),
-        sampling_rate: 1.0,
-        batch_size: 512,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -339,5 +243,22 @@ mod tests {
         assert_eq!(hist.count(), 5);
         assert_eq!(hist.sum(), 15.0);
         assert_eq!(hist.p50(), 3.0);
+    }
+
+    #[test]
+    fn test_metrics_recorder() {
+        let recorder = MetricsRecorder::new();
+
+        recorder.increment_counter("requests", 1);
+        recorder.increment_counter("requests", 2);
+        assert_eq!(recorder.get_counter("requests"), 3);
+
+        recorder.set_gauge("active_connections", 42);
+        assert_eq!(recorder.get_gauge("active_connections"), 42);
+
+        recorder.record_histogram("latency", 100.0);
+        recorder.record_histogram("latency", 200.0);
+        let hist = recorder.get_histogram("latency");
+        assert_eq!(hist.count(), 2);
     }
 }

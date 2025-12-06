@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.6] - 2025-12-06
+
+### Changed
+- **allsource-core upgraded to 0.7.0** - Updated CQRS backend to use latest allsource-core API
+  - Migrated to new Event API with `Event::from_strings()` for validated event creation
+  - Updated field names (`data` → `payload`)
+  - Converted async methods to sync where appropriate
+  - Updated `StoreStats` fields (total_entities, total_event_types)
+
+### Fixed
+- **Event trait bounds** - Added `Serialize + DeserializeOwned` bounds for proper event serialization
+
+---
+
+## [0.1.5] - 2025-12-06
+
+### Added
+- **Zero-warning templates** - `allframe ignite` now generates projects that compile with zero warnings
+- **Working Clean Architecture example** - Generated projects include functional Greeter example
+  - `Greeter` trait in domain layer
+  - `GreetingService` in application layer
+  - `ConsoleGreeter` in infrastructure layer
+- **Unit tests in templates** - Generated projects include passing tests demonstrating mocking
+- **New integration test** - `ignite_creates_project_with_zero_warnings` verifies builds with `-D warnings`
+
+### Fixed
+- **Clippy warnings** - Fixed derive for Default, collapsible str::replace calls
+- **Template unused imports** - Removed unused `pub use` re-exports from module files
+
+---
+
+## [0.1.4] - 2025-12-06
+
+### Added
+- **CLI binary in root crate** - `cargo install allframe` now works correctly
+  - Added `allframe-forge` as dependency to root crate
+  - Created `src/bin/allframe.rs` binary wrapper
+  - Exposed `run()` function from allframe-forge library
+
+### Fixed
+- **Graceful shutdown utilities** - Added `GracefulShutdown` and `ShutdownSignal` types
+- **`#[derive(GrpcError)]` macro** - Automatic tonic::Status conversion
+- **Enhanced `#[traced]` macro** - Configuration options (name, skip, ret, err, level)
+
+---
+
+## [0.1.3] - 2025-12-05
+
+### Added
+- Initial crates.io publishing
+- allframe-forge CLI for project scaffolding
+- allframe-mcp for MCP server integration
+
+---
+
 ## [Unreleased]
 
 ### Added - Scalar Integration (2025-12-01)

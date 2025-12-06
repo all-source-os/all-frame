@@ -14,7 +14,7 @@
 //!     let shutdown = GracefulShutdown::new();
 //!
 //!     // Spawn a task that will be cancelled on shutdown
-//!     let token = shutdown.token();
+//!     let mut token = shutdown.token();
 //!     tokio::spawn(async move {
 //!         loop {
 //!             tokio::select! {
@@ -34,12 +34,7 @@
 //! }
 //! ```
 
-use std::{
-    future::Future,
-    pin::Pin,
-    sync::Arc,
-    time::Duration,
-};
+use std::{future::Future, pin::Pin, sync::Arc, time::Duration};
 
 use tokio::sync::{broadcast, watch};
 
@@ -121,8 +116,9 @@ impl GracefulShutdownBuilder {
 
     /// Build the graceful shutdown handler
     pub fn build(self) -> GracefulShutdown {
-        let on_signal: Option<Arc<dyn Fn(ShutdownSignal) + Send + Sync>> =
-            self.on_signal.map(|f| Arc::from(f) as Arc<dyn Fn(ShutdownSignal) + Send + Sync>);
+        let on_signal: Option<Arc<dyn Fn(ShutdownSignal) + Send + Sync>> = self
+            .on_signal
+            .map(|f| Arc::from(f) as Arc<dyn Fn(ShutdownSignal) + Send + Sync>);
         GracefulShutdown {
             timeout: self.timeout,
             on_signal,
@@ -258,8 +254,10 @@ async fn wait_for_signal() -> ShutdownSignal {
     {
         use tokio::signal::unix::{signal, SignalKind};
 
-        let mut sigint = signal(SignalKind::interrupt()).expect("Failed to register SIGINT handler");
-        let mut sigterm = signal(SignalKind::terminate()).expect("Failed to register SIGTERM handler");
+        let mut sigint =
+            signal(SignalKind::interrupt()).expect("Failed to register SIGINT handler");
+        let mut sigterm =
+            signal(SignalKind::terminate()).expect("Failed to register SIGTERM handler");
 
         tokio::select! {
             _ = sigint.recv() => ShutdownSignal::Interrupt,
@@ -377,16 +375,19 @@ mod tests {
         let shutdown = GracefulShutdown::new();
 
         // Future completes before shutdown
-        let result = shutdown
-            .run_until_shutdown(async { 42 })
-            .await;
+        let result = shutdown.run_until_shutdown(async { 42 }).await;
         assert_eq!(result, Some(42));
+    }
 
-        // Trigger shutdown
+    #[tokio::test]
+    async fn test_run_until_shutdown_cancelled() {
+        let shutdown = GracefulShutdown::new();
+        let token = shutdown.token();
+
+        // Trigger shutdown before running the future
         shutdown.shutdown();
 
-        // Future doesn't complete because shutdown was triggered
-        let token = shutdown.token();
+        // Token should now be shutdown
         assert!(token.is_shutdown());
     }
 

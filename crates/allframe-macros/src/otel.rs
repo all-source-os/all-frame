@@ -41,7 +41,8 @@ fn parse_traced_attrs(attr: TokenStream) -> Result<TracedConfig> {
         return Ok(config);
     }
 
-    // Parse key-value pairs: #[traced(name = "custom", skip(arg1), ret, err, level = "debug")]
+    // Parse key-value pairs: #[traced(name = "custom", skip(arg1), ret, err, level
+    // = "debug")]
     let attr_str = attr.to_string();
     for part in attr_str.split(',') {
         let part = part.trim();
@@ -99,19 +100,20 @@ fn instrument_function(func: &ItemFn, config: &TracedConfig) -> Result<TokenStre
     let attrs = &func.attrs;
 
     // Use function name as span name if not specified
-    let span_name = config
-        .name
-        .clone()
-        .unwrap_or_else(|| func_name.to_string());
+    let span_name = config.name.clone().unwrap_or_else(|| func_name.to_string());
 
     // Build skip list
     let skip_args = if config.skip.is_empty() {
         quote! {}
     } else {
-        let skips: Vec<_> = config.skip.iter().map(|s| {
-            let ident = syn::Ident::new(s, proc_macro2::Span::call_site());
-            quote! { #ident }
-        }).collect();
+        let skips: Vec<_> = config
+            .skip
+            .iter()
+            .map(|s| {
+                let ident = syn::Ident::new(s, proc_macro2::Span::call_site());
+                quote! { #ident }
+            })
+            .collect();
         quote! { skip(#(#skips),*), }
     };
 

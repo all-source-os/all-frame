@@ -312,8 +312,8 @@ Expose your AllFrame APIs as LLM-callable tools using the [Model Context Protoco
 ```toml
 # Opt-in to MCP server (zero overhead if not used!)
 [dependencies]
-allframe-core = "0.1"
-allframe-mcp = "0.1"  # Separate crate - 100% zero bloat!
+allframe-core = "0.1.6"
+allframe-mcp = "0.1.6"  # Separate crate - 100% zero bloat!
 tokio = { version = "1.48", features = ["full"] }
 ```
 
@@ -391,13 +391,13 @@ async fn main() {
 
 ```toml
 [dependencies]
-allframe = "0.1"
+allframe = "0.1.6"
 ```
 
 ### As a CLI Tool
 
 ```bash
-cargo install allframe-cli
+cargo install allframe
 ```
 
 ---
@@ -438,7 +438,7 @@ AllFrame uses Cargo feature flags to minimize bloat - you only pay for what you 
 
 ```toml
 [dependencies]
-allframe-core = { version = "0.1", features = ["di", "openapi"] }
+allframe-core = { version = "0.1.6", features = ["di", "openapi"] }
 ```
 
 ### Core Features
@@ -480,7 +480,7 @@ MCP (Model Context Protocol) is now a **separate crate** for 100% zero bloat:
 ```toml
 # Only add if you need LLM integration
 [dependencies]
-allframe-mcp = "0.1"
+allframe-mcp = "0.1.6"
 ```
 
 **Benefits:**
@@ -497,17 +497,17 @@ See [MCP Zero-Bloat Strategy](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md) for detail
 
 **Minimal REST API:**
 ```toml
-allframe-core = { version = "0.1", default-features = false, features = ["router"] }
+allframe-core = { version = "0.1.6", default-features = false, features = ["router"] }
 ```
 
 **Production GraphQL API:**
 ```toml
-allframe-core = { version = "0.1", features = ["router-graphql"] }
+allframe-core = { version = "0.1.6", features = ["router-graphql"] }
 ```
 
 **Multi-Protocol Gateway:**
 ```toml
-allframe-core = { version = "0.1", features = ["router-full"] }
+allframe-core = { version = "0.1.6", features = ["router-full"] }
 ```
 
 ---

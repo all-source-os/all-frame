@@ -59,20 +59,18 @@ pub fn create_directory_structure(project_path: &Path) -> Result<()> {
 ///
 /// ## Domain Layer
 /// - `src/domain/mod.rs` - Domain module exports
-/// - `src/domain/entities.rs` - Example business entity
-/// - `src/domain/repositories.rs` - Example repository trait
+/// - `src/domain/greeter.rs` - Greeter trait definition
 ///
 /// ## Application Layer
 /// - `src/application/mod.rs` - Application module exports
-/// - `src/application/services.rs` - Example application service
+/// - `src/application/greeting_service.rs` - Greeting service
 ///
 /// ## Infrastructure Layer
 /// - `src/infrastructure/mod.rs` - Infrastructure module exports
-/// - `src/infrastructure/repositories.rs` - Example repository implementation
+/// - `src/infrastructure/console_greeter.rs` - Console greeter implementation
 ///
 /// ## Presentation Layer
-/// - `src/presentation/mod.rs` - Presentation module exports
-/// - `src/presentation/handlers.rs` - Example HTTP handler
+/// - `src/presentation/mod.rs` - Presentation module (placeholder)
 ///
 /// # Arguments
 /// * `project_path` - Root path where files will be created
@@ -99,12 +97,8 @@ pub fn generate_files(project_path: &Path, project_name: &str) -> Result<()> {
         templates::domain_mod(),
     )?;
     fs::write(
-        project_path.join("src/domain/entities.rs"),
-        templates::domain_entities(),
-    )?;
-    fs::write(
-        project_path.join("src/domain/repositories.rs"),
-        templates::domain_repositories(),
+        project_path.join("src/domain/greeter.rs"),
+        templates::domain_greeter(),
     )?;
 
     // Application layer
@@ -113,8 +107,8 @@ pub fn generate_files(project_path: &Path, project_name: &str) -> Result<()> {
         templates::application_mod(),
     )?;
     fs::write(
-        project_path.join("src/application/services.rs"),
-        templates::application_services(),
+        project_path.join("src/application/greeting_service.rs"),
+        templates::application_greeting_service(),
     )?;
 
     // Infrastructure layer
@@ -123,18 +117,14 @@ pub fn generate_files(project_path: &Path, project_name: &str) -> Result<()> {
         templates::infrastructure_mod(),
     )?;
     fs::write(
-        project_path.join("src/infrastructure/repositories.rs"),
-        templates::infrastructure_repositories(),
+        project_path.join("src/infrastructure/console_greeter.rs"),
+        templates::infrastructure_console_greeter(),
     )?;
 
     // Presentation layer
     fs::write(
         project_path.join("src/presentation/mod.rs"),
         templates::presentation_mod(),
-    )?;
-    fs::write(
-        project_path.join("src/presentation/handlers.rs"),
-        templates::presentation_handlers(),
     )?;
 
     Ok(())

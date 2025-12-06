@@ -47,8 +47,8 @@ pub fn grpc_error_impl(input: TokenStream) -> Result<TokenStream> {
 
     for variant in &data.variants {
         let variant_name = &variant.ident;
-        let grpc_code = extract_grpc_code(&variant.attrs)?
-            .unwrap_or_else(|| "INTERNAL".to_string());
+        let grpc_code =
+            extract_grpc_code(&variant.attrs)?.unwrap_or_else(|| "INTERNAL".to_string());
 
         // Validate the code
         if !VALID_CODES.contains(&grpc_code.as_str()) {

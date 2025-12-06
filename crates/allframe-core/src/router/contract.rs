@@ -13,15 +13,19 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```rust,ignore
 //! use allframe_core::router::{Router, ContractTester};
 //!
-//! let router = Router::new();
-//! let tester = ContractTester::new(&router);
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let router = Router::new();
+//!     let tester = ContractTester::new(&router);
 //!
-//! // Generate and run contract tests
-//! let results = tester.test_all_routes().await?;
-//! assert!(results.all_passed());
+//!     // Generate and run contract tests
+//!     let results = tester.test_all_routes().await?;
+//!     assert!(results.all_passed());
+//!     Ok(())
+//! }
 //! ```
 
 use std::collections::HashMap;

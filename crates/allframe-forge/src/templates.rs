@@ -53,7 +53,7 @@ path = "src/main.rs"
 /// Creates the application entry point with:
 /// - Module declarations for all Clean Architecture layers
 /// - Async main function with tokio runtime
-/// - Basic test structure
+/// - Working example demonstrating layer connections
 ///
 /// # Returns
 /// A static string containing the main.rs template
@@ -62,25 +62,78 @@ pub fn main_rs() -> &'static str {
 //!
 //! This is an AllFrame application following Clean Architecture principles.
 
-mod domain;
 mod application;
+mod domain;
 mod infrastructure;
 mod presentation;
+
+use application::GreetingService;
+use infrastructure::ConsoleGreeter;
 
 #[tokio::main]
 async fn main() {
     println!("AllFrame - One frame. Infinite transformations.");
+    println!();
+
+    // Wire up dependencies (Dependency Injection)
+    let greeter = ConsoleGreeter;
+    let service = GreetingService::new(greeter);
+
+    // Execute use case
+    service.greet("World").await;
+
+    println!();
     println!("Your application is ready!");
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use domain::Greeter;
+
+    struct MockGreeter {
+        messages: std::cell::RefCell<Vec<String>>,
+    }
+
+    impl MockGreeter {
+        fn new() -> Self {
+            Self {
+                messages: std::cell::RefCell::new(Vec::new()),
+            }
+        }
+
+        fn get_messages(&self) -> Vec<String> {
+            self.messages.borrow().clone()
+        }
+    }
+
+    impl Greeter for MockGreeter {
+        fn greet(&self, name: &str) {
+            self.messages.borrow_mut().push(format!("Hello, {}!", name));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_greeting_service() {
+        let greeter = MockGreeter::new();
+        let service = GreetingService::new(greeter);
+
+        service.greet("Test").await;
+
+        // Verify the greeter was called correctly
+        // In a real test, you'd check the mock's recorded calls
+    }
 
     #[test]
-    fn test_application_compiles() {
-        // This test verifies the application structure compiles
-        assert!(true);
+    fn test_mock_greeter() {
+        let greeter = MockGreeter::new();
+        greeter.greet("Alice");
+        greeter.greet("Bob");
+
+        let messages = greeter.get_messages();
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0], "Hello, Alice!");
+        assert_eq!(messages[1], "Hello, Bob!");
     }
 }
 "#
@@ -98,55 +151,26 @@ pub fn domain_mod() -> &'static str {
 //! - services/: Domain services for complex business logic
 //! - value_objects/: Immutable value types
 
-pub mod entities;
-pub mod repositories;
+mod greeter;
 
-// Re-export commonly used types
-pub use entities::*;
-pub use repositories::*;
+pub use greeter::Greeter;
 "#
 }
 
-/// Generate domain/entities.rs content
-pub fn domain_entities() -> &'static str {
-    r#"//! Domain Entities
+/// Generate domain/greeter.rs content (replaces entities.rs)
+pub fn domain_greeter() -> &'static str {
+    r#"//! Greeter Domain Trait
 //!
-//! Business entities with behavior live here.
-
-// Example entity (remove and add your own)
-pub struct ExampleEntity {
-    id: String,
-    name: String,
-}
-
-impl ExampleEntity {
-    pub fn new(id: String, name: String) -> Self {
-        Self { id, name }
-    }
-
-    pub fn id(&self) -> &str {
-        &self.id
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-}
-"#
-}
-
-/// Generate domain/repositories.rs content
-pub fn domain_repositories() -> &'static str {
-    r#"//! Repository Traits
-//!
-//! Repository interfaces (traits) are defined here.
+//! This trait defines the contract for greeting functionality.
 //! Implementations live in the infrastructure layer.
 
-// Example repository trait (remove and add your own)
-#[async_trait::async_trait]
-pub trait ExampleRepository: Send + Sync {
-    async fn find_by_id(&self, id: &str) -> anyhow::Result<Option<String>>;
-    async fn save(&self, id: &str, data: String) -> anyhow::Result<()>;
+/// A trait for greeting functionality.
+///
+/// This is a domain-level abstraction that allows different
+/// implementations (console, HTTP, mock for testing, etc.)
+pub trait Greeter {
+    /// Greet someone by name.
+    fn greet(&self, name: &str);
 }
 "#
 }
@@ -158,28 +182,37 @@ pub fn application_mod() -> &'static str {
 //! This layer orchestrates domain objects to fulfill use cases.
 //! It depends only on the domain layer.
 
-pub mod services;
+mod greeting_service;
 
-pub use services::*;
+pub use greeting_service::GreetingService;
 "#
 }
 
-/// Generate application/services.rs content
-pub fn application_services() -> &'static str {
-    r#"//! Application Services
+/// Generate application/greeting_service.rs content
+pub fn application_greeting_service() -> &'static str {
+    r#"//! Greeting Service
 //!
-//! Use case orchestration lives here.
+//! Application service that orchestrates the greeting use case.
 
-// Example service (remove and add your own)
-pub struct ExampleService;
+use crate::domain::Greeter;
 
-impl ExampleService {
-    pub fn new() -> Self {
-        Self
+/// Service for greeting users.
+///
+/// This service demonstrates dependency injection - it accepts
+/// any implementation of the Greeter trait.
+pub struct GreetingService<G: Greeter> {
+    greeter: G,
+}
+
+impl<G: Greeter> GreetingService<G> {
+    /// Create a new GreetingService with the given greeter implementation.
+    pub fn new(greeter: G) -> Self {
+        Self { greeter }
     }
 
-    pub async fn do_something(&self) -> anyhow::Result<String> {
-        Ok("Service executed successfully".to_string())
+    /// Greet someone by name.
+    pub async fn greet(&self, name: &str) {
+        self.greeter.greet(name);
     }
 }
 "#
@@ -189,38 +222,29 @@ impl ExampleService {
 pub fn infrastructure_mod() -> &'static str {
     r#"//! Infrastructure Layer
 //!
-//! This layer implements domain repository traits and handles external concerns.
+//! This layer implements domain traits and handles external concerns.
 //! It depends on the domain layer (implements traits defined there).
 
-pub mod repositories;
+mod console_greeter;
 
-pub use repositories::*;
+pub use console_greeter::ConsoleGreeter;
 "#
 }
 
-/// Generate infrastructure/repositories.rs content
-pub fn infrastructure_repositories() -> &'static str {
-    r#"//! Repository Implementations
+/// Generate infrastructure/console_greeter.rs content
+pub fn infrastructure_console_greeter() -> &'static str {
+    r#"//! Console Greeter Implementation
 //!
-//! Concrete implementations of domain repository traits.
+//! A concrete implementation of the Greeter trait that prints to the console.
 
-// Example repository implementation (remove and add your own)
-pub struct InMemoryExampleRepository;
+use crate::domain::Greeter;
 
-impl InMemoryExampleRepository {
-    pub fn new() -> Self {
-        Self
-    }
-}
+/// A greeter that prints greetings to the console.
+pub struct ConsoleGreeter;
 
-#[async_trait::async_trait]
-impl crate::domain::repositories::ExampleRepository for InMemoryExampleRepository {
-    async fn find_by_id(&self, _id: &str) -> anyhow::Result<Option<String>> {
-        Ok(None)
-    }
-
-    async fn save(&self, _id: &str, _data: String) -> anyhow::Result<()> {
-        Ok(())
+impl Greeter for ConsoleGreeter {
+    fn greet(&self, name: &str) {
+        println!("Hello, {}!", name);
     }
 }
 "#
@@ -232,23 +256,14 @@ pub fn presentation_mod() -> &'static str {
 //!
 //! This layer handles HTTP/gRPC/GraphQL requests and responses.
 //! It depends on the application and domain layers.
-
-pub mod handlers;
-
-pub use handlers::*;
-"#
-}
-
-/// Generate presentation/handlers.rs content
-pub fn presentation_handlers() -> &'static str {
-    r#"//! HTTP/API Handlers
 //!
-//! Thin handlers that delegate to application services.
-
-// Example handler (remove and add your own)
-pub async fn example_handler() -> String {
-    "Hello from AllFrame!".to_string()
-}
+//! Add your HTTP handlers, GraphQL resolvers, or gRPC services here.
+//! Example:
+//!
+//! ```ignore
+//! mod handlers;
+//! pub use handlers::*;
+//! ```
 "#
 }
 

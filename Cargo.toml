@@ -10,7 +10,7 @@ resolver = "2"
 # Main allframe crate - re-exports allframe-core
 [package]
 name = "allframe"
-version = "0.1.6"
+version = "0.1.7"
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
@@ -24,8 +24,8 @@ description = "The Composable Rust API Framework - TDD-first, compile-time DI, C
 readme = "README.md"
 
 [dependencies]
-allframe-core = { version = "0.1.6", path = "crates/allframe-core", default-features = false, features = ["di", "openapi", "router", "otel", "cqrs"] }
-allframe-forge = { version = "0.1.6", path = "crates/allframe-forge" }
+allframe-core = { workspace = true, features = ["di", "openapi", "router", "otel", "cqrs"] }
+allframe-forge = { workspace = true }
 anyhow = { workspace = true }
 
 [[bin]]
@@ -63,7 +63,7 @@ utils = ["allframe-core/utils"]
 assert_cmd = "2.0"
 predicates = "3.0"
 tempfile = "3.8"
-allframe-macros = { path = "crates/allframe-macros" }
+allframe-macros = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
@@ -116,6 +116,16 @@ anyhow = "1.0.75"  # Minimum version for Rust 1.80+ compatibility
 syn = "2.0"
 quote = "1.0"
 proc-macro2 = "1.0"
+
+# === Internal Workspace Crates ===
+# IMPORTANT: Keep these versions in sync with workspace.package.version above!
+# When releasing a new version:
+#   1. Update workspace.package.version (line 73)
+#   2. Update these three version strings to match
+# This ensures crates.io consumers get the correct dependency versions.
+allframe-core = { version = "0.1.7", path = "crates/allframe-core", default-features = false }
+allframe-macros = { version = "0.1.7", path = "crates/allframe-macros" }
+allframe-forge = { version = "0.1.7", path = "crates/allframe-forge" }
 
 # Test configuration for the workspace
 [profile.test]

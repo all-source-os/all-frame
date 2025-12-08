@@ -47,10 +47,11 @@ echo "CI/CD:"
 echo "  cargo make ci            - Run all CI checks (lint + test + build)"
 echo ""
 echo "Publishing:"
-echo "  cargo make version-check   - Check which crates need publishing"
-echo "  cargo make version-bump    - Bump version (patch by default)"
-echo "  cargo make publish-dry-run - Verify all crates are ready to publish"
-echo "  cargo make publish-all     - Publish all crates (parallel, skips published)"
+echo "  cargo make version-check      - Check which crates need publishing"
+echo "  cargo make version-sync-check - Verify internal crate versions are in sync"
+echo "  cargo make version-bump       - Bump version (patch by default)"
+echo "  cargo make publish-dry-run    - Verify all crates are ready to publish"
+echo "  cargo make publish-all        - Publish all crates (parallel, skips published)"
 '''
 
 # Quality Gates
@@ -145,7 +146,7 @@ echo "✅ Tools installed!"
 
 [tasks.ci]
 description = "Run all CI checks"
-dependencies = ["lint", "lint-sort", "test", "build"]
+dependencies = ["lint", "lint-sort", "version-sync-check", "test", "build"]
 script = '''
 echo ""
 echo "✅ All CI checks passed!"
@@ -212,6 +213,50 @@ script = '''\n#!/usr/bin/env bash
 #   allframe-macros (no deps)     ─┬─► allframe-core ─► allframe-mcp
 #   allframe-forge (no deps)      ─┘
 
+[tasks.version-sync-check]
+description = "Check that all internal crate versions are in sync"
+workspace = false
+script_runner = "@shell"
+script = '''
+#!/usr/bin/env bash
+set -e
+
+# Navigate to workspace root
+cd "$(git rev-parse --show-toplevel)"
+
+# Get workspace.package version
+WORKSPACE_VERSION=$(sed -n '/\[workspace\.package\]/,/\[/p' Cargo.toml | grep '^version' | cut -d'"' -f2)
+echo "Workspace version: ${WORKSPACE_VERSION}"
+echo ""
+
+ERRORS=0
+
+# Check workspace.dependencies versions
+check_workspace_dep() {
+    local crate=$1
+    local version=$(grep "^${crate} = " Cargo.toml | grep -o 'version = "[^"]*"' | cut -d'"' -f2)
+    if [ "$version" != "$WORKSPACE_VERSION" ]; then
+        echo "❌ ${crate} in workspace.dependencies has version ${version}, expected ${WORKSPACE_VERSION}"
+        ERRORS=$((ERRORS + 1))
+    else
+        echo "✅ ${crate} workspace.dependencies = ${version}"
+    fi
+}
+
+echo "Checking workspace.dependencies:"
+check_workspace_dep "allframe-core"
+check_workspace_dep "allframe-macros"
+check_workspace_dep "allframe-forge"
+
+echo ""
+if [ $ERRORS -gt 0 ]; then
+    echo "❌ Version sync check failed! Run 'cargo make version-bump' to fix."
+    exit 1
+else
+    echo "✅ All versions in sync!"
+fi
+'''
+
 [tasks.version-bump]
 description = "Bump workspace version (patch, minor, or major)"
 workspace = false
@@ -255,14 +300,18 @@ echo "Bumping version: ${CURRENT} → ${NEW_VERSION}"
 # Update workspace.package version (in [workspace.package] section only)
 sed -i '' "/\[workspace\.package\]/,/\[.*\]/{s/^version = \"${CURRENT}\"/version = \"${NEW_VERSION}\"/;}" "$CARGO_TOML"
 
-# Update allframe-mcp dependency on allframe-core
-sed -i '' "s/allframe-core = { version = \"${CURRENT}\"/allframe-core = { version = \"${NEW_VERSION}\"/" crates/allframe-mcp/Cargo.toml
+# Update workspace.dependencies for internal crates
+sed -i '' "s/allframe-core = { version = \"${CURRENT}\"/allframe-core = { version = \"${NEW_VERSION}\"/" "$CARGO_TOML"
+sed -i '' "s/allframe-macros = { version = \"${CURRENT}\"/allframe-macros = { version = \"${NEW_VERSION}\"/" "$CARGO_TOML"
+sed -i '' "s/allframe-forge = { version = \"${CURRENT}\"/allframe-forge = { version = \"${NEW_VERSION}\"/" "$CARGO_TOML"
 
 echo "✅ Version bumped to ${NEW_VERSION}"
 echo ""
-echo "Updated files:"
-echo "  - Cargo.toml (workspace.package.version)"
-echo "  - crates/allframe-mcp/Cargo.toml (allframe-core dependency)"
+echo "Updated in Cargo.toml:"
+echo "  - workspace.package.version"
+echo "  - workspace.dependencies.allframe-core"
+echo "  - workspace.dependencies.allframe-macros"
+echo "  - workspace.dependencies.allframe-forge"
 '''
 
 [tasks.version-check]

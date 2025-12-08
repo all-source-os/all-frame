@@ -70,7 +70,7 @@ tokio = { workspace = true }
 async-trait = { workspace = true }
 
 [workspace.package]
-version = "0.1.8"
+version = "0.1.9"
 edition = "2021"
 rust-version = "1.86"  # Required for async-graphql 7.0.17
 authors = ["AllFrame Contributors"]
@@ -123,9 +123,9 @@ proc-macro2 = "1.0"
 #   1. Update workspace.package.version (line 73)
 #   2. Update these three version strings to match
 # This ensures crates.io consumers get the correct dependency versions.
-allframe-core = { version = "0.1.8", path = "crates/allframe-core", default-features = false }
-allframe-macros = { version = "0.1.8", path = "crates/allframe-macros" }
-allframe-forge = { version = "0.1.8", path = "crates/allframe-forge" }
+allframe-core = { version = "0.1.9", path = "crates/allframe-core", default-features = false }
+allframe-macros = { version = "0.1.9", path = "crates/allframe-macros" }
+allframe-forge = { version = "0.1.9", path = "crates/allframe-forge" }
 
 # Test configuration for the workspace
 [profile.test]

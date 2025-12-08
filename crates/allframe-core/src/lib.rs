@@ -204,7 +204,10 @@ pub mod prelude {
     #[cfg(feature = "router")]
     pub use crate::router::{GraphQLConfig, GrpcConfig, RestConfig, RouterConfig, ServerConfig};
     /// Re-export shutdown utilities
-    pub use crate::shutdown::{GracefulShutdown, ShutdownSignal, ShutdownToken};
+    pub use crate::shutdown::{
+        GracefulShutdown, GracefulShutdownExt, ShutdownAwareTaskSpawner, ShutdownSignal,
+        ShutdownToken,
+    };
     /// Re-export GrpcError for convenient error handling
     #[cfg(feature = "router-grpc")]
     pub use crate::GrpcError;

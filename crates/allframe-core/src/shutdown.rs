@@ -318,6 +318,239 @@ pub trait ShutdownExt: Future + Sized {
 
 impl<F: Future> ShutdownExt for F {}
 
+/// Shutdown-aware task spawner
+///
+/// A wrapper around `GracefulShutdown` for spawning named tasks that respect
+/// shutdown signals. Provides logging and automatic cancellation on shutdown.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use allframe_core::shutdown::{GracefulShutdown, ShutdownAwareTaskSpawner};
+/// use std::sync::Arc;
+///
+/// #[tokio::main]
+/// async fn main() {
+///     let shutdown = Arc::new(GracefulShutdown::new());
+///     let spawner = ShutdownAwareTaskSpawner::new(shutdown.clone());
+///
+///     // Spawn a task that will be cancelled on shutdown
+///     spawner.spawn("my_task", || async {
+///         loop {
+///             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+///             println!("Working...");
+///         }
+///     });
+///
+///     // Shutdown will cancel the spawned task
+///     shutdown.shutdown();
+/// }
+/// ```
+pub struct ShutdownAwareTaskSpawner {
+    shutdown: Arc<GracefulShutdown>,
+}
+
+impl ShutdownAwareTaskSpawner {
+    /// Create a new shutdown-aware task spawner
+    pub fn new(shutdown: Arc<GracefulShutdown>) -> Self {
+        Self { shutdown }
+    }
+
+    /// Get a reference to the underlying shutdown handler
+    pub fn shutdown(&self) -> &Arc<GracefulShutdown> {
+        &self.shutdown
+    }
+
+    /// Spawn a task that will be cancelled on shutdown
+    ///
+    /// The task will be logged when starting, completing, and cancelling.
+    pub fn spawn<F, Fut>(&self, task_name: &str, future: F) -> tokio::task::JoinHandle<()>
+    where
+        F: FnOnce() -> Fut + Send + 'static,
+        Fut: Future<Output = ()> + Send,
+    {
+        let mut token = self.shutdown.token();
+        let task_name = task_name.to_string();
+
+        tokio::spawn(async move {
+            #[cfg(feature = "otel")]
+            tracing::info!(task = %task_name, "Starting task");
+
+            let task_future = future();
+
+            tokio::select! {
+                _ = task_future => {
+                    #[cfg(feature = "otel")]
+                    tracing::info!(task = %task_name, "Task completed normally");
+                }
+                _ = token.cancelled() => {
+                    #[cfg(feature = "otel")]
+                    tracing::info!(task = %task_name, "Task cancelled due to shutdown");
+                }
+            }
+
+            #[cfg(feature = "otel")]
+            tracing::info!(task = %task_name, "Task finished");
+
+            // Suppress unused variable warning when otel is disabled
+            #[cfg(not(feature = "otel"))]
+            let _ = task_name;
+        })
+    }
+
+    /// Spawn a long-running background task
+    ///
+    /// This is an alias for `spawn` - both handle shutdown the same way.
+    /// Use this to semantically indicate the task is intended to run
+    /// for the lifetime of the application.
+    pub fn spawn_background<F, Fut>(
+        &self,
+        task_name: &str,
+        future: F,
+    ) -> tokio::task::JoinHandle<()>
+    where
+        F: FnOnce() -> Fut + Send + 'static,
+        Fut: Future<Output = ()> + Send,
+    {
+        self.spawn(task_name, future)
+    }
+
+    /// Spawn a task and return its result (if it completes before shutdown)
+    pub fn spawn_with_result<F, Fut, T>(
+        &self,
+        task_name: &str,
+        future: F,
+    ) -> tokio::task::JoinHandle<Option<T>>
+    where
+        F: FnOnce() -> Fut + Send + 'static,
+        Fut: Future<Output = T> + Send,
+        T: Send + 'static,
+    {
+        let mut token = self.shutdown.token();
+        let task_name = task_name.to_string();
+
+        tokio::spawn(async move {
+            #[cfg(feature = "otel")]
+            tracing::info!(task = %task_name, "Starting task");
+
+            let task_future = future();
+
+            let result = tokio::select! {
+                result = task_future => {
+                    #[cfg(feature = "otel")]
+                    tracing::info!(task = %task_name, "Task completed normally");
+                    Some(result)
+                }
+                _ = token.cancelled() => {
+                    #[cfg(feature = "otel")]
+                    tracing::info!(task = %task_name, "Task cancelled due to shutdown");
+                    None
+                }
+            };
+
+            #[cfg(feature = "otel")]
+            tracing::info!(task = %task_name, "Task finished");
+
+            // Suppress unused variable warning when otel is disabled
+            #[cfg(not(feature = "otel"))]
+            let _ = task_name;
+
+            result
+        })
+    }
+}
+
+impl Clone for ShutdownAwareTaskSpawner {
+    fn clone(&self) -> Self {
+        Self {
+            shutdown: self.shutdown.clone(),
+        }
+    }
+}
+
+/// Extension trait for `GracefulShutdown` providing additional cleanup
+/// functionality
+///
+/// This trait adds a `perform_shutdown` method that runs cleanup functions
+/// during the shutdown sequence with proper error logging.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use allframe_core::shutdown::{GracefulShutdown, GracefulShutdownExt};
+///
+/// async fn cleanup_resources() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+///     // Close database connections, flush buffers, etc.
+///     Ok(())
+/// }
+///
+/// #[tokio::main]
+/// async fn main() {
+///     let shutdown = GracefulShutdown::new();
+///
+///     // Trigger shutdown and run cleanup
+///     shutdown.perform_shutdown(cleanup_resources).await.unwrap();
+/// }
+/// ```
+pub trait GracefulShutdownExt {
+    /// Perform graceful shutdown sequence with cleanup
+    ///
+    /// Runs the provided cleanup function and logs any errors that occur.
+    /// This method is designed to be called when shutdown is triggered.
+    fn perform_shutdown<F, Fut, E>(
+        &self,
+        cleanup_fn: F,
+    ) -> impl Future<Output = Result<(), E>> + Send
+    where
+        F: FnOnce() -> Fut + Send,
+        Fut: Future<Output = Result<(), E>> + Send,
+        E: std::fmt::Display + Send;
+}
+
+impl GracefulShutdownExt for GracefulShutdown {
+    async fn perform_shutdown<F, Fut, E>(&self, cleanup_fn: F) -> Result<(), E>
+    where
+        F: FnOnce() -> Fut + Send,
+        Fut: Future<Output = Result<(), E>> + Send,
+        E: std::fmt::Display + Send,
+    {
+        #[cfg(feature = "otel")]
+        tracing::info!("Starting graceful shutdown sequence");
+
+        // Run custom cleanup function
+        #[cfg(feature = "otel")]
+        tracing::info!("Running cleanup functions");
+
+        let result = cleanup_fn().await;
+
+        if let Err(ref e) = result {
+            #[cfg(feature = "otel")]
+            tracing::error!(error = %e, "Cleanup function failed");
+
+            // Suppress unused variable warning when otel is disabled
+            #[cfg(not(feature = "otel"))]
+            let _ = e;
+        }
+
+        #[cfg(feature = "otel")]
+        tracing::info!("Graceful shutdown completed");
+
+        result
+    }
+}
+
+/// Extension trait for `Arc<GracefulShutdown>` providing the same functionality
+impl GracefulShutdownExt for Arc<GracefulShutdown> {
+    async fn perform_shutdown<F, Fut, E>(&self, cleanup_fn: F) -> Result<(), E>
+    where
+        F: FnOnce() -> Fut + Send,
+        Fut: Future<Output = Result<(), E>> + Send,
+        E: std::fmt::Display + Send,
+    {
+        self.as_ref().perform_shutdown(cleanup_fn).await
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -413,6 +646,131 @@ mod tests {
         // Wait for the task to complete
         let result = handle.await.unwrap();
         assert_eq!(result, Some(()));
+        assert_eq!(counter.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_aware_spawner_task_completes() {
+        let shutdown = Arc::new(GracefulShutdown::new());
+        let spawner = ShutdownAwareTaskSpawner::new(shutdown.clone());
+
+        let counter = Arc::new(std::sync::atomic::AtomicU32::new(0));
+        let counter_clone = counter.clone();
+
+        let handle = spawner.spawn("test_task", move || async move {
+            counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        });
+
+        handle.await.unwrap();
+        assert_eq!(counter.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_aware_spawner_task_cancelled() {
+        let shutdown = Arc::new(GracefulShutdown::new());
+        let spawner = ShutdownAwareTaskSpawner::new(shutdown.clone());
+
+        let counter = Arc::new(std::sync::atomic::AtomicU32::new(0));
+        let counter_clone = counter.clone();
+
+        // Spawn a task that will sleep for a long time
+        let handle = spawner.spawn("long_task", move || async move {
+            tokio::time::sleep(Duration::from_secs(60)).await;
+            counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        });
+
+        // Trigger shutdown immediately
+        shutdown.shutdown();
+
+        // Task should complete (due to cancellation)
+        handle.await.unwrap();
+
+        // Counter should NOT have been incremented (task was cancelled)
+        assert_eq!(counter.load(std::sync::atomic::Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_aware_spawner_with_result() {
+        let shutdown = Arc::new(GracefulShutdown::new());
+        let spawner = ShutdownAwareTaskSpawner::new(shutdown.clone());
+
+        let handle = spawner.spawn_with_result("compute_task", || async { 42 });
+
+        let result = handle.await.unwrap();
+        assert_eq!(result, Some(42));
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_aware_spawner_with_result_cancelled() {
+        let shutdown = Arc::new(GracefulShutdown::new());
+        let spawner = ShutdownAwareTaskSpawner::new(shutdown.clone());
+
+        let handle = spawner.spawn_with_result("long_compute", || async {
+            tokio::time::sleep(Duration::from_secs(60)).await;
+            42
+        });
+
+        // Trigger shutdown immediately
+        shutdown.shutdown();
+
+        let result = handle.await.unwrap();
+        assert_eq!(result, None); // Cancelled, no result
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_aware_spawner_clone() {
+        let shutdown = Arc::new(GracefulShutdown::new());
+        let spawner = ShutdownAwareTaskSpawner::new(shutdown.clone());
+        let spawner2 = spawner.clone();
+
+        // Both spawners share the same shutdown
+        assert!(Arc::ptr_eq(spawner.shutdown(), spawner2.shutdown()));
+    }
+
+    #[tokio::test]
+    async fn test_graceful_shutdown_ext_success() {
+        let shutdown = GracefulShutdown::new();
+
+        let result: Result<(), &str> = shutdown.perform_shutdown(|| async { Ok(()) }).await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_graceful_shutdown_ext_error() {
+        let shutdown = GracefulShutdown::new();
+
+        let result: Result<(), &str> = shutdown
+            .perform_shutdown(|| async { Err("cleanup failed") })
+            .await;
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "cleanup failed");
+    }
+
+    #[tokio::test]
+    async fn test_graceful_shutdown_ext_with_arc() {
+        let shutdown = Arc::new(GracefulShutdown::new());
+
+        let result: Result<(), &str> = shutdown.perform_shutdown(|| async { Ok(()) }).await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_aware_spawner_background() {
+        let shutdown = Arc::new(GracefulShutdown::new());
+        let spawner = ShutdownAwareTaskSpawner::new(shutdown.clone());
+
+        let counter = Arc::new(std::sync::atomic::AtomicU32::new(0));
+        let counter_clone = counter.clone();
+
+        // spawn_background is an alias for spawn
+        let handle = spawner.spawn_background("bg_task", move || async move {
+            counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        });
+
+        handle.await.unwrap();
         assert_eq!(counter.load(std::sync::atomic::Ordering::SeqCst), 1);
     }
 }

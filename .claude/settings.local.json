@@ -29,7 +29,8 @@
       "Bash(cargo format-code:*)",
       "Bash(xargs ls:*)",
       "Bash(cargo update:*)",
-      "Bash(cargo publish:*)"
+      "Bash(cargo publish:*)",
+      "Bash(cargo info:*)"
     ],
     "deny": [],
     "ask": []

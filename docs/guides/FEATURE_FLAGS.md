@@ -25,13 +25,14 @@ cargo build --no-default-features --features "di,router,cqrs"
 The following features are enabled by default:
 
 ```toml
-default = ["di", "openapi", "router", "otel"]
+default = ["di", "openapi", "router", "otel", "health"]
 ```
 
 - `di` - Dependency Injection and Clean Architecture
 - `openapi` - OpenAPI schema generation
 - `router` - Protocol-agnostic routing (REST, GraphQL, gRPC)
 - `otel` - OpenTelemetry observability
+- `health` - Health check server (requires hyper)
 
 **Note**: `cqrs` is **NOT** in the default features. You must explicitly enable it if needed.
 
@@ -131,6 +132,30 @@ let router = Router::from_config(config)?;
 
 ---
 
+### `health` - Health Check Server
+
+**Enables**: HTTP health check server infrastructure
+
+**Dependencies**: `hyper`, `hyper-util`
+
+**APIs**:
+- `HealthServer` - HTTP server for health endpoints
+- `HealthCheck` trait - Custom health check implementation
+- `HealthReport` - Health status reporting
+- `Dependency` / `DependencyStatus` - Dependency health tracking
+
+**Example**:
+```rust
+use allframe_core::health::{HealthServer, HealthReport, OverallStatus};
+
+let server = HealthServer::new("0.0.0.0:8080");
+server.start().await?;
+```
+
+**Binary Impact**: +400KB (hyper + HTTP server)
+
+---
+
 ### `otel` - OpenTelemetry Observability
 
 **Enables**: Automatic distributed tracing, metrics, and context propagation
@@ -155,6 +180,34 @@ async fn get_user(user_id: String) -> Result<User, String> {
 ```
 
 **Binary Impact**: +80KB (tracing infrastructure)
+
+---
+
+### `otel-otlp` - Full OpenTelemetry Stack
+
+**Enables**: Complete OpenTelemetry SDK with OTLP exporter for production observability
+
+**Dependencies**: `otel`, `opentelemetry`, `opentelemetry_sdk`, `opentelemetry-otlp`, `tracing-opentelemetry`, `tracing-subscriber`
+
+**Re-exports**:
+- `opentelemetry` - Core OpenTelemetry API
+- `opentelemetry_sdk` - SDK configuration
+- `opentelemetry_otlp` - OTLP exporter
+- `tracing_opentelemetry` - Tracing integration
+- `tracing_subscriber` - Log/trace configuration
+
+**Example**:
+```rust
+use allframe_core::{opentelemetry, opentelemetry_sdk, tracing_subscriber};
+use opentelemetry_sdk::trace::TracerProvider;
+
+let tracer = opentelemetry_otlp::new_pipeline()
+    .tracing()
+    .with_exporter(opentelemetry_otlp::new_exporter().tonic())
+    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+```
+
+**Binary Impact**: +300KB (full OTEL stack)
 
 ---
 
@@ -221,6 +274,28 @@ store.append("user-123", vec![
 
 ---
 
+## HTTP Client & Networking Features
+
+### `http-client` - HTTP Client
+
+**Enables**: Re-exports `reqwest` for making HTTP requests
+
+**Dependencies**: `reqwest` (with `json` and `rustls-tls` features)
+
+**Example**:
+```rust
+use allframe_core::reqwest;
+
+async fn fetch_data() -> Result<String, reqwest::Error> {
+    let response = reqwest::get("https://api.example.com/data").await?;
+    response.text().await
+}
+```
+
+**Binary Impact**: +500KB (reqwest + TLS)
+
+---
+
 ## Router Production Features
 
 ### `router-graphql` - Production GraphQL
@@ -242,14 +317,39 @@ store.append("user-123", vec![
 
 **Enables**: Full gRPC implementation using `tonic`
 
-**Dependencies**: `tonic`, `prost`, `tonic-reflection`
+**Dependencies**: `tonic`, `prost`, `prost-types`, `tonic-reflection`, `tonic-health`, `tonic-build`, `tokio-stream`, `futures`
 
 **APIs**:
 - `GrpcProductionAdapter` - Full gRPC server
 - Protobuf code generation
 - Service reflection
+- Health checking
 
 **Binary Impact**: +1.2MB (tonic + protobuf)
+
+---
+
+### `router-grpc-tls` - gRPC with TLS Support
+
+**Enables**: TLS/mTLS support for gRPC servers and clients
+
+**Dependencies**: `router-grpc`, `tonic/tls-ring`, `tonic/tls-native-roots`, `rustls-pemfile`, `tokio-rustls`
+
+**Example**:
+```rust
+use allframe_core::grpc::{GrpcServerBuilder, TlsConfig};
+
+let tls_config = TlsConfig::new(
+    include_bytes!("server.crt"),
+    include_bytes!("server.key"),
+);
+
+let server = GrpcServerBuilder::new()
+    .with_tls(tls_config)
+    .build()?;
+```
+
+**Binary Impact**: +200KB (TLS libraries)
 
 ---
 
@@ -258,6 +358,168 @@ store.append("user-123", vec![
 **Enables**: Both `router-graphql` and `router-grpc`
 
 **Binary Impact**: +2.0MB (combined)
+
+---
+
+## Observability & Metrics Features
+
+### `metrics` - Prometheus Metrics
+
+**Enables**: Prometheus metrics collection and exposition
+
+**Dependencies**: `prometheus`
+
+**Re-exports**: `prometheus` crate
+
+**Example**:
+```rust
+use allframe_core::prometheus::{Counter, Opts, Registry};
+
+let counter = Counter::with_opts(Opts::new("requests_total", "Total requests"))?;
+let registry = Registry::new();
+registry.register(Box::new(counter.clone()))?;
+
+counter.inc();
+```
+
+**Binary Impact**: +100KB (prometheus)
+
+---
+
+## Caching Features
+
+### `cache-memory` - In-Memory Caching
+
+**Enables**: High-performance in-memory caching with `moka` and concurrent maps with `dashmap`
+
+**Dependencies**: `moka` (with `future` feature), `dashmap`
+
+**Re-exports**:
+- `moka` - High-performance bounded cache
+- `dashmap` - Concurrent HashMap
+
+**Example**:
+```rust
+use allframe_core::moka::future::Cache;
+use allframe_core::dashmap::DashMap;
+
+// Moka cache with TTL
+let cache: Cache<String, String> = Cache::builder()
+    .max_capacity(10_000)
+    .time_to_live(std::time::Duration::from_secs(300))
+    .build();
+
+// DashMap for concurrent access
+let map: DashMap<String, i32> = DashMap::new();
+map.insert("key".to_string(), 42);
+```
+
+**Binary Impact**: +150KB (moka + dashmap)
+
+---
+
+### `cache-redis` - Redis Caching
+
+**Enables**: Redis client for distributed caching
+
+**Dependencies**: `redis` (with `tokio-comp` and `connection-manager` features)
+
+**Re-exports**: `redis` crate
+
+**Example**:
+```rust
+use allframe_core::redis::{Client, AsyncCommands};
+
+let client = Client::open("redis://127.0.0.1/")?;
+let mut con = client.get_multiplexed_async_connection().await?;
+
+con.set("my_key", "my_value").await?;
+let value: String = con.get("my_key").await?;
+```
+
+**Binary Impact**: +200KB (redis client)
+
+---
+
+## Rate Limiting & Resilience Features
+
+### `rate-limit` - Rate Limiting
+
+**Enables**: Token bucket rate limiting with `governor`
+
+**Dependencies**: `governor`
+
+**Re-exports**: `governor` crate
+
+**Example**:
+```rust
+use allframe_core::governor::{Quota, RateLimiter};
+use std::num::NonZeroU32;
+
+let limiter = RateLimiter::direct(Quota::per_second(NonZeroU32::new(10).unwrap()));
+
+if limiter.check().is_ok() {
+    // Request allowed
+} else {
+    // Rate limited
+}
+```
+
+**Binary Impact**: +80KB (governor)
+
+---
+
+### `resilience` - Retry & Circuit Breaker
+
+**Enables**: Retry patterns with exponential backoff using `backoff`
+
+**Dependencies**: `backoff` (with `tokio` feature)
+
+**Re-exports**: `backoff` crate
+
+**Example**:
+```rust
+use allframe_core::backoff::{ExponentialBackoff, future::retry};
+
+let result = retry(ExponentialBackoff::default(), || async {
+    // Fallible operation
+    Ok::<_, backoff::Error<std::io::Error>>("success")
+}).await?;
+```
+
+**Binary Impact**: +50KB (backoff)
+
+---
+
+## Utility Features
+
+### `utils` - Common Utilities Bundle
+
+**Enables**: Common utility crates for date/time, URLs, synchronization, and random numbers
+
+**Dependencies**: `chrono`, `url`, `parking_lot`, `rand`
+
+**Re-exports**:
+- `chrono` - Date and time handling (with serde support)
+- `url` - URL parsing and manipulation
+- `parking_lot` - Efficient synchronization primitives (Mutex, RwLock)
+- `rand` - Random number generation
+
+**Example**:
+```rust
+use allframe_core::{chrono, url, parking_lot, rand};
+use chrono::{DateTime, Utc};
+use url::Url;
+use parking_lot::Mutex;
+use rand::Rng;
+
+let now: DateTime<Utc> = Utc::now();
+let api_url = Url::parse("https://api.example.com")?;
+let counter = Mutex::new(0);
+let random: u32 = rand::thread_rng().gen();
+```
+
+**Binary Impact**: +200KB (combined utilities)
 
 ---
 
@@ -333,6 +595,33 @@ cargo build --all-features
 
 ---
 
+### Production API with Caching
+```bash
+cargo build --features "cache-memory,cache-redis"
+```
+**Features**: Default + Memory + Redis caching
+**Use case**: High-traffic APIs requiring caching layer
+
+---
+
+### Resilient Microservice
+```bash
+cargo build --features "router-grpc,router-grpc-tls,rate-limit,resilience,metrics"
+```
+**Features**: gRPC + TLS + Rate limiting + Retry patterns + Prometheus metrics
+**Use case**: Production microservices with full resilience
+
+---
+
+### Observable Service
+```bash
+cargo build --features "otel-otlp,metrics"
+```
+**Features**: Full OpenTelemetry + Prometheus
+**Use case**: Services requiring comprehensive observability
+
+---
+
 ## Feature Dependencies
 
 ```
@@ -341,6 +630,10 @@ di
 
 openapi
   └─ (no dependencies)
+
+health
+  ├─ hyper
+  └─ hyper-util
 
 router
   └─ toml (for config parsing)
@@ -356,21 +649,73 @@ router-grpc
   ├─ prost
   ├─ prost-types
   ├─ tonic-build
+  ├─ tonic-reflection
+  ├─ tonic-health
   ├─ tokio-stream
   └─ futures
+
+router-grpc-tls
+  ├─ router-grpc
+  ├─ tonic/tls-ring
+  ├─ tonic/tls-native-roots
+  ├─ rustls-pemfile
+  └─ tokio-rustls
 
 router-full
   ├─ router-graphql
   └─ router-grpc
 
+otel
+  ├─ allframe-macros
+  └─ tracing
+
+otel-otlp
+  ├─ otel
+  ├─ opentelemetry
+  ├─ opentelemetry_sdk
+  ├─ opentelemetry-otlp
+  ├─ tracing-opentelemetry
+  └─ tracing-subscriber
+
+http-client
+  └─ reqwest (json, rustls-tls)
+
+metrics
+  └─ prometheus
+
+cache-memory
+  ├─ moka (future)
+  └─ dashmap
+
+cache-redis
+  └─ redis (tokio-comp, connection-manager)
+
+rate-limit
+  └─ governor
+
+resilience
+  └─ backoff (tokio)
+
+utils
+  ├─ chrono (serde)
+  ├─ url
+  ├─ parking_lot
+  └─ rand
+
 cqrs
   └─ allframe-macros
 
-otel
-  └─ allframe-macros
+cqrs-allsource
+  ├─ cqrs
+  └─ allsource-core
 
-mcp
-  └─ (placeholder)
+cqrs-postgres
+  ├─ cqrs-allsource
+  └─ allsource-core/postgres
+
+cqrs-rocksdb
+  ├─ cqrs-allsource
+  └─ allsource-core/rocksdb-storage
 ```
 
 ---
@@ -511,13 +856,11 @@ cargo build --features "cqrs,router-graphql"
 
 ## Future Feature Flags (Planned)
 
-- `cqrs-chronos` - Chronos event store integration
-- `cqrs-postgres` - PostgreSQL persistence
-- `cqrs-sqlite` - SQLite persistence
+- `cqrs-sqlite` - SQLite persistence for CQRS
 - `mcp` - Model Context Protocol integration
 - `auth` - Authentication/authorization helpers
-- `rate-limit` - Rate limiting middleware
 - `websockets` - WebSocket support
+- `circuit-breaker` - Circuit breaker pattern (standalone from `resilience`)
 
 ---
 

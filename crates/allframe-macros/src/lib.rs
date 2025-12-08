@@ -12,6 +12,8 @@ mod di;
 mod error;
 mod health;
 mod otel;
+mod resilience;
+mod security;
 
 use proc_macro::TokenStream;
 
@@ -401,6 +403,139 @@ pub fn health_check(input: TokenStream) -> TokenStream {
     let input = proc_macro2::TokenStream::from(input);
 
     health::health_check_impl(input)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Derive macro for automatic Obfuscate implementation
+///
+/// Generates the `Obfuscate` trait implementation that safely logs struct
+/// fields, obfuscating those marked with `#[sensitive]`.
+///
+/// # Example
+/// ```ignore
+/// use allframe_macros::Obfuscate;
+///
+/// #[derive(Obfuscate)]
+/// struct DatabaseConfig {
+///     host: String,
+///     port: u16,
+///     #[sensitive]
+///     password: String,
+///     #[sensitive]
+///     api_key: String,
+/// }
+///
+/// let config = DatabaseConfig {
+///     host: "localhost".to_string(),
+///     port: 5432,
+///     password: "secret".to_string(),
+///     api_key: "sk_live_abc123".to_string(),
+/// };
+///
+/// // Output: "DatabaseConfig { host: "localhost", port: 5432, password: ***, api_key: *** }"
+/// println!("{}", config.obfuscate());
+/// ```
+///
+/// # Attributes
+/// - `#[sensitive]` - Mark field as sensitive, will be displayed as `***`
+/// - `#[obfuscate(with = "function_name")]` - Use custom function to obfuscate
+#[proc_macro_derive(Obfuscate, attributes(sensitive, obfuscate))]
+pub fn obfuscate(input: TokenStream) -> TokenStream {
+    let input = proc_macro2::TokenStream::from(input);
+
+    security::obfuscate_impl(input)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Attribute macro for automatic retry with exponential backoff
+///
+/// Wraps an async function with retry logic using `RetryExecutor`.
+///
+/// # Example
+/// ```ignore
+/// use allframe_macros::retry;
+///
+/// #[retry(max_retries = 3, initial_interval_ms = 100)]
+/// async fn fetch_data() -> Result<String, std::io::Error> {
+///     // This will be retried up to 3 times on failure
+///     reqwest::get("https://api.example.com/data")
+///         .await?
+///         .text()
+///         .await
+/// }
+/// ```
+///
+/// # Parameters
+/// - `max_retries` - Maximum retry attempts (default: 3)
+/// - `initial_interval_ms` - Initial backoff in milliseconds (default: 500)
+/// - `max_interval_ms` - Maximum backoff in milliseconds (default: 30000)
+/// - `multiplier` - Backoff multiplier (default: 2.0)
+#[proc_macro_attribute]
+pub fn retry(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = proc_macro2::TokenStream::from(attr);
+    let item = proc_macro2::TokenStream::from(item);
+
+    resilience::retry_impl(attr, item)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Attribute macro for circuit breaker pattern
+///
+/// Wraps a function with circuit breaker logic for fail-fast behavior.
+///
+/// # Example
+/// ```ignore
+/// use allframe_macros::circuit_breaker;
+///
+/// #[circuit_breaker(name = "external_api", failure_threshold = 5)]
+/// async fn call_external_api() -> Result<String, std::io::Error> {
+///     // After 5 failures, the circuit opens and calls fail fast
+///     external_service::call().await
+/// }
+/// ```
+///
+/// # Parameters
+/// - `name` - Circuit breaker name (default: function name)
+/// - `failure_threshold` - Failures before opening (default: 5)
+/// - `success_threshold` - Successes to close in half-open (default: 3)
+/// - `timeout_ms` - Time before half-open in milliseconds (default: 30000)
+#[proc_macro_attribute]
+pub fn circuit_breaker(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = proc_macro2::TokenStream::from(attr);
+    let item = proc_macro2::TokenStream::from(item);
+
+    resilience::circuit_breaker_impl(attr, item)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Attribute macro for rate limiting
+///
+/// Wraps a function with rate limiting using token bucket algorithm.
+///
+/// # Example
+/// ```ignore
+/// use allframe_macros::rate_limited;
+///
+/// #[rate_limited(rps = 100, burst = 10)]
+/// fn handle_request() -> Result<Response, std::io::Error> {
+///     // Limited to 100 requests per second with burst of 10
+///     process_request()
+/// }
+/// ```
+///
+/// # Parameters
+/// - `rps` - Requests per second (default: 100)
+/// - `burst` - Burst capacity (default: 10)
+#[proc_macro_attribute]
+pub fn rate_limited(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = proc_macro2::TokenStream::from(attr);
+    let item = proc_macro2::TokenStream::from(item);
+
+    resilience::rate_limited_impl(attr, item)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }

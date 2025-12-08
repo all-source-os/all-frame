@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.7] - 2025-12-08
+
+### Added
+- **Comprehensive Resilience Module** (`resilience` feature) - ~1,000+ lines replacing kraken-gateway code
+  - `RetryExecutor` - Async retry with exponential backoff and jitter
+  - `RetryConfig` - Configurable retry behavior (max_retries, intervals, randomization)
+  - `RetryPolicy` trait - Custom retry decision logic
+  - `RetryBudget` - System-wide retry token management to prevent retry storms
+  - `AdaptiveRetry` - Adjusts retry behavior based on success/failure rates
+  - `RateLimiter` - Token bucket rate limiting with burst support
+  - `AdaptiveRateLimiter` - Backs off when receiving external 429 responses
+  - `KeyedRateLimiter<K>` - Per-key rate limiting (per-endpoint, per-user)
+  - `CircuitBreaker` - Fail-fast pattern with Closed/Open/HalfOpen states
+  - `CircuitBreakerConfig` - Configurable thresholds and timeouts
+  - `CircuitBreakerManager` - Manages multiple circuit breakers by name
+
+- **Security Module** (`security` feature) - Safe logging utilities
+  - `obfuscate_url()` - Strips credentials, path, and query from URLs
+  - `obfuscate_redis_url()` - Preserves host/port, hides auth
+  - `obfuscate_api_key()` - Shows prefix/suffix only (e.g., "sk_l***mnop")
+  - `obfuscate_header()` - Smart header obfuscation (Authorization, Cookie, etc.)
+  - `Obfuscate` trait - Custom obfuscation for user types
+  - `Sensitive<T>` wrapper - Debug/Display always shows "***"
+  - `#[derive(Obfuscate)]` macro - Auto-generate Obfuscate impl with `#[sensitive]` fields
+
+- **New Procedural Macros** (allframe-macros)
+  - `#[derive(Obfuscate)]` - Auto-generate safe logging with `#[sensitive]` field attribute
+  - `#[retry(max_retries = 3)]` - Wrap async functions with exponential backoff
+  - `#[circuit_breaker(failure_threshold = 5)]` - Fail-fast pattern for functions
+  - `#[rate_limited(rps = 100, burst = 10)]` - Token bucket rate limiting
+
+- **New Feature Flags for Reduced Dependencies** - Modular feature flags
+  - `router-grpc-tls` - TLS/mTLS support for gRPC (tonic/tls-ring, rustls-pemfile, tokio-rustls)
+  - `http-client` - Re-exports reqwest for HTTP client functionality
+  - `otel-otlp` - Full OpenTelemetry stack with OTLP exporter
+  - `metrics` - Prometheus metrics support
+  - `cache-memory` - In-memory caching with moka and dashmap
+  - `cache-redis` - Redis client for distributed caching
+  - `rate-limit` - Basic governor re-export
+  - `resilience` - Full resilience module (retry, circuit breaker, rate limiting)
+  - `security` - URL/credential obfuscation utilities
+  - `utils` - Common utilities bundle (chrono, url, parking_lot, rand)
+
+### Changed
+- **`health` feature now optional** - `hyper` and `hyper-util` gated behind `health` feature (still in default)
+- **CQRS feature flags** - Added `cqrs-allsource`, `cqrs-postgres`, `cqrs-rocksdb` for AllSource backends
+- **Legacy alias** - `grpc-tls` is now deprecated, use `router-grpc-tls` instead
+
+### Documentation
+- Updated FEATURE_FLAGS.md with comprehensive documentation for all new features
+
+---
+
 ## [0.1.6] - 2025-12-06
 
 ### Changed

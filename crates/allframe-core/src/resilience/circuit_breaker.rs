@@ -2,12 +2,17 @@
 //!
 //! Prevents cascading failures by stopping requests to failing services.
 
+use std::{
+    future::Future,
+    sync::{
+        atomic::{AtomicU32, AtomicU64, Ordering},
+        Arc,
+    },
+    time::{Duration, Instant},
+};
+
 use dashmap::DashMap;
 use parking_lot::RwLock;
-use std::future::Future;
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 /// Circuit breaker state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -174,7 +179,8 @@ impl CircuitBreaker {
 
     /// Check if a request can proceed.
     ///
-    /// Returns `Ok(())` if the request can proceed, `Err(CircuitOpenError)` if the circuit is open.
+    /// Returns `Ok(())` if the request can proceed, `Err(CircuitOpenError)` if
+    /// the circuit is open.
     pub fn check(&self) -> Result<(), CircuitOpenError> {
         self.maybe_transition_to_half_open();
 
@@ -408,7 +414,11 @@ impl CircuitBreakerManager {
     }
 
     /// Create a circuit breaker with custom config.
-    pub fn create_with_config(&self, name: &str, config: CircuitBreakerConfig) -> Arc<CircuitBreaker> {
+    pub fn create_with_config(
+        &self,
+        name: &str,
+        config: CircuitBreakerConfig,
+    ) -> Arc<CircuitBreaker> {
         let breaker = Arc::new(CircuitBreaker::new(name, config));
         self.breakers.insert(name.to_string(), breaker.clone());
         breaker
@@ -612,9 +622,7 @@ mod tests {
         let cb = CircuitBreaker::new("test", CircuitBreakerConfig::default());
 
         let result: Result<(), CircuitBreakerError<std::io::Error>> = cb
-            .call(|| async {
-                Err(std::io::Error::new(std::io::ErrorKind::Other, "failed"))
-            })
+            .call(|| async { Err(std::io::Error::new(std::io::ErrorKind::Other, "failed")) })
             .await;
 
         assert!(result.is_err());

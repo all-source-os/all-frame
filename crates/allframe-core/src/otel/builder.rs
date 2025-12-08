@@ -59,9 +59,7 @@ impl ObservabilityBuilder {
 
     /// Read environment from ENVIRONMENT or ENV env var
     pub fn environment_from_env(mut self) -> Self {
-        self.environment = env::var("ENVIRONMENT")
-            .or_else(|_| env::var("ENV"))
-            .ok();
+        self.environment = env::var("ENVIRONMENT").or_else(|_| env::var("ENV")).ok();
         self
     }
 
@@ -106,9 +104,7 @@ impl ObservabilityBuilder {
         use opentelemetry::trace::TracerProvider as _;
         use opentelemetry_otlp::WithExportConfig;
         use opentelemetry_sdk::trace::TracerProvider;
-        use tracing_subscriber::layer::SubscriberExt;
-        use tracing_subscriber::util::SubscriberInitExt;
-        use tracing_subscriber::EnvFilter;
+        use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
         // Build resource attributes
         let mut resource_attrs = vec![opentelemetry::KeyValue::new(

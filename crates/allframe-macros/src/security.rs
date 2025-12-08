@@ -33,7 +33,11 @@ fn generate_format_fields(input: &DeriveInput) -> syn::Result<TokenStream> {
     match &input.data {
         Data::Struct(data) => match &data.fields {
             Fields::Named(fields) => {
-                let mut format_parts = vec![format!("{} {{ ", name_str)];
+                // Note: We need double-escaped braces because:
+                // 1. format!() here unescapes {{ to {
+                // 2. The resulting string is used as a format literal in generated code
+                // So we need {{ in the final string, which requires {{{{ here
+                let mut format_parts = vec![format!("{} {{{{ ", name_str)];
                 let mut format_args = Vec::new();
                 let mut first = true;
 
@@ -42,9 +46,10 @@ fn generate_format_fields(input: &DeriveInput) -> syn::Result<TokenStream> {
                     let field_name_str = field_name.to_string();
 
                     // Check for #[sensitive] attribute
-                    let is_sensitive = field.attrs.iter().any(|attr| {
-                        attr.path().is_ident("sensitive")
-                    });
+                    let is_sensitive = field
+                        .attrs
+                        .iter()
+                        .any(|attr| attr.path().is_ident("sensitive"));
 
                     // Check for #[obfuscate(with = "...")] attribute
                     let custom_obfuscator = get_obfuscate_with(&field.attrs)?;
@@ -66,7 +71,7 @@ fn generate_format_fields(input: &DeriveInput) -> syn::Result<TokenStream> {
                     }
                 }
 
-                format_parts.push(" }".to_string());
+                format_parts.push(" }}".to_string());
                 let format_str = format_parts.join("");
                 let format_lit = LitStr::new(&format_str, proc_macro2::Span::call_site());
 
@@ -79,9 +84,10 @@ fn generate_format_fields(input: &DeriveInput) -> syn::Result<TokenStream> {
                 let mut format_args = Vec::new();
 
                 for (i, field) in fields.unnamed.iter().enumerate() {
-                    let is_sensitive = field.attrs.iter().any(|attr| {
-                        attr.path().is_ident("sensitive")
-                    });
+                    let is_sensitive = field
+                        .attrs
+                        .iter()
+                        .any(|attr| attr.path().is_ident("sensitive"));
 
                     if i > 0 {
                         format_parts.push(", ".to_string());
@@ -113,8 +119,8 @@ fn generate_format_fields(input: &DeriveInput) -> syn::Result<TokenStream> {
             // For enums, just use Debug formatting with *** for sensitive fields
             Err(syn::Error::new_spanned(
                 input,
-                "Obfuscate derive is not yet supported for enums. \
-                 Please implement Obfuscate manually.",
+                "Obfuscate derive is not yet supported for enums. Please implement Obfuscate \
+                 manually.",
             ))
         }
         Data::Union(_) => Err(syn::Error::new_spanned(

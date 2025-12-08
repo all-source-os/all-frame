@@ -82,9 +82,7 @@ fn parse_retry_attr(attr: TokenStream) -> syn::Result<RetryConfig> {
     parse2::<syn::parse::Nothing>(attr.clone())
         .ok()
         .map(|_| ())
-        .or_else(|| {
-            syn::parse::Parser::parse2(parser, attr).ok()
-        });
+        .or_else(|| syn::parse::Parser::parse2(parser, attr).ok());
 
     Ok(config)
 }
@@ -173,9 +171,7 @@ fn parse_circuit_breaker_attr(attr: TokenStream) -> syn::Result<CircuitBreakerCo
     parse2::<syn::parse::Nothing>(attr.clone())
         .ok()
         .map(|_| ())
-        .or_else(|| {
-            syn::parse::Parser::parse2(parser, attr).ok()
-        });
+        .or_else(|| syn::parse::Parser::parse2(parser, attr).ok());
 
     Ok(config)
 }
@@ -244,9 +240,7 @@ fn parse_rate_limit_attr(attr: TokenStream) -> syn::Result<RateLimitConfig> {
     parse2::<syn::parse::Nothing>(attr.clone())
         .ok()
         .map(|_| ())
-        .or_else(|| {
-            syn::parse::Parser::parse2(parser, attr).ok()
-        });
+        .or_else(|| syn::parse::Parser::parse2(parser, attr).ok());
 
     Ok(config)
 }

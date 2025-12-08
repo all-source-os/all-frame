@@ -2,8 +2,7 @@
 //!
 //! This module provides TLS configuration options for secure gRPC connections.
 
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 /// TLS configuration for gRPC servers
 #[derive(Debug, Clone)]

@@ -43,9 +43,8 @@ fn parse_health_attrs(attrs: &[syn::Attribute]) -> Result<HealthFieldConfig> {
                     let lit: syn::LitStr = meta.input.parse()?;
                     let timeout_str = lit.value();
                     // Parse timeout like "5s", "10s"
-                    let secs = parse_timeout(&timeout_str).map_err(|e| {
-                        syn::Error::new_spanned(&lit, e)
-                    })?;
+                    let secs = parse_timeout(&timeout_str)
+                        .map_err(|e| syn::Error::new_spanned(&lit, e))?;
                     config.timeout_secs = Some(secs);
                     Ok(())
                 } else {
@@ -116,10 +115,8 @@ pub fn health_check_impl(input: TokenStream) -> Result<TokenStream> {
 
         // Generate a wrapper if timeout or critical is customized
         if config.timeout_secs.is_some() || config.critical.is_some() {
-            let wrapper_name = syn::Ident::new(
-                &format!("__{}HealthWrapper", field_name),
-                field_name.span(),
-            );
+            let wrapper_name =
+                syn::Ident::new(&format!("__{}HealthWrapper", field_name), field_name.span());
 
             let timeout_impl = if let Some(secs) = config.timeout_secs {
                 quote! {

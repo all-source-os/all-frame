@@ -246,7 +246,7 @@ mod tests {
     use super::*;
     use crate::cqrs::InMemoryBackend;
 
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     enum TestEvent {
         Created { id: String, value: i32 },
         Updated { id: String, value: i32 },

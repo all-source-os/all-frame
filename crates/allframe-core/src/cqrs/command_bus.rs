@@ -221,7 +221,7 @@ impl<E: Event> Clone for CommandBus<E> {
 mod tests {
     use super::*;
 
-    #[derive(Clone)]
+    #[derive(Clone, serde::Serialize, serde::Deserialize)]
     enum TestEvent {
         UserCreated { _id: String },
     }

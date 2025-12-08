@@ -29,10 +29,7 @@
 //! let container = AppContainer::build().await?;
 //! ```
 
-use std::any::Any;
-use std::collections::HashMap;
-use std::fmt;
-use std::sync::Arc;
+use std::{any::Any, collections::HashMap, fmt, sync::Arc};
 
 /// Error type for dependency injection operations
 #[derive(Debug)]

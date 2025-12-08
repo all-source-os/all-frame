@@ -71,6 +71,15 @@ pub mod grpc;
 // ============================================================================
 // Re-exported macros
 // ============================================================================
+/// Re-export circuit_breaker attribute macro
+#[cfg(feature = "resilience")]
+pub use allframe_macros::circuit_breaker;
+/// Re-export rate_limited attribute macro
+#[cfg(feature = "resilience")]
+pub use allframe_macros::rate_limited;
+/// Re-export retry attribute macro
+#[cfg(feature = "resilience")]
+pub use allframe_macros::retry;
 /// Re-export GrpcError derive macro for automatic tonic::Status conversion
 #[cfg(feature = "router-grpc")]
 pub use allframe_macros::GrpcError;
@@ -80,15 +89,6 @@ pub use allframe_macros::HealthCheck;
 /// Re-export Obfuscate derive macro for safe logging
 #[cfg(feature = "security")]
 pub use allframe_macros::Obfuscate;
-/// Re-export retry attribute macro
-#[cfg(feature = "resilience")]
-pub use allframe_macros::retry;
-/// Re-export circuit_breaker attribute macro
-#[cfg(feature = "resilience")]
-pub use allframe_macros::circuit_breaker;
-/// Re-export rate_limited attribute macro
-#[cfg(feature = "resilience")]
-pub use allframe_macros::rate_limited;
 /// Re-export async_graphql for GraphQL support
 #[cfg(feature = "router-graphql")]
 pub use async_graphql;
@@ -97,18 +97,57 @@ pub use async_graphql;
 pub use async_graphql_parser;
 /// Re-export async_trait for async trait definitions
 pub use async_trait;
+/// Re-export backoff for retry/resilience patterns
+#[cfg(feature = "resilience")]
+pub use backoff;
+/// Re-export chrono for date/time handling
+#[cfg(feature = "utils")]
+pub use chrono;
+/// Re-export dashmap for concurrent hash maps
+#[cfg(feature = "cache-memory")]
+pub use dashmap;
 /// Re-export futures for async utilities
 #[cfg(feature = "router-grpc")]
 pub use futures;
+/// Re-export governor for rate limiting
+#[cfg(feature = "rate-limit")]
+pub use governor;
 /// Re-export hyper for HTTP primitives
 #[cfg(feature = "health")]
 pub use hyper;
+/// Re-export moka for high-performance caching
+#[cfg(feature = "cache-memory")]
+pub use moka;
+/// Re-export opentelemetry for full observability
+#[cfg(feature = "otel-otlp")]
+pub use opentelemetry;
+/// Re-export opentelemetry_otlp for OTLP exporter
+#[cfg(feature = "otel-otlp")]
+pub use opentelemetry_otlp;
+/// Re-export opentelemetry_sdk for SDK configuration
+#[cfg(feature = "otel-otlp")]
+pub use opentelemetry_sdk;
+/// Re-export parking_lot for efficient synchronization primitives
+#[cfg(feature = "utils")]
+pub use parking_lot;
+/// Re-export prometheus for metrics
+#[cfg(feature = "metrics")]
+pub use prometheus;
 /// Re-export prost for protobuf support
 #[cfg(feature = "router-grpc")]
 pub use prost;
 /// Re-export prost_types for well-known protobuf types
 #[cfg(feature = "router-grpc")]
 pub use prost_types;
+/// Re-export rand for random number generation
+#[cfg(feature = "utils")]
+pub use rand;
+/// Re-export redis for Redis client
+#[cfg(feature = "cache-redis")]
+pub use redis;
+/// Re-export reqwest for HTTP client functionality
+#[cfg(feature = "http-client")]
+pub use reqwest;
 /// Re-export serde for serialization
 pub use serde;
 /// Re-export serde_json for JSON handling
@@ -127,60 +166,15 @@ pub use tonic_reflection;
 /// Re-export tracing for observability
 #[cfg(feature = "otel")]
 pub use tracing;
-/// Re-export tracing_subscriber for log configuration
-#[cfg(feature = "otel-otlp")]
-pub use tracing_subscriber;
-/// Re-export opentelemetry for full observability
-#[cfg(feature = "otel-otlp")]
-pub use opentelemetry;
-/// Re-export opentelemetry_sdk for SDK configuration
-#[cfg(feature = "otel-otlp")]
-pub use opentelemetry_sdk;
-/// Re-export opentelemetry_otlp for OTLP exporter
-#[cfg(feature = "otel-otlp")]
-pub use opentelemetry_otlp;
 /// Re-export tracing_opentelemetry for tracing integration
 #[cfg(feature = "otel-otlp")]
 pub use tracing_opentelemetry;
-
-/// Re-export reqwest for HTTP client functionality
-#[cfg(feature = "http-client")]
-pub use reqwest;
-
-/// Re-export prometheus for metrics
-#[cfg(feature = "metrics")]
-pub use prometheus;
-
-/// Re-export moka for high-performance caching
-#[cfg(feature = "cache-memory")]
-pub use moka;
-/// Re-export dashmap for concurrent hash maps
-#[cfg(feature = "cache-memory")]
-pub use dashmap;
-/// Re-export redis for Redis client
-#[cfg(feature = "cache-redis")]
-pub use redis;
-
-/// Re-export governor for rate limiting
-#[cfg(feature = "rate-limit")]
-pub use governor;
-
-/// Re-export backoff for retry/resilience patterns
-#[cfg(feature = "resilience")]
-pub use backoff;
-
-/// Re-export chrono for date/time handling
-#[cfg(feature = "utils")]
-pub use chrono;
+/// Re-export tracing_subscriber for log configuration
+#[cfg(feature = "otel-otlp")]
+pub use tracing_subscriber;
 /// Re-export url for URL parsing
 #[cfg(feature = "utils")]
 pub use url;
-/// Re-export parking_lot for efficient synchronization primitives
-#[cfg(feature = "utils")]
-pub use parking_lot;
-/// Re-export rand for random number generation
-#[cfg(feature = "utils")]
-pub use rand;
 
 /// Prelude module for convenient imports
 ///

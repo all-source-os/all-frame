@@ -33,18 +33,31 @@ name = "allframe"
 path = "src/bin/allframe.rs"
 
 [features]
-default = ["di", "openapi", "router", "otel", "cqrs"]
+default = ["di", "openapi", "router", "otel", "cqrs", "health"]
 di = ["allframe-core/di"]
 openapi = ["allframe-core/openapi"]
 otel = ["allframe-core/otel"]
+health = ["allframe-core/health"]
 router = ["allframe-core/router"]
 router-graphql = ["allframe-core/router-graphql"]
 router-grpc = ["allframe-core/router-grpc"]
+router-grpc-tls = ["allframe-core/router-grpc-tls"]
 router-full = ["allframe-core/router-full"]
 cqrs = ["allframe-core/cqrs"]
 cqrs-allsource = ["allframe-core/cqrs-allsource"]
 cqrs-postgres = ["allframe-core/cqrs-postgres"]
 cqrs-rocksdb = ["allframe-core/cqrs-rocksdb"]
+
+# New modular features
+resilience = ["allframe-core/resilience"]
+security = ["allframe-core/security"]
+http-client = ["allframe-core/http-client"]
+otel-otlp = ["allframe-core/otel-otlp"]
+metrics = ["allframe-core/metrics"]
+cache-memory = ["allframe-core/cache-memory"]
+cache-redis = ["allframe-core/cache-redis"]
+rate-limit = ["allframe-core/rate-limit"]
+utils = ["allframe-core/utils"]
 
 [dev-dependencies]
 assert_cmd = "2.0"

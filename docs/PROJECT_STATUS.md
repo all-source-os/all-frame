@@ -1,7 +1,7 @@
 # AllFrame Project Status
 
-**Last Updated**: 2025-12-01
-**Version**: 0.1.0
+**Last Updated**: 2025-12-08
+**Version**: 0.1.7
 **Status**: Active Development
 
 ---
@@ -10,6 +10,8 @@
 
 | Category | Status | Progress |
 |----------|--------|----------|
+| **Resilience Patterns** | ✅ Complete | Retry, CircuitBreaker, RateLimiter (100%) |
+| **Security Utilities** | ✅ Complete | Obfuscation, Safe Logging (100%) |
 | **GraphQL Documentation** | ✅ Complete | Phase 6.3 complete (100%) |
 | **Scalar API Documentation** | ✅ Complete | Track A complete (100%) |
 | **Binary Size Monitoring** | ✅ Complete | Track B complete (100%) |
@@ -216,6 +218,61 @@
 - Complete framework integration examples (Axum, Actix, Rocket)
 
 **Impact**: Best-in-class GraphQL documentation for Rust ecosystem, on par with industry standards
+
+---
+
+### Resilience & Security Module ✅
+**Status**: Complete (2025-12-08)
+**Achievement**: Production-ready resilience patterns and safe logging utilities (~1,000+ lines)
+
+**Resilience Module (`resilience` feature)**:
+- `RetryExecutor` - Async retry with exponential backoff and jitter
+- `RetryConfig` - Configurable retry behavior (max_retries, intervals, randomization)
+- `RetryPolicy` trait - Custom retry decision logic
+- `RetryBudget` - System-wide retry token management to prevent retry storms
+- `AdaptiveRetry` - Adjusts retry behavior based on success/failure rates
+- `RateLimiter` - Token bucket rate limiting with burst support
+- `AdaptiveRateLimiter` - Backs off when receiving external 429 responses
+- `KeyedRateLimiter<K>` - Per-key rate limiting (per-endpoint, per-user)
+- `CircuitBreaker` - Fail-fast pattern with Closed/Open/HalfOpen states
+- `CircuitBreakerConfig` - Configurable thresholds and timeouts
+- `CircuitBreakerManager` - Manages multiple circuit breakers by name
+
+**Security Module (`security` feature)**:
+- `obfuscate_url()` - Strips credentials, path, and query from URLs
+- `obfuscate_redis_url()` - Preserves host/port, hides auth
+- `obfuscate_api_key()` - Shows prefix/suffix only (e.g., "sk_l***mnop")
+- `obfuscate_header()` - Smart header obfuscation (Authorization, Cookie, etc.)
+- `Obfuscate` trait - Custom obfuscation for user types
+- `Sensitive<T>` wrapper - Debug/Display always shows "***"
+
+**Procedural Macros (allframe-macros)**:
+- `#[derive(Obfuscate)]` - Auto-generate safe logging with `#[sensitive]` field attribute
+- `#[retry(max_retries = 3)]` - Wrap async functions with exponential backoff
+- `#[circuit_breaker(failure_threshold = 5)]` - Fail-fast pattern for functions
+- `#[rate_limited(rps = 100, burst = 10)]` - Token bucket rate limiting
+
+**New Feature Flags**:
+- `resilience` - Full resilience module (retry, circuit breaker, rate limiting)
+- `security` - URL/credential obfuscation utilities
+- `router-grpc-tls` - TLS/mTLS support for gRPC
+- `http-client` - Re-exports reqwest for HTTP client functionality
+- `otel-otlp` - Full OpenTelemetry stack with OTLP exporter
+- `metrics` - Prometheus metrics support
+- `cache-memory` - In-memory caching with moka and dashmap
+- `cache-redis` - Redis client for distributed caching
+- `utils` - Common utilities bundle (chrono, url, parking_lot, rand)
+
+**Testing**:
+- 299 tests (allframe-core) + 15 tests (allframe-macros)
+- 100% passing
+- Comprehensive examples (`resilience.rs`, `security.rs`)
+
+**Documentation**:
+- [Feature Flags Guide](./guides/FEATURE_FLAGS.md) - Updated with all new features
+- [Changelog](../CHANGELOG.md) - Full release notes for 0.1.7
+
+**Impact**: Replaces ~1,112 lines of kraken-gateway code with modular, well-tested AllFrame features
 
 ---
 
@@ -438,17 +495,19 @@
 
 | Component | Files | Lines | Tests |
 |-----------|-------|-------|-------|
-| allframe-core | ~47 | ~6,200 | 106 |
-| allframe-macros | ~10 | ~1,500 | 8 |
+| allframe-core | ~55 | ~8,200 | 299 |
+| allframe-macros | ~12 | ~2,000 | 15 |
 | allframe-forge | ~5 | ~500 | 5 |
 | Integration tests | ~15 | ~3,000 | 25 |
-| **Total** | **~77** | **~11,200** | **144** |
+| **Total** | **~87** | **~13,700** | **344** |
 
 **Phase Breakdown**:
 - CQRS (Phases 1-5): 39 tests
 - Router Core (Phase 6.1): 60 tests
 - GraphQL Docs (Phase 6.3): 7 tests
-- Other: 38 tests
+- Resilience Module: 43 tests
+- Security Module: 12 tests
+- Other: 183 tests
 
 ### Documentation
 

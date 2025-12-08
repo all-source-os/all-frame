@@ -17,8 +17,7 @@
 //!     .await?;
 //! ```
 
-use std::net::SocketAddr;
-use std::time::Duration;
+use std::{net::SocketAddr, time::Duration};
 
 use super::tls::TlsConfig;
 use crate::shutdown::GracefulShutdown;
@@ -110,7 +109,8 @@ impl GrpcServerBuilder {
 
     /// Enable TLS from environment variables
     ///
-    /// Reads from GRPC_TLS_CERT, GRPC_TLS_KEY, and optionally GRPC_TLS_CLIENT_CA
+    /// Reads from GRPC_TLS_CERT, GRPC_TLS_KEY, and optionally
+    /// GRPC_TLS_CLIENT_CA
     pub fn tls_from_env(mut self) -> Self {
         self.tls_config = TlsConfig::from_env();
         self
@@ -280,11 +280,16 @@ impl GrpcServerBuilder {
     #[cfg(feature = "router-grpc")]
     pub fn create_health_reporter(
         &self,
-    ) -> Option<(tonic_health::server::HealthReporter, impl tonic::codegen::Service<
-        hyper::Request<hyper::body::Incoming>,
-        Response = hyper::Response<tonic::body::Body>,
-        Error = std::convert::Infallible,
-    > + Clone + Send + 'static)> {
+    ) -> Option<(
+        tonic_health::server::HealthReporter,
+        impl tonic::codegen::Service<
+                hyper::Request<hyper::body::Incoming>,
+                Response = hyper::Response<tonic::body::Body>,
+                Error = std::convert::Infallible,
+            > + Clone
+            + Send
+            + 'static,
+    )> {
         if self.health_check {
             Some(tonic_health::server::health_reporter())
         } else {

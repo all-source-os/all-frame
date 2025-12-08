@@ -186,12 +186,8 @@ pub fn di_container_impl(_attr: TokenStream, item: TokenStream) -> Result<TokenS
             // Use the provided expression
             quote! { #expr }
         } else if config.from_env {
-            // Use FromEnv trait
-            if config.is_async {
-                quote! { <#ty as ::allframe_core::di::FromEnv>::from_env()? }
-            } else {
-                quote! { <#ty as ::allframe_core::di::FromEnv>::from_env()? }
-            }
+            // Use FromEnv trait (sync - FromEnv::from_env is not async)
+            quote! { <#ty as ::allframe_core::di::FromEnv>::from_env()? }
         } else {
             // Get the dependencies for this field
             let dep_infos: Vec<&FieldInfo> =
@@ -334,7 +330,8 @@ pub fn di_container_impl(_attr: TokenStream, item: TokenStream) -> Result<TokenS
                 if let Some(ident) = &field.ident {
                     let field_info = field_infos.iter().find(|f| &f.name == ident);
                     if let Some(info) = field_info {
-                        if is_dependency_of_others.contains(&ident.to_string()) && info.config.singleton
+                        if is_dependency_of_others.contains(&ident.to_string())
+                            && info.config.singleton
                         {
                             let original_ty = &field.ty;
                             field.ty = syn::parse_quote! { ::std::sync::Arc<#original_ty> };

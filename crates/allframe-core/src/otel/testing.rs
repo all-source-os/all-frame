@@ -101,10 +101,7 @@ impl MetricsRecorder {
     /// Record a histogram value
     pub fn record_histogram(&self, name: &str, value: f64) {
         let mut histograms = self.histograms.write().unwrap();
-        histograms
-            .entry(name.to_string())
-            .or_insert_with(Vec::new)
-            .push(value);
+        histograms.entry(name.to_string()).or_default().push(value);
     }
 
     /// Get counter value

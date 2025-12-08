@@ -50,7 +50,10 @@ pub use saga_orchestrator::{
 };
 
 /// Trait for Events - immutable facts that represent state changes
-pub trait Event: Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned + 'static {}
+pub trait Event:
+    Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned + 'static
+{
+}
 
 /// Trait for Projections - read models built from events
 pub trait Projection: Send + Sync {
@@ -238,7 +241,7 @@ impl Default for QueryBus {
 mod tests {
     use super::*;
 
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     struct TestEvent {
         id: String,
     }

@@ -345,7 +345,7 @@ impl<E: Event> Clone for SagaOrchestrator<E> {
 mod tests {
     use super::*;
 
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     enum TestEvent {
         Debited { account: String, amount: f64 },
         Credited { account: String, amount: f64 },

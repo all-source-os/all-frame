@@ -1,8 +1,10 @@
 //! Resilience patterns for building fault-tolerant applications.
 //!
 //! This module provides comprehensive resilience primitives including:
-//! - **Retry**: Exponential backoff with jitter, retry budgets, and adaptive retry
-//! - **Rate Limiting**: Token bucket rate limiting with adaptive and keyed variants
+//! - **Retry**: Exponential backoff with jitter, retry budgets, and adaptive
+//!   retry
+//! - **Rate Limiting**: Token bucket rate limiting with adaptive and keyed
+//!   variants
 //! - **Circuit Breaker**: Fail-fast pattern with configurable thresholds
 //!
 //! # Example

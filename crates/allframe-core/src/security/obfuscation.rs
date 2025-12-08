@@ -23,10 +23,7 @@ pub fn obfuscate_url(url: &str) -> String {
         Ok(parsed) => {
             let scheme = parsed.scheme();
             let host = parsed.host_str().unwrap_or("unknown");
-            let port = parsed
-                .port()
-                .map(|p| format!(":{}", p))
-                .unwrap_or_default();
+            let port = parsed.port().map(|p| format!(":{}", p)).unwrap_or_default();
 
             format!("{}://{}{}/***", scheme, host, port)
         }
@@ -55,10 +52,7 @@ pub fn obfuscate_redis_url(url: &str) -> String {
         Ok(parsed) => {
             let scheme = parsed.scheme();
             let host = parsed.host_str().unwrap_or("unknown");
-            let port = parsed
-                .port()
-                .map(|p| format!(":{}", p))
-                .unwrap_or_default();
+            let port = parsed.port().map(|p| format!(":{}", p)).unwrap_or_default();
 
             // Check if there's authentication
             let has_auth = !parsed.username().is_empty() || parsed.password().is_some();

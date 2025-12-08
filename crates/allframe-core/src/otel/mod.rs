@@ -29,19 +29,16 @@ mod builder;
 mod testing;
 
 // Re-export the traced macro
-#[cfg(feature = "otel")]
-pub use allframe_macros::traced;
-
-// Re-export builder types
-pub use builder::{Observability, ObservabilityBuilder, ObservabilityError, ObservabilityGuard};
-
-// Re-export testing utilities
-pub use testing::{Histogram, MetricsRecorder, Span, SpanContext, SpanRecorder};
-
 // Legacy placeholder functions - kept for backwards compatibility
 // These will be removed in a future version
-
 use std::collections::HashMap;
+
+#[cfg(feature = "otel")]
+pub use allframe_macros::traced;
+// Re-export builder types
+pub use builder::{Observability, ObservabilityBuilder, ObservabilityError, ObservabilityGuard};
+// Re-export testing utilities
+pub use testing::{Histogram, MetricsRecorder, Span, SpanContext, SpanRecorder};
 
 /// Get the current span ID (placeholder - use tracing for real spans)
 #[deprecated(since = "0.2.0", note = "Use tracing::Span::current() instead")]
@@ -74,10 +71,7 @@ pub fn get_baggage(_key: &str) -> Option<String> {
 }
 
 /// Inject context into headers (placeholder)
-#[deprecated(
-    since = "0.2.0",
-    note = "Use opentelemetry propagator API instead"
-)]
+#[deprecated(since = "0.2.0", note = "Use opentelemetry propagator API instead")]
 pub fn inject_context(_context: &SpanContext) -> HashMap<String, String> {
     let mut headers = HashMap::new();
     headers.insert("traceparent".to_string(), "placeholder".to_string());
@@ -85,10 +79,7 @@ pub fn inject_context(_context: &SpanContext) -> HashMap<String, String> {
 }
 
 /// Extract context from headers (placeholder)
-#[deprecated(
-    since = "0.2.0",
-    note = "Use opentelemetry propagator API instead"
-)]
+#[deprecated(since = "0.2.0", note = "Use opentelemetry propagator API instead")]
 pub fn extract_context(headers: &HashMap<String, String>) -> Option<SpanContext> {
     headers.get("traceparent").map(|_| SpanContext {
         trace_id: "extracted-trace".to_string(),

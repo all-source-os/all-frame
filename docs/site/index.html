@@ -459,10 +459,11 @@
                 </div>
 
                 <div class="badges">
-                    <span class="badge green">v0.1.6</span>
+                    <span class="badge green">v0.1.7</span>
                     <span class="badge green">100% TDD</span>
-                    <span class="badge green">300+ Tests</span>
+                    <span class="badge green">340+ Tests</span>
                     <span class="badge green">CQRS Complete</span>
+                    <span class="badge green">Resilience</span>
                     <span class="badge green">CLI Ready</span>
                     <span class="badge">Rust 1.86+</span>
                     <span class="badge">MIT / Apache 2.0</span>
@@ -499,8 +500,16 @@
                         <p>Only Tokio, Hyper, and std. No hidden bloat, no dependency hell. Binaries under 2MB.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>CLI Ready <span class="tag">NEW</span></h3>
+                        <h3>CLI Ready</h3>
                         <p>cargo install allframe, then allframe ignite my-api. Zero-warning templates with Clean Architecture scaffolding.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Resilience Patterns <span class="tag">NEW</span></h3>
+                        <p>Production-ready retry with backoff, circuit breakers, rate limiting. Attribute macros for zero-config resilience.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Security Utilities <span class="tag">NEW</span></h3>
+                        <p>Safe logging with credential obfuscation. #[derive(Obfuscate)] for structs, Sensitive&lt;T&gt; wrapper for secrets.</p>
                     </div>
                 </div>
             </div>
@@ -510,7 +519,7 @@
             <div class="container">
                 <div class="stats-grid">
                     <div class="stat">
-                        <h3>v0.1.6</h3>
+                        <h3>v0.1.7</h3>
                         <p>Latest Version</p>
                     </div>
                     <div class="stat">
@@ -518,7 +527,7 @@
                         <p>TDD Coverage</p>
                     </div>
                     <div class="stat">
-                        <h3>300+</h3>
+                        <h3>340+</h3>
                         <p>Tests Passing</p>
                     </div>
                     <div class="stat">
@@ -578,6 +587,20 @@
                         <tr>
                             <td>Protocol-agnostic</td>
                             <td class="check">Yes</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>Resilience Patterns</td>
+                            <td class="check">Built-in</td>
+                            <td class="partial">External</td>
+                            <td class="partial">External</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>Safe Logging</td>
+                            <td class="check">Built-in</td>
                             <td class="cross">-</td>
                             <td class="cross">-</td>
                             <td class="cross">-</td>

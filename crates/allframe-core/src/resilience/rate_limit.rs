@@ -2,6 +2,16 @@
 //!
 //! Provides token bucket rate limiting for controlling request throughput.
 
+use std::{
+    hash::Hash,
+    num::NonZeroU32,
+    sync::{
+        atomic::{AtomicU32, AtomicU64, Ordering},
+        Arc,
+    },
+    time::{Duration, Instant},
+};
+
 use dashmap::DashMap;
 use governor::{
     clock::{Clock, DefaultClock},
@@ -9,11 +19,6 @@ use governor::{
     Quota, RateLimiter as GovernorRateLimiter,
 };
 use parking_lot::RwLock;
-use std::hash::Hash;
-use std::num::NonZeroU32;
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 /// Error returned when rate limit is exceeded.
 #[derive(Debug, Clone)]
@@ -327,7 +332,8 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> KeyedRateLimiter<K> {
 
     /// Set a specific limit for a key.
     pub fn set_limit(&self, key: K, rps: u32, burst: u32) {
-        self.limiters.insert(key, Arc::new(RateLimiter::new(rps, burst)));
+        self.limiters
+            .insert(key, Arc::new(RateLimiter::new(rps, burst)));
     }
 
     /// Remove limit for a key (will use default on next access).

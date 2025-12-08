@@ -1,17 +1,22 @@
 //! Retry patterns with exponential backoff, jitter, and adaptive behavior.
 //!
-//! Provides retry mechanisms for transient failures with configurable backoff strategies.
+//! Provides retry mechanisms for transient failures with configurable backoff
+//! strategies.
+
+use std::{
+    future::Future,
+    sync::atomic::{AtomicU32, Ordering},
+    time::{Duration, Instant},
+};
 
 use parking_lot::RwLock;
 use rand::Rng;
-use std::future::Future;
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::time::{Duration, Instant};
 
 /// Configuration for retry behavior.
 #[derive(Debug, Clone)]
 pub struct RetryConfig {
-    /// Maximum number of retry attempts (0 = no retries, just the initial attempt).
+    /// Maximum number of retry attempts (0 = no retries, just the initial
+    /// attempt).
     pub max_retries: u32,
     /// Initial interval between retries.
     pub initial_interval: Duration,
@@ -288,7 +293,12 @@ impl RetryBudget {
 
             if self
                 .tokens
-                .compare_exchange(current, current - amount, Ordering::AcqRel, Ordering::Relaxed)
+                .compare_exchange(
+                    current,
+                    current - amount,
+                    Ordering::AcqRel,
+                    Ordering::Relaxed,
+                )
                 .is_ok()
             {
                 return true;
@@ -396,9 +406,8 @@ impl AdaptiveRetry {
         let mut config = self.base_config.clone();
 
         // Increase initial interval
-        config.initial_interval = Duration::from_secs_f64(
-            self.base_config.initial_interval.as_secs_f64() * scale,
-        );
+        config.initial_interval =
+            Duration::from_secs_f64(self.base_config.initial_interval.as_secs_f64() * scale);
 
         // Reduce max retries when success rate is low
         if success_rate < 0.5 {
@@ -419,8 +428,9 @@ impl AdaptiveRetry {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::Arc;
+
+    use super::*;
 
     #[test]
     fn test_retry_config_default() {

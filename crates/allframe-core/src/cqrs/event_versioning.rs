@@ -222,7 +222,7 @@ impl<E: Event> Clone for VersionRegistry<E> {
 mod tests {
     use super::*;
 
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     struct UserCreatedV1 {
         user_id: String,
         email: String,
@@ -230,7 +230,7 @@ mod tests {
 
     impl Event for UserCreatedV1 {}
 
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     struct UserCreatedV2 {
         user_id: String,
         email: String,
@@ -249,7 +249,7 @@ mod tests {
         }
     }
 
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     enum TestEvent {
         #[allow(dead_code)]
         V1(UserCreatedV1),

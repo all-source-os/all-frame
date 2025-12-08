@@ -469,25 +469,176 @@ if limiter.check().is_ok() {
 
 ---
 
-### `resilience` - Retry & Circuit Breaker
+### `resilience` - Comprehensive Resilience Module
 
-**Enables**: Retry patterns with exponential backoff using `backoff`
+**Enables**: Production-ready retry, circuit breaker, and rate limiting patterns
 
-**Dependencies**: `backoff` (with `tokio` feature)
+**Dependencies**: `allframe-macros`, `backoff`, `governor`, `dashmap`, `parking_lot`, `rand`
 
-**Re-exports**: `backoff` crate
+**Macros**:
+- `#[retry(max_retries = 3)]` - Wrap async functions with exponential backoff
+- `#[circuit_breaker(failure_threshold = 5)]` - Fail-fast pattern for functions
+- `#[rate_limited(rps = 100, burst = 10)]` - Token bucket rate limiting
 
-**Example**:
+**APIs**:
+- `RetryConfig` - Configurable retry behavior (max_retries, intervals, randomization)
+- `RetryExecutor` - Async retry execution with exponential backoff
+- `RetryPolicy` trait - Custom retry decision logic
+- `RetryBudget` - System-wide retry token management (prevents retry storms)
+- `AdaptiveRetry` - Adjusts retry behavior based on success/failure rates
+- `RateLimiter` - Token bucket rate limiting with burst support
+- `AdaptiveRateLimiter` - Backs off when receiving external 429 responses
+- `KeyedRateLimiter<K>` - Per-key rate limiting (per-endpoint, per-user)
+- `CircuitBreaker` - Fail-fast pattern with Closed/Open/HalfOpen states
+- `CircuitBreakerConfig` - Configurable thresholds and timeouts
+- `CircuitBreakerManager` - Manages multiple circuit breakers by name
+
+**Example (Retry)**:
 ```rust
-use allframe_core::backoff::{ExponentialBackoff, future::retry};
+use allframe_core::resilience::{RetryConfig, RetryExecutor};
+use std::time::Duration;
 
-let result = retry(ExponentialBackoff::default(), || async {
+let config = RetryConfig::new(3)
+    .with_initial_interval(Duration::from_millis(100))
+    .with_max_interval(Duration::from_secs(5))
+    .with_multiplier(2.0);
+
+let executor = RetryExecutor::new(config);
+let result = executor.execute("fetch_data", || async {
     // Fallible operation
-    Ok::<_, backoff::Error<std::io::Error>>("success")
-}).await?;
+    Ok::<_, std::io::Error>("success")
+}).await;
 ```
 
-**Binary Impact**: +50KB (backoff)
+**Example (Circuit Breaker)**:
+```rust
+use allframe_core::resilience::{CircuitBreaker, CircuitBreakerConfig};
+use std::time::Duration;
+
+let config = CircuitBreakerConfig::new(5)
+    .with_success_threshold(2)
+    .with_timeout(Duration::from_secs(30));
+
+let cb = CircuitBreaker::new("payment_service", config);
+let result = cb.call(|| async { fetch_from_service().await }).await;
+```
+
+**Example (Rate Limiting)**:
+```rust
+use allframe_core::resilience::{RateLimiter, KeyedRateLimiter};
+
+// Simple rate limiter: 100 requests/second, burst of 10
+let limiter = RateLimiter::new(100, 10);
+if limiter.check().is_ok() {
+    // Request allowed
+}
+
+// Per-endpoint rate limiting
+let keyed: KeyedRateLimiter<&str> = KeyedRateLimiter::new(10, 5);
+keyed.set_limit("premium_api", 100, 20);  // Higher limit for premium
+```
+
+**Example (Attribute Macros)**:
+```rust
+use allframe_core::{retry, circuit_breaker, rate_limited};
+
+#[retry(max_retries = 3, initial_interval_ms = 100)]
+async fn fetch_user(id: &str) -> Result<User, Error> {
+    // Automatically retried with exponential backoff
+    api.get_user(id).await
+}
+
+#[circuit_breaker(failure_threshold = 5, timeout_secs = 30)]
+async fn call_payment_service() -> Result<Payment, Error> {
+    // Fails fast when circuit is open
+    payment_api.process().await
+}
+
+#[rate_limited(rps = 100, burst = 10)]
+async fn handle_request() -> Response {
+    // Rate limited to 100 requests/second
+    process_request().await
+}
+```
+
+**Binary Impact**: +120KB (resilience patterns + dependencies)
+
+---
+
+### `security` - Security Utilities
+
+**Enables**: Safe logging utilities for sensitive data obfuscation
+
+**Dependencies**: `allframe-macros`, `url`
+
+**Macros**:
+- `#[derive(Obfuscate)]` - Auto-generate safe Debug/Display with `#[sensitive]` field attribute
+
+**APIs**:
+- `obfuscate_url(url)` - Strips credentials, path, and query from URLs
+- `obfuscate_redis_url(url)` - Preserves host/port, hides auth
+- `obfuscate_api_key(key)` - Shows prefix/suffix only (e.g., "sk_l***mnop")
+- `obfuscate_header(name, value)` - Smart header obfuscation (Authorization, Cookie, etc.)
+- `Obfuscate` trait - Custom obfuscation for user types
+- `Sensitive<T>` wrapper - Debug/Display always shows "***"
+
+**Example (Obfuscation Functions)**:
+```rust
+use allframe_core::security::{obfuscate_url, obfuscate_api_key, obfuscate_header};
+
+let url = "https://user:pass@api.example.com/v1/users?token=secret";
+println!("Safe: {}", obfuscate_url(url));
+// Output: "https://api.example.com/***"
+
+let key = "sk_live_1234567890abcdef";
+println!("Key: {}", obfuscate_api_key(key));
+// Output: "sk_l***cdef"
+
+let auth_header = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.secret";
+println!("Auth: {}", obfuscate_header("Authorization", auth_header));
+// Output: "Bearer ***"
+```
+
+**Example (Sensitive Wrapper)**:
+```rust
+use allframe_core::security::Sensitive;
+
+let password = Sensitive::new("super_secret");
+println!("{:?}", password);  // Output: Sensitive(***)
+println!("{}", password);    // Output: ***
+
+// Access the inner value when needed
+let actual = password.as_inner();
+```
+
+**Example (Derive Macro)**:
+```rust
+use allframe_core::Obfuscate;
+use allframe_core::security::Obfuscate as ObfuscateTrait;
+
+#[derive(Obfuscate)]
+struct DatabaseConfig {
+    host: String,
+    port: u16,
+    #[sensitive]
+    username: String,
+    #[sensitive]
+    password: String,
+}
+
+let config = DatabaseConfig {
+    host: "db.example.com".to_string(),
+    port: 5432,
+    username: "admin".to_string(),
+    password: "secret123".to_string(),
+};
+
+// Safe for logging!
+println!("Connecting to: {}", config.obfuscate());
+// Output: DatabaseConfig { host: "db.example.com", port: 5432, username: ***, password: *** }
+```
+
+**Binary Impact**: +30KB (url parsing + obfuscation)
 
 ---
 
@@ -694,7 +845,16 @@ rate-limit
   └─ governor
 
 resilience
-  └─ backoff (tokio)
+  ├─ allframe-macros
+  ├─ backoff (tokio)
+  ├─ governor
+  ├─ dashmap
+  ├─ parking_lot
+  └─ rand
+
+security
+  ├─ allframe-macros
+  └─ url
 
 utils
   ├─ chrono (serde)
@@ -860,7 +1020,6 @@ cargo build --features "cqrs,router-graphql"
 - `mcp` - Model Context Protocol integration
 - `auth` - Authentication/authorization helpers
 - `websockets` - WebSocket support
-- `circuit-breaker` - Circuit breaker pattern (standalone from `resilience`)
 
 ---
 

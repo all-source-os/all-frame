@@ -8,7 +8,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.86%2B-orange.svg)](https://www.rust-lang.org)
 [![TDD](https://img.shields.io/badge/TDD-100%25-green.svg)](docs/current/PRD_01.md)
 [![CQRS](https://img.shields.io/badge/CQRS-Complete-success.svg)](docs/announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)
-[![Tests](https://img.shields.io/badge/tests-291%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
+[![Tests](https://img.shields.io/badge/tests-299%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
 [![Routing](https://img.shields.io/badge/Protocol%20Agnostic-Complete-success.svg)](docs/phases/PROTOCOL_AGNOSTIC_ROUTING_COMPLETE.md)
 [![MCP](https://img.shields.io/badge/MCP%20Server-Zero%20Bloat-success.svg)](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md)
 
@@ -72,11 +72,23 @@ We ship **composable crates** that give you exactly what you need, with **zero e
   - ✅ Claude Desktop integration ready
   - Separate `allframe-mcp` crate with 33 tests
   - **Zero overhead** when not used (opt-in only)
+- ✅ **Resilience Patterns** - Production-ready retry, circuit breaker, rate limiting **[NEW!]**
+  - RetryExecutor with exponential backoff and jitter
+  - CircuitBreaker with Closed/Open/HalfOpen states
+  - RateLimiter with token bucket (per-endpoint, per-user)
+  - AdaptiveRetry that adjusts based on success rates
+  - RetryBudget to prevent retry storms
+  - `#[retry]`, `#[circuit_breaker]`, `#[rate_limited]` macros
+- ✅ **Security Utilities** - Safe logging for sensitive data **[NEW!]**
+  - URL/credential obfuscation for logs
+  - `#[derive(Obfuscate)]` with `#[sensitive]` field attribute
+  - `Sensitive<T>` wrapper (Debug/Display always shows "***")
+  - Smart header obfuscation (Authorization, Cookie, API keys)
 - 📋 **LLM-powered code generation** - `allframe forge` CLI (v0.6 - planned)
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: **MCP Zero-Bloat Complete!** 258+ tests passing. Separate `allframe-mcp` crate achieves 100% zero overhead!
+**Current Status**: **Resilience & Security Complete!** 299+ tests passing. Production-ready retry, circuit breaker, rate limiting, and safe logging!
 **Latest**: [MCP Zero-Bloat Strategy](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md) - LLM integration with zero cost when not used!
 
 ---
@@ -113,6 +125,12 @@ cargo run --example grpc_api
 
 # Multi-Protocol example - Same handler, multiple protocols!
 cargo run --example multi_protocol
+
+# Resilience patterns - Retry, circuit breaker, rate limiting
+cargo run --example resilience --features resilience
+
+# Security utilities - Safe logging and obfuscation
+cargo run --example security --features security
 ```
 
 See [examples/README.md](examples/README.md) for detailed documentation.
@@ -366,6 +384,103 @@ async fn main() {
 - [MCP Distribution Model](docs/MCP_DISTRIBUTION_MODEL.md) - Library vs binary distribution
 - [Example: STDIO Server](crates/allframe-mcp/examples/mcp_stdio_server.rs) - Full implementation
 
+### 🛡️ Resilience Patterns
+
+Production-ready retry, circuit breaker, and rate limiting for robust microservices:
+
+```rust
+use allframe_core::resilience::{RetryConfig, RetryExecutor, CircuitBreaker, RateLimiter};
+use std::time::Duration;
+
+// Retry with exponential backoff
+let config = RetryConfig::new(3)
+    .with_initial_interval(Duration::from_millis(100))
+    .with_max_interval(Duration::from_secs(5))
+    .with_multiplier(2.0);
+
+let executor = RetryExecutor::new(config);
+let result = executor.execute("fetch_data", || async {
+    external_api.fetch().await
+}).await;
+
+// Circuit breaker for fail-fast behavior
+let cb = CircuitBreaker::new("payment_service", CircuitBreakerConfig::new(5));
+let result = cb.call(|| async { payment_api.process().await }).await;
+
+// Rate limiting (100 req/s with burst of 10)
+let limiter = RateLimiter::new(100, 10);
+if limiter.check().is_ok() {
+    handle_request().await;
+}
+```
+
+**Or use attribute macros:**
+
+```rust
+use allframe_core::{retry, circuit_breaker, rate_limited};
+
+#[retry(max_retries = 3, initial_interval_ms = 100)]
+async fn fetch_user(id: &str) -> Result<User, Error> {
+    api.get_user(id).await  // Automatically retried!
+}
+
+#[circuit_breaker(failure_threshold = 5, timeout_secs = 30)]
+async fn call_payment() -> Result<Payment, Error> {
+    payment_api.process().await  // Fails fast when circuit is open!
+}
+```
+
+**Features:**
+- 🔄 Retry with exponential backoff and jitter
+- ⚡ Circuit breaker (Closed/Open/HalfOpen states)
+- 🎯 Rate limiting (token bucket with burst support)
+- 📊 AdaptiveRetry (adjusts based on success rate)
+- 🛡️ RetryBudget (prevents retry storms)
+- 🔑 KeyedRateLimiter (per-endpoint, per-user limits)
+
+### 🔒 Security Utilities
+
+Safe logging utilities to prevent credential leaks:
+
+```rust
+use allframe_core::security::{obfuscate_url, obfuscate_api_key, Sensitive};
+use allframe_core::Obfuscate;
+use allframe_core::security::Obfuscate as ObfuscateTrait;
+
+// URL obfuscation
+let url = "https://user:pass@api.example.com/v1/users?token=secret";
+println!("Connecting to: {}", obfuscate_url(url));
+// Output: "https://api.example.com/***"
+
+// API key obfuscation
+let key = "sk_live_1234567890abcdef";
+println!("Using key: {}", obfuscate_api_key(key));
+// Output: "sk_l***cdef"
+
+// Sensitive wrapper (Debug/Display always shows ***)
+let password = Sensitive::new("super_secret");
+println!("{:?}", password);  // Output: Sensitive(***)
+
+// Derive macro for structs
+#[derive(Obfuscate)]
+struct DbConfig {
+    host: String,
+    #[sensitive]
+    password: String,
+}
+
+let config = DbConfig { host: "db.example.com".into(), password: "secret".into() };
+println!("{}", config.obfuscate());
+// Output: DbConfig { host: "db.example.com", password: *** }
+```
+
+**Features:**
+- 🔗 URL obfuscation (strips credentials, paths, queries)
+- 🔑 API key obfuscation (shows prefix/suffix only)
+- 📝 Header obfuscation (Authorization, Cookie, etc.)
+- 🏷️ `Sensitive<T>` wrapper type
+- ⚙️ `#[derive(Obfuscate)]` with `#[sensitive]` fields
+
 ---
 
 ## Why AllFrame?
@@ -378,6 +493,8 @@ async fn main() {
 | **CQRS + Event Sourcing** | ✅ **Built-in** | ❌ | ❌ | ❌ |
 | **CommandBus** | ✅ **90% less code** | ❌ | ❌ | ❌ |
 | **Saga Orchestration** | ✅ **Auto compensation** | ❌ | ❌ | ❌ |
+| **Resilience Patterns** | ✅ **Built-in** | 🟡 External | 🟡 External | ❌ |
+| **Safe Logging** | ✅ **Built-in** | ❌ | ❌ | ❌ |
 | Protocol-agnostic | ✅ | ❌ | ❌ | ❌ |
 | MCP Server | ✅ **Zero Bloat** | ❌ | ❌ | ❌ |
 | Zero runtime deps | ✅ | ❌ | ✅ | ❌ |
@@ -456,6 +573,8 @@ allframe-core = { version = "0.1.6", features = ["di", "openapi"] }
 | `router-graphql` | Production GraphQL (async-graphql, GraphiQL) | +2MB | ❌ |
 | `router-grpc` | Production gRPC (tonic, streaming, reflection) | +3MB | ❌ |
 | `router-full` | Both GraphQL + gRPC production adapters | +5MB | ❌ |
+| `resilience` | Retry, circuit breaker, rate limiting | +120KB | ❌ |
+| `security` | Safe logging, obfuscation utilities | +30KB | ❌ |
 
 ### CQRS Features (✅ Complete - Phases 1-5)
 

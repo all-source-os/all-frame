@@ -10,6 +10,8 @@ Welcome to the AllFrame documentation! This index provides a comprehensive overv
 
 - **[Main README](./README.md)** - Documentation overview and conventions
 - **[Project Status](./PROJECT_STATUS.md)** - Complete project status and roadmap
+- **[Roadmap](./current/ROADMAP.md)** - Complete roadmap to v1.0
+- **[Ignite Vision](./current/IGNITE_VISION.md)** - Cloud-native microservice generator vision
 - **[Product Requirements](./current/PRD_01.md)** - Original PRD (PRIMARY SOURCE OF TRUTH)
 - **[Router + Docs PRD](./current/PRD_ROUTER_DOCS.md)** - Phase 6 PRD (Next major phase)
 - **[CQRS Complete Announcement](./announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)** - Latest achievement
@@ -29,7 +31,9 @@ docs/
 │   ├── PRD_QUALITY_METRICS.md  # Binary Size, Demos, Performance (P0)
 │   ├── PRD_SERVERLESS.md       # Serverless + IaC PRD (Phase 7)
 │   ├── PRD_ALLSOURCE_CLOUD.md  # AllSource Cloud Evolution PRD
-│   └── ALLSOURCE_CORE_ISSUES.md # External dependency issues tracker
+│   ├── ROADMAP.md              # Complete roadmap to v1.0 (Ignite Vision)
+│   ├── ALLSOURCE_CORE_ISSUES.md # External dependency issues tracker
+│   └── IGNITE_VISION.md        # Detailed microservice generator vision
 │
 ├── phases/                      # Implementation Phases
 │   ├── PHASE1_COMPLETE.md      # AllSource Integration ✅
@@ -97,7 +101,18 @@ docs/
   - Next phase planning (Router + Docs: PRD complete)
   - Technical debt tracking
   - Repository statistics
-  - Roadmap (Q1-Q4 2025)
+
+### Roadmap & Vision
+- **[ROADMAP.md](./current/ROADMAP.md)** - Complete Roadmap to v1.0
+  - Phase 7-14 planning (v0.2.0 - v1.0.0)
+  - Architecture configuration, service archetypes, multi-cloud IaC
+  - Version milestones and timelines
+
+- **[IGNITE_VISION.md](./current/IGNITE_VISION.md)** - Cloud-Native Microservice Generator Vision
+  - Detailed configuration schema (TOML)
+  - 12 service archetypes with examples
+  - Infrastructure as Code generation (Terraform, Pulumi)
+  - Demo architecture templates
 
 ### Product Requirements
 - **[PRD_01.md](./current/PRD_01.md)** - Original Product Requirements

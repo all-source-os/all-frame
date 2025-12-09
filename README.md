@@ -8,7 +8,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.86%2B-orange.svg)](https://www.rust-lang.org)
 [![TDD](https://img.shields.io/badge/TDD-100%25-green.svg)](docs/current/PRD_01.md)
 [![CQRS](https://img.shields.io/badge/CQRS-Complete-success.svg)](docs/announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)
-[![Tests](https://img.shields.io/badge/tests-299%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
+[![Tests](https://img.shields.io/badge/tests-361%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
 [![Routing](https://img.shields.io/badge/Protocol%20Agnostic-Complete-success.svg)](docs/phases/PROTOCOL_AGNOSTIC_ROUTING_COMPLETE.md)
 [![MCP](https://img.shields.io/badge/MCP%20Server-Zero%20Bloat-success.svg)](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md)
 
@@ -84,12 +84,17 @@ We ship **composable crates** that give you exactly what you need, with **zero e
   - `#[derive(Obfuscate)]` with `#[sensitive]` field attribute
   - `Sensitive<T>` wrapper (Debug/Display always shows "***")
   - Smart header obfuscation (Authorization, Cookie, API keys)
+- ✅ **Graceful Shutdown** - Production-ready shutdown utilities **[NEW!]**
+  - `ShutdownAwareTaskSpawner` for named tasks with automatic cancellation
+  - `GracefulShutdownExt` for cleanup orchestration with error handling
+  - `spawn_with_result()` for tasks that return values
+  - `ShutdownExt` trait for making any future cancellable
 - 📋 **LLM-powered code generation** - `allframe forge` CLI (v0.6 - planned)
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: **Resilience & Security Complete!** 299+ tests passing. Production-ready retry, circuit breaker, rate limiting, and safe logging!
-**Latest**: [MCP Zero-Bloat Strategy](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md) - LLM integration with zero cost when not used!
+**Current Status**: **v0.1.8 - Graceful Shutdown Complete!** 361+ tests passing. Production-ready shutdown utilities, resilience patterns, and safe logging!
+**Latest**: [Ignite Vision](docs/current/IGNITE_VISION.md) - Cloud-native microservice architecture generator roadmap!
 
 ---
 
@@ -131,6 +136,10 @@ cargo run --example resilience --features resilience
 
 # Security utilities - Safe logging and obfuscation
 cargo run --example security --features security
+
+# Graceful shutdown patterns - Task spawning, cleanup, cancellation
+cargo run -p allframe-core --example graceful_shutdown
+cargo run -p allframe-core --example shutdown_patterns
 ```
 
 See [examples/README.md](examples/README.md) for detailed documentation.
@@ -635,6 +644,8 @@ allframe-core = { version = "0.1.6", features = ["router-full"] }
 
 ### Project Documentation
 - 📊 **[Project Status](docs/PROJECT_STATUS.md)** - Current status, roadmap, metrics
+- 🚀 **[ROADMAP.md](docs/current/ROADMAP.md)** - Complete roadmap to v1.0
+- 🔮 **[IGNITE_VISION.md](docs/current/IGNITE_VISION.md)** - Microservice generator vision
 - 📋 **[Original PRD](docs/current/PRD_01.md)** - Product requirements (PRIMARY SOURCE)
 - 📋 **[Router + Docs PRD](docs/current/PRD_ROUTER_DOCS.md)** - Phase 6 planning (Next major phase)
 - 📑 **[Documentation Index](docs/INDEX.md)** - Complete documentation catalog
@@ -698,7 +709,20 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines. *(coming soon)*
 
 ## Roadmap
 
-See **[Project Status](docs/PROJECT_STATUS.md)** for detailed roadmap and current progress.
+> **AllFrame is evolving into a cloud-native microservice architecture generator.**
+
+See **[ROADMAP.md](docs/current/ROADMAP.md)** for the complete vision and **[Project Status](docs/PROJECT_STATUS.md)** for current progress.
+
+**Vision**: Generate deployable microservice architectures from declarative configuration:
+
+```bash
+# Today
+allframe ignite my-project
+
+# Tomorrow (v0.5+)
+allframe ignite --config architecture.toml
+# Generates complete microservice architecture with Terraform/Pulumi IaC
+```
 
 ### Completed ✅
 
@@ -774,7 +798,7 @@ See **[Project Status](docs/PROJECT_STATUS.md)** for detailed roadmap and curren
 - Security audit
 - 1.0 release preparation
 
-**[Read the full roadmap →](docs/PROJECT_STATUS.md)**
+**[Read the full roadmap →](docs/current/ROADMAP.md)** | **[View Ignite Vision →](docs/current/IGNITE_VISION.md)**
 
 ---
 

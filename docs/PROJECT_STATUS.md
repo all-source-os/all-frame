@@ -1,8 +1,10 @@
 # AllFrame Project Status
 
-**Last Updated**: 2025-12-08
-**Version**: 0.1.7
+**Last Updated**: 2025-12-09
+**Version**: 0.1.8
 **Status**: Active Development
+
+> **Vision**: AllFrame is evolving from a composable Rust API framework into a **cloud-native microservice architecture generator**. See [ROADMAP.md](./current/ROADMAP.md) and [IGNITE_VISION.md](./current/IGNITE_VISION.md) for the full vision.
 
 ---
 
@@ -10,6 +12,7 @@
 
 | Category | Status | Progress |
 |----------|--------|----------|
+| **Graceful Shutdown** | ✅ Complete | ShutdownAwareTaskSpawner, GracefulShutdownExt (100%) |
 | **Resilience Patterns** | ✅ Complete | Retry, CircuitBreaker, RateLimiter (100%) |
 | **Security Utilities** | ✅ Complete | Obfuscation, Safe Logging (100%) |
 | **GraphQL Documentation** | ✅ Complete | Phase 6.3 complete (100%) |
@@ -276,6 +279,32 @@
 
 ---
 
+### Graceful Shutdown Utilities ✅
+**Status**: Complete (2025-12-09)
+**Achievement**: Production-ready shutdown utilities for service orchestration
+
+**Deliverables**:
+- `ShutdownAwareTaskSpawner` - Named tasks with automatic cancellation on shutdown
+- `spawn()` - Spawn tasks that respond to shutdown signals
+- `spawn_background()` - Background tasks (non-blocking)
+- `spawn_with_result()` - Tasks that return values (returns `None` if cancelled)
+- `GracefulShutdownExt` trait - Cleanup orchestration with error handling
+- `perform_shutdown()` - Run cleanup logic with automatic error logging
+- `ShutdownExt` trait - Make any future cancellable with `with_shutdown()`
+
+**Testing**:
+- 17 tests (100% passing)
+- Task lifecycle, cancellation, cleanup error handling
+- Multiple workers with shared spawner
+
+**Examples**:
+- `graceful_shutdown.rs` - Full application example with DB pool, message consumer, metrics
+- `shutdown_patterns.rs` - 5 common patterns (basic spawning, results, cleanup, ext, workers)
+
+**Impact**: Production-ready shutdown handling for microservices with zero boilerplate
+
+---
+
 ## CQRS Infrastructure Summary
 
 **Total Achievement**: 85% average boilerplate reduction
@@ -495,11 +524,11 @@
 
 | Component | Files | Lines | Tests |
 |-----------|-------|-------|-------|
-| allframe-core | ~55 | ~8,200 | 299 |
+| allframe-core | ~55 | ~8,500 | 316 |
 | allframe-macros | ~12 | ~2,000 | 15 |
 | allframe-forge | ~5 | ~500 | 5 |
 | Integration tests | ~15 | ~3,000 | 25 |
-| **Total** | **~87** | **~13,700** | **344** |
+| **Total** | **~87** | **~14,000** | **361** |
 
 **Phase Breakdown**:
 - CQRS (Phases 1-5): 39 tests
@@ -507,6 +536,7 @@
 - GraphQL Docs (Phase 6.3): 7 tests
 - Resilience Module: 43 tests
 - Security Module: 12 tests
+- Graceful Shutdown: 17 tests
 - Other: 183 tests
 
 ### Documentation
@@ -549,31 +579,34 @@
 
 ## Roadmap
 
-### Q1 2025: Router + Documentation (Phase 6)
-- ✅ PRD Complete
-- ✅ Phase 6.1: Router Core Enhancement (COMPLETE 2025-11-27)
-- ✅ Phase 6.2: REST + Scalar (COMPLETE 2025-12-01)
-- ✅ Phase 6.3: GraphQL Docs (COMPLETE 2025-12-01)
-- ⏳ Phase 6.4: gRPC Docs (2 weeks)
-- ⏳ Phase 6.5: Contract Testing (2 weeks)
+> **See [ROADMAP.md](./current/ROADMAP.md) for the complete vision and detailed phase planning.**
 
-### Q2 2025: Performance + Ecosystem
-- Performance benchmarks and optimization
-- TechEmpower benchmarks participation
-- Ecosystem integration (Axum, Actix compatibility)
-- VS Code extension
+AllFrame is evolving from a composable Rust API framework into a **cloud-native microservice architecture generator**. The full roadmap includes:
 
-### Q3 2025: Advanced Features
-- API versioning support
-- Multi-language code examples
-- Request/response recording
-- Analytics and monitoring
+### Current (v0.1.x) - Foundation ✅
+- ✅ CQRS Infrastructure (Phases 1-5)
+- ✅ Protocol-Agnostic Routing (Phase 6)
+- ✅ API Documentation (Scalar, GraphiQL, gRPC Explorer)
+- ✅ Resilience & Security Patterns
+- ✅ Graceful Shutdown Utilities
 
-### Q4 2025: Production Hardening
-- Security audit
-- Performance optimization
-- Documentation polish
-- 1.0 release preparation
+### Near-Term (v0.2.0 - v0.4.0) - Architecture Configuration
+- Phase 7: Architecture Configuration Schema (TOML/YAML)
+- Phase 8: Core Service Archetypes (stateless, event-sourced, consumer, producer)
+- Phase 9: Advanced Service Patterns (saga-orchestrator, gateway, bff, websocket-gateway)
+
+### Mid-Term (v0.5.0 - v0.7.0) - Multi-Cloud IaC
+- Phase 10: AWS Infrastructure (Lambda, Fargate, MSK, Terraform)
+- Phase 11: Multi-Cloud Support (GCP, Fly.io, Shuttle)
+- Phase 12: Architecture Templates (e-commerce, data-pipeline, saas)
+
+### Long-Term (v0.8.0 - v1.0.0) - Production Readiness
+- Phase 13: Testing & Quality (Pact contracts, k6 load testing, chaos engineering)
+- Phase 14: Production Readiness (security audit, mTLS, feature flags, multi-tenancy)
+
+**Vision**: Generate deployable microservice architectures in < 5 minutes from declarative configuration.
+
+For detailed configuration examples and service archetypes, see **[IGNITE_VISION.md](./current/IGNITE_VISION.md)**.
 
 ---
 

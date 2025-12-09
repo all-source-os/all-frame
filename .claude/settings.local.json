@@ -30,7 +30,8 @@
       "Bash(xargs ls:*)",
       "Bash(cargo update:*)",
       "Bash(cargo publish:*)",
-      "Bash(cargo info:*)"
+      "Bash(cargo info:*)",
+      "Bash(cargo metadata:*)"
     ],
     "deny": [],
     "ask": []

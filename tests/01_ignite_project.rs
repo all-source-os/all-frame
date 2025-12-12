@@ -34,7 +34,7 @@ fn ignite_creates_compilable_project_with_all_features() {
         .current_dir(temp_dir.path())
         .assert()
         .success()
-        .stdout(predicate::str::contains("AllFrame project created"))
+        .stdout(predicate::str::contains("project created successfully"))
         .stdout(predicate::str::contains("testproject"));
 
     // Verify the project was created

@@ -72,8 +72,8 @@ async fn main() {
     println!("Method: {}", request.method);
     println!("Payload: {}", request.payload);
 
-    // Execute the RPC method
-    let response = grpc_adapter.execute("GetUser", "{}").await.unwrap();
+    // Execute the RPC method via handle()
+    let response = grpc_adapter.handle("GetUser:{}").await.unwrap();
     println!("Response: {}\n", response);
 
     println!("--- Example 3: Unary RPC Call (ListUsers) ---");
@@ -81,7 +81,7 @@ async fn main() {
     let list_request = grpc_adapter.build_request("ListUsers", "{}");
     println!("Method: {}", list_request.method);
 
-    let response = grpc_adapter.execute("ListUsers", "{}").await.unwrap();
+    let response = grpc_adapter.handle("ListUsers:{}").await.unwrap();
     println!("Response: {}\n", response);
 
     println!("--- Example 4: Unary RPC Call (CreateUser) ---");
@@ -93,7 +93,7 @@ async fn main() {
     println!("Method: {}", create_request.method);
     println!("Payload: {}", create_request.payload);
 
-    let response = grpc_adapter.execute("CreateUser", "{}").await.unwrap();
+    let response = grpc_adapter.handle("CreateUser:{}").await.unwrap();
     println!("Response: {}\n", response);
 
     println!("--- Example 5: Unary RPC Call (DeleteUser) ---");
@@ -101,7 +101,7 @@ async fn main() {
     let delete_request = grpc_adapter.build_request("DeleteUser", r#"{"id": 42}"#);
     println!("Method: {}", delete_request.method);
 
-    let response = grpc_adapter.execute("DeleteUser", "{}").await.unwrap();
+    let response = grpc_adapter.handle("DeleteUser:{}").await.unwrap();
     println!("Response: {}\n", response);
 
     println!("--- Example 6: gRPC Status Codes ---");
@@ -139,7 +139,7 @@ async fn main() {
     let unknown_request = grpc_adapter.build_request("UnknownMethod", "{}");
     println!("Method: {}", unknown_request.method);
 
-    match grpc_adapter.execute("UnknownMethod", "{}").await {
+    match grpc_adapter.handle("UnknownMethod:{}").await {
         Ok(response) => println!("Response: {}", response),
         Err(error) => println!("Error: {}\n", error),
     }

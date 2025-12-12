@@ -15,11 +15,11 @@ use allframe_core::otel::{
 #[tokio::test]
 async fn test_context_propagation_through_di() {
     #[traced]
-    async fn operation() -> String {
-        current_trace_id()
+    async fn operation() -> Result<String, String> {
+        Ok(current_trace_id())
     }
 
-    let result = operation().await;
+    let result = operation().await.unwrap();
     assert!(!result.is_empty());
 
     // Note: For MVP, context propagation uses placeholders
@@ -31,17 +31,17 @@ async fn test_trace_id_consistency() {
     start_trace("test-trace-123");
 
     #[traced]
-    async fn operation1() -> String {
-        current_trace_id()
+    async fn operation1() -> Result<String, String> {
+        Ok(current_trace_id())
     }
 
     #[traced]
-    async fn operation2() -> String {
-        current_trace_id()
+    async fn operation2() -> Result<String, String> {
+        Ok(current_trace_id())
     }
 
-    let trace1 = operation1().await;
-    let trace2 = operation2().await;
+    let trace1 = operation1().await.unwrap();
+    let trace2 = operation2().await.unwrap();
 
     // For MVP, returns placeholder trace IDs
     assert_eq!(trace1, trace2);
@@ -51,17 +51,17 @@ async fn test_trace_id_consistency() {
 #[tokio::test]
 async fn test_baggage_propagation() {
     #[traced]
-    async fn outer_operation() -> Option<String> {
+    async fn outer_operation() -> Result<Option<String>, String> {
         set_baggage("user_id", "123");
         inner_operation().await
     }
 
     #[traced]
-    async fn inner_operation() -> Option<String> {
-        get_baggage("user_id")
+    async fn inner_operation() -> Result<Option<String>, String> {
+        Ok(get_baggage("user_id"))
     }
 
-    let result = outer_operation().await;
+    let result = outer_operation().await.unwrap();
     // For MVP, baggage returns None (placeholder)
     assert!(result.is_none());
 }

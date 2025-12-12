@@ -36,7 +36,7 @@ fn test_router_with_config() {
         protocols = ["rest"]
     "#;
 
-    let config = RouterConfig::from_str(config_toml).unwrap();
+    let config = RouterConfig::from_toml(config_toml).unwrap();
     let router = Router::with_config(config);
 
     assert!(router.has_adapter("rest"));

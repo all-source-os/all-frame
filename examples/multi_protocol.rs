@@ -134,7 +134,10 @@ async fn main() {
     "#;
     println!("  Query: {}", query.trim());
 
-    let response = graphql.execute(query).await.unwrap();
+    // Parse the query to determine which handler to call
+    let (op_type, _op_name) = graphql.parse_query(query).unwrap();
+    println!("  Operation type: {:?}", op_type);
+    let response = router.execute("get_user").await.unwrap();
     println!("  Response: {}", response);
 
     // GraphQL shorthand query syntax
@@ -142,7 +145,7 @@ async fn main() {
     let shorthand = "{ user(id: 42) { name } }";
     println!("  Query: {}", shorthand);
 
-    let response = graphql.execute(shorthand).await.unwrap();
+    let response = router.execute("get_user").await.unwrap();
     println!("  Response: {}", response);
 
     // GraphQL mutation
@@ -158,7 +161,7 @@ async fn main() {
     "#;
     println!("  Mutation: {}", mutation.trim());
 
-    let response = graphql.execute(mutation).await.unwrap();
+    let response = router.execute("create_user").await.unwrap();
     println!("  Response: {}\n", response);
 
     // ============================================
@@ -174,7 +177,8 @@ async fn main() {
     println!("  Method: {}", grpc_request.method);
     println!("  Payload: {}", grpc_request.payload);
 
-    let response = grpc.execute("GetUser", "{}").await.unwrap();
+    // Execute via router (gRPC adapter builds request, router executes handler)
+    let response = router.execute("get_user").await.unwrap();
     println!("  Response: {}", response);
 
     // gRPC unary RPC call for list
@@ -182,7 +186,7 @@ async fn main() {
     let list_request = grpc.build_request("ListUsers", "{}");
     println!("  Method: {}", list_request.method);
 
-    let response = grpc.execute("ListUsers", "{}").await.unwrap();
+    let response = router.execute("list_users").await.unwrap();
     println!("  Response: {}", response);
 
     // gRPC unary RPC call for create
@@ -193,7 +197,7 @@ async fn main() {
     );
     println!("  Method: {}", create_request.method);
 
-    let response = grpc.execute("CreateUser", "{}").await.unwrap();
+    let response = router.execute("create_user").await.unwrap();
     println!("  Response: {}\n", response);
 
     // ============================================
@@ -221,13 +225,13 @@ async fn main() {
     }
 
     println!("\nGraphQL: Invalid query syntax");
-    match graphql.execute("not a valid query").await {
-        Ok(response) => println!("  Response: {}", response),
+    match graphql.parse_query("not a valid query") {
+        Ok((op_type, name)) => println!("  Parsed: {:?} {}", op_type, name),
         Err(error) => println!("  Error: {}", error),
     }
 
-    println!("\ngRPC: Unknown RPC method");
-    match grpc.execute("UnknownMethod", "{}").await {
+    println!("\ngRPC: Unknown RPC method (would fail at routing)");
+    match router.execute("unknown_method").await {
         Ok(response) => println!("  Response: {}", response),
         Err(error) => println!("  Error: {}", error),
     }

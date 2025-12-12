@@ -53,36 +53,33 @@ fn create_router() -> Router {
     let mut router = Router::new();
 
     // Example 1: Get user information
-    router.register("get_user", |user_id: String| async move {
+    router.register("get_user", || async {
+        let user_id = uuid::Uuid::new_v4();
         format!(
-            "{{\"id\": \"{}\", \"name\": \"User {}\", \"email\": \"user{}@example.com\"}}",
-            user_id, user_id, user_id
+            "{{\"id\": \"{}\", \"name\": \"User {}\", \"email\": \"user@example.com\"}}",
+            user_id, user_id
         )
     });
 
     // Example 2: Create an order
-    router.register("create_order", |product: String| async move {
+    router.register("create_order", || async {
         let order_id = uuid::Uuid::new_v4();
         format!(
-            "{{\"order_id\": \"{}\", \"product\": \"{}\", \"status\": \"created\"}}",
-            order_id, product
+            "{{\"order_id\": \"{}\", \"product\": \"Widget\", \"status\": \"created\"}}",
+            order_id
         )
     });
 
     // Example 3: Search products
-    router.register("search_products", |query: String| async move {
-        format!(
-            "{{\"query\": \"{}\", \"results\": [{{\"id\": \"1\", \"name\": \"Product A\"}}, \
-             {{\"id\": \"2\", \"name\": \"Product B\"}}]}}",
-            query
-        )
+    router.register("search_products", || async {
+        r#"{"query": "search", "results": [{"id": "1", "name": "Product A"}, {"id": "2", "name": "Product B"}]}"#.to_string()
     });
 
     // Example 4: Calculate shipping
-    router.register("calculate_shipping", |weight: String| async move {
-        let w: f64 = weight.parse().unwrap_or(0.0);
-        let cost = w * 2.5 + 5.0;
-        format!("{{\"weight\": {}, \"cost\": {:.2}}}", w, cost)
+    router.register("calculate_shipping", || async {
+        let weight = 10.0;
+        let cost = weight * 2.5 + 5.0;
+        format!("{{\"weight\": {}, \"cost\": {:.2}}}", weight, cost)
     });
 
     router

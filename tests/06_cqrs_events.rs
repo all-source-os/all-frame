@@ -22,7 +22,7 @@
 #[allow(dead_code)]
 use allframe_core::cqrs::{Event, EventStore};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 enum UserEvent {
     Created { user_id: String, email: String },
     EmailUpdated { user_id: String, new_email: String },
@@ -186,7 +186,7 @@ async fn test_event_serialization() {
 async fn test_event_stream_subscribe() {
     use tokio::sync::mpsc;
 
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
     enum StreamUserEvent {
         Created { user_id: String },
     }

@@ -14,11 +14,11 @@ use allframe_core::otel::{
 #[tokio::test]
 async fn test_otel_with_router() {
     #[traced]
-    async fn handle_request() -> String {
-        "Hello".to_string()
+    async fn handle_request() -> Result<String, String> {
+        Ok("Hello".to_string())
     }
 
-    let result = handle_request().await;
+    let result = handle_request().await.unwrap();
     assert_eq!(result, "Hello");
 
     // For MVP, router integration is demonstrated through basic tracing
@@ -33,48 +33,51 @@ async fn test_otel_with_clean_arch() {
     use allframe_core::arch::{domain, handler, repository, use_case};
 
     #[domain]
+    #[derive(Debug)]
     struct User {
         id: String,
     }
 
     #[repository]
     #[async_trait::async_trait]
-    trait UserRepository: Send + Sync {
-        async fn find(&self, id: &str) -> Option<User>;
+    trait UserRepository: Send + Sync + std::fmt::Debug {
+        async fn find(&self, id: &str) -> Result<Option<User>, String>;
     }
 
+    #[derive(Debug)]
     struct InMemoryUserRepository;
 
     #[async_trait::async_trait]
     impl UserRepository for InMemoryUserRepository {
         #[traced]
-        async fn find(&self, id: &str) -> Option<User> {
-            Some(User { id: id.to_string() })
+        async fn find(&self, id: &str) -> Result<Option<User>, String> {
+            Ok(Some(User { id: id.to_string() }))
         }
     }
 
     #[use_case]
+    #[derive(Debug)]
     struct GetUserUseCase {
         repo: Arc<dyn UserRepository>,
     }
 
     impl GetUserUseCase {
-        #[traced]
-        async fn execute(&self, id: &str) -> Option<User> {
+        #[traced(skip(self))]
+        async fn execute(&self, id: &str) -> Result<Option<User>, String> {
             self.repo.find(id).await
         }
     }
 
     #[handler]
-    #[traced]
-    async fn get_user_handler(use_case: Arc<GetUserUseCase>) -> Option<User> {
+    #[traced(skip(use_case))]
+    async fn get_user_handler(use_case: Arc<GetUserUseCase>) -> Result<Option<User>, String> {
         use_case.execute("123").await
     }
 
     let repo = Arc::new(InMemoryUserRepository);
     let use_case = Arc::new(GetUserUseCase { repo });
 
-    let result = get_user_handler(use_case).await;
+    let result = get_user_handler(use_case).await.unwrap();
     assert!(result.is_some());
     assert_eq!(result.unwrap().id, "123");
 
@@ -86,7 +89,7 @@ async fn test_otel_with_clean_arch() {
 async fn test_otel_with_cqrs() {
     use allframe_core::cqrs::{command, command_handler, Event, EventStore};
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
     enum UserEvent {
         Created { user_id: String },
     }
@@ -94,12 +97,13 @@ async fn test_otel_with_cqrs() {
     impl Event for UserEvent {}
 
     #[command]
+    #[derive(Debug)]
     struct CreateUserCommand {
         user_id: String,
     }
 
     #[command_handler]
-    #[traced]
+    #[traced(skip(store))]
     async fn handle_create_user(
         cmd: CreateUserCommand,
         store: &EventStore<UserEvent>,
@@ -135,20 +139,20 @@ async fn test_otel_with_cqrs() {
 #[tokio::test]
 async fn test_otel_performance_overhead() {
     #[traced]
-    async fn fast_operation() -> u64 {
+    async fn fast_operation() -> Result<u64, String> {
         // Simulate light work
         let mut sum = 0u64;
         for i in 0..1000 {
             sum += i;
         }
-        sum
+        Ok(sum)
     }
 
     // Measure without tracing
     disable_tracing();
     let start = Instant::now();
     for _ in 0..1000 {
-        fast_operation().await;
+        fast_operation().await.unwrap();
     }
     let without_tracing = start.elapsed();
 
@@ -156,7 +160,7 @@ async fn test_otel_performance_overhead() {
     enable_tracing();
     let start = Instant::now();
     for _ in 0..1000 {
-        fast_operation().await;
+        fast_operation().await.unwrap();
     }
     let with_tracing = start.elapsed();
 
@@ -171,6 +175,7 @@ async fn test_otel_performance_overhead() {
 
 /// Test OTEL configuration from config file
 #[tokio::test]
+#[allow(deprecated)]
 async fn test_otel_configuration() {
     // For MVP, configuration is placeholders
     configure_from_file("tests/fixtures/otel_config.toml")

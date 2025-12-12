@@ -23,7 +23,7 @@
 #[allow(dead_code)]
 use allframe_core::cqrs::{command, command_handler, Event};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 enum UserEvent {
     UserCreated {
         user_id: String,

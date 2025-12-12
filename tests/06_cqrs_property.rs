@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use allframe_core::cqrs::{Aggregate, Event, EventStore, Projection};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 enum UserEvent {
     Created { user_id: String, email: String },
     EmailUpdated { new_email: String },

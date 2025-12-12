@@ -19,8 +19,9 @@ async fn test_rest_get_request() {
     // Register a simple handler
     router.register("get_user", || async move { "User 42".to_string() });
 
-    // Create REST adapter
-    let adapter = RestAdapter::new();
+    // Create REST adapter with route
+    let mut adapter = RestAdapter::new();
+    adapter.route("GET", "/users/:id", "get_user");
     assert_eq!(adapter.name(), "rest");
 
     // Build a request
@@ -30,8 +31,8 @@ async fn test_rest_get_request() {
 
     // For MVP, we verify the adapter can handle requests
     // Full request→handler routing will come in later phases
-    let response = adapter.handle("test").await.unwrap();
-    assert!(response.contains("REST handled"));
+    let response = adapter.handle("GET /users/42").await.unwrap();
+    assert!(response.contains("HTTP 200") || response.contains("get_user"));
 }
 
 /// Test REST POST - MVP version

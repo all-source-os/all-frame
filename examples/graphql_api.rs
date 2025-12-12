@@ -77,7 +77,7 @@ async fn main() {
     "#;
     println!("Query:\n{}", simple_query);
 
-    let response = graphql_adapter.execute(simple_query).await.unwrap();
+    let response = graphql_adapter.handle(simple_query).await.unwrap();
     println!("Response: {}\n", response);
 
     println!("--- Example 3: Query with All Fields ---");
@@ -93,7 +93,7 @@ async fn main() {
     "#;
     println!("Query:\n{}", full_query);
 
-    let response = graphql_adapter.execute(full_query).await.unwrap();
+    let response = graphql_adapter.handle(full_query).await.unwrap();
     println!("Response: {}\n", response);
 
     println!("--- Example 4: Shorthand Query Syntax ---");
@@ -107,7 +107,7 @@ async fn main() {
     "#;
     println!("Query:\n{}", shorthand_query);
 
-    let response = graphql_adapter.execute(shorthand_query).await.unwrap();
+    let response = graphql_adapter.handle(shorthand_query).await.unwrap();
     println!("Response: {}\n", response);
 
     println!("--- Example 5: GraphQL Mutation ---");
@@ -123,7 +123,7 @@ async fn main() {
     "#;
     println!("Mutation:\n{}", mutation);
 
-    let response = graphql_adapter.execute(mutation).await.unwrap();
+    let response = graphql_adapter.handle(mutation).await.unwrap();
     println!("Response: {}\n", response);
 
     println!("--- Example 6: Update Mutation ---");
@@ -147,7 +147,7 @@ async fn main() {
     let invalid_query = "this is not a valid graphql query";
     println!("Invalid Query: {}", invalid_query);
 
-    match graphql_adapter.execute(invalid_query).await {
+    match graphql_adapter.handle(invalid_query).await {
         Ok(response) => println!("Response: {}", response),
         Err(error) => println!("Error: {}\n", error),
     }
@@ -167,7 +167,7 @@ async fn main() {
     "#;
     println!("Query with nested types:\n{}", nested_query);
 
-    let response = graphql_adapter.execute(nested_query).await.unwrap();
+    let response = graphql_adapter.handle(nested_query).await.unwrap();
     println!("Response: {}\n", response);
     println!("Note: Full nested type support with field selection coming in future phases\n");
 

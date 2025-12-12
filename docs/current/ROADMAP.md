@@ -132,7 +132,7 @@ pattern = "outbox"
 
 ---
 
-### Phase 8: Core Service Archetypes (v0.3.0)
+### Phase 8: Core Service Archetypes (v0.3.0) ✅
 
 **Goal**: Code generators for fundamental service patterns
 
@@ -141,34 +141,36 @@ pattern = "outbox"
 |------|-------------|-----------|
 | `stateless` | Request/response CRUD | ✅ Existing (extend) |
 | `event-sourced` | CQRS + Event Store | ✅ Existing (extend) |
-| `consumer` | Event handler service | 🆕 New |
-| `producer` | Event publishing service | 🆕 New |
+| `consumer` | Event handler service | ✅ Complete |
+| `producer` | Event publishing service | ✅ Complete |
 
 **Patterns Generated**:
-- [ ] Outbox pattern for reliable messaging
-- [ ] Idempotency middleware
-- [ ] Dead Letter Queue handling
-- [ ] Health checks and readiness probes
+- [x] Outbox pattern for reliable messaging
+- [x] Idempotency middleware
+- [x] Dead Letter Queue handling
+- [x] Health checks and readiness probes
 
 **Timeline**: Q1-Q2 2025
 
 ---
 
-### Phase 9: Advanced Service Patterns (v0.4.0)
+### Phase 9: Advanced Service Patterns (v0.4.0) ✅
 
 **Goal**: Complex service archetypes
 
 **Service Types**:
-| Type | Description | Use Case |
-|------|-------------|----------|
-| `saga-orchestrator` | Distributed transactions | Multi-service workflows |
-| `gateway` | External integration | Payment providers, APIs |
-| `bff` | Backend for Frontend | API aggregation |
-| `websocket-gateway` | Real-time streaming | Live updates, chat |
-| `scheduled` | Cron jobs | Reports, cleanup |
-| `anti-corruption-layer` | Legacy adapter | Migration |
+| Type | Description | Use Case | Status |
+|------|-------------|----------|--------|
+| `saga-orchestrator` | Distributed transactions | Multi-service workflows | ✅ Complete |
+| `gateway` | External integration | Payment providers, APIs | ✅ Complete |
+| `bff` | Backend for Frontend | API aggregation | ✅ Complete |
+| `websocket-gateway` | Real-time streaming | Live updates, chat | ✅ Complete |
+| `scheduled` | Cron jobs | Reports, cleanup | ✅ Complete |
+| `legacy-adapter` | Legacy system adapter | Migration, ACL | ✅ Complete |
 
-**Timeline**: Q2 2025
+**Bonus**: Forge MCP Server for AI-assisted code generation
+
+**Timeline**: Q2 2025 ✅
 
 ---
 
@@ -293,8 +295,8 @@ allframe ignite --template ecommerce --cloud aws
 |---------|-----------|-------------|
 | **0.1.x** | Foundation | Framework + CQRS + Router ✅ |
 | **0.2.0** | Configuration | Architecture schema |
-| **0.3.0** | Core Archetypes | Stateless, Event-sourced, Consumer |
-| **0.4.0** | Advanced Patterns | Saga, Gateway, BFF, WebSocket |
+| **0.3.0** | Core Archetypes | Consumer, Producer ✅ |
+| **0.4.0** | Advanced Patterns | Gateway, Saga, BFF, WebSocket, Scheduled, Legacy Adapter ✅ |
 | **0.5.0** | AWS | Lambda, Fargate, MSK |
 | **0.6.0** | Multi-Cloud | GCP, Fly.io, Shuttle |
 | **0.7.0** | Templates | E-commerce, Data Pipeline, SaaS |

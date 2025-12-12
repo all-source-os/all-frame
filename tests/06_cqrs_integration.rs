@@ -18,7 +18,7 @@ use allframe_core::cqrs::{
     SagaDefinition, SagaOrchestrator, SagaStep, Snapshot,
 };
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 enum UserEvent {
     Created { user_id: String, email: String },
     EmailUpdated { new_email: String },
@@ -148,7 +148,7 @@ async fn test_cqrs_with_clean_architecture() {
 
     // Events are domain layer
     #[domain]
-    #[derive(Clone)]
+    #[derive(Clone, serde::Serialize, serde::Deserialize)]
     enum ArchUserEvent {
         Created { user_id: String, email: String },
     }

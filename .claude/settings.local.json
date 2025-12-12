@@ -31,7 +31,9 @@
       "Bash(cargo update:*)",
       "Bash(cargo publish:*)",
       "Bash(cargo info:*)",
-      "Bash(cargo metadata:*)"
+      "Bash(cargo metadata:*)",
+      "Bash(printf:*)",
+      "Bash(jq:*)"
     ],
     "deny": [],
     "ask": []

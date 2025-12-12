@@ -15,7 +15,7 @@ use std::collections::HashMap;
 
 use allframe_core::cqrs::{query, query_handler, Event, EventStore, Projection};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 enum UserEvent {
     Created {
         user_id: String,

@@ -2,7 +2,8 @@
 //!
 //! Automatically exposes AllFrame Router handlers as LLM-callable tools.
 //!
-//! # Example
+//! # Router-based MCP Server
+//!
 //! ```rust,no_run
 //! use allframe_core::router::Router;
 //! use allframe_mcp::McpServer;
@@ -17,7 +18,21 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! # Forge MCP Server (Code Generation)
+//!
+//! ```rust,no_run
+//! use allframe_mcp::forge::ForgeMcpServer;
+//! use std::path::PathBuf;
+//!
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let server = ForgeMcpServer::new(PathBuf::from("./my-project"))?;
+//!     server.serve_stdio();
+//!     Ok(())
+//! }
+//! ```
 
+pub mod forge;
 pub mod schema;
 pub mod server;
 pub mod tools;

@@ -466,6 +466,153 @@ impl Default for CircuitBreakerManager {
     }
 }
 
+/// Generic keyed circuit breaker for per-resource isolation.
+///
+/// Unlike `CircuitBreakerManager` which uses String keys, this supports any
+/// hashable key type. Each key maintains independent circuit breaker state,
+/// allowing failures in one resource (e.g., one exchange, one endpoint) to
+/// not affect others.
+///
+/// # Example
+///
+/// ```rust
+/// use allframe_core::resilience::{KeyedCircuitBreaker, CircuitBreakerConfig};
+///
+/// // Per-exchange circuit breakers for a trading system
+/// let cb = KeyedCircuitBreaker::<String>::new(CircuitBreakerConfig::default());
+///
+/// // Check if we can make a request to Kraken
+/// if cb.check(&"kraken".to_string()).is_ok() {
+///     // Make request...
+///     cb.record_success(&"kraken".to_string());
+/// }
+///
+/// // Failures on Kraken don't affect Binance
+/// cb.record_failure(&"kraken".to_string());
+/// assert!(cb.check(&"binance".to_string()).is_ok());
+/// ```
+pub struct KeyedCircuitBreaker<K: std::hash::Hash + Eq + Clone + Send + Sync + 'static> {
+    breakers: DashMap<K, Arc<CircuitBreaker>>,
+    config: CircuitBreakerConfig,
+    /// Counter for generating unique names
+    counter: std::sync::atomic::AtomicU64,
+}
+
+impl<K: std::hash::Hash + Eq + Clone + Send + Sync + 'static> KeyedCircuitBreaker<K> {
+    /// Create a new keyed circuit breaker with the given configuration.
+    ///
+    /// All keys will use the same circuit breaker configuration.
+    pub fn new(config: CircuitBreakerConfig) -> Self {
+        Self {
+            breakers: DashMap::new(),
+            config,
+            counter: std::sync::atomic::AtomicU64::new(0),
+        }
+    }
+
+    /// Check if a request for the given key is allowed.
+    ///
+    /// Returns `Ok(())` if allowed, `Err(CircuitOpenError)` if the circuit is open.
+    pub fn check(&self, key: &K) -> Result<(), CircuitOpenError> {
+        self.get_or_create(key).check()
+    }
+
+    /// Record a successful request for the given key.
+    pub fn record_success(&self, key: &K) {
+        self.get_or_create(key).record_success()
+    }
+
+    /// Record a failed request for the given key.
+    pub fn record_failure(&self, key: &K) {
+        self.get_or_create(key).record_failure()
+    }
+
+    /// Execute an async operation through the circuit breaker for the given key.
+    pub async fn call<F, Fut, T, E>(&self, key: &K, f: F) -> Result<T, CircuitBreakerError<E>>
+    where
+        F: FnOnce() -> Fut,
+        Fut: Future<Output = Result<T, E>>,
+    {
+        self.get_or_create(key).call(f).await
+    }
+
+    /// Get the current state for a key.
+    pub fn get_state(&self, key: &K) -> Option<CircuitState> {
+        self.breakers.get(key).map(|cb| cb.get_state())
+    }
+
+    /// Get statistics for a specific key.
+    pub fn get_stats(&self, key: &K) -> Option<CircuitBreakerStats> {
+        self.breakers.get(key).map(|cb| cb.get_stats())
+    }
+
+    /// Get statistics for all keys.
+    pub fn get_all_stats(&self) -> Vec<(K, CircuitBreakerStats)> {
+        self.breakers
+            .iter()
+            .map(|entry| (entry.key().clone(), entry.value().get_stats()))
+            .collect()
+    }
+
+    /// Reset a specific circuit breaker.
+    pub fn reset(&self, key: &K) {
+        if let Some(cb) = self.breakers.get(key) {
+            cb.reset();
+        }
+    }
+
+    /// Reset all circuit breakers.
+    pub fn reset_all(&self) {
+        for entry in self.breakers.iter() {
+            entry.value().reset();
+        }
+    }
+
+    /// Remove a circuit breaker for a key.
+    pub fn remove(&self, key: &K) {
+        self.breakers.remove(key);
+    }
+
+    /// Clear all circuit breakers.
+    pub fn clear(&self) {
+        self.breakers.clear();
+    }
+
+    /// Get the number of active circuit breakers.
+    pub fn len(&self) -> usize {
+        self.breakers.len()
+    }
+
+    /// Check if there are no circuit breakers.
+    pub fn is_empty(&self) -> bool {
+        self.breakers.is_empty()
+    }
+
+    /// Get the underlying circuit breaker for a key, if it exists.
+    pub fn get(&self, key: &K) -> Option<Arc<CircuitBreaker>> {
+        self.breakers.get(key).map(|r| r.clone())
+    }
+
+    fn get_or_create(&self, key: &K) -> Arc<CircuitBreaker> {
+        self.breakers
+            .entry(key.clone())
+            .or_insert_with(|| {
+                let id = self.counter.fetch_add(1, Ordering::Relaxed);
+                Arc::new(CircuitBreaker::new(
+                    format!("keyed-{}", id),
+                    self.config.clone(),
+                ))
+            })
+            .clone()
+    }
+}
+
+impl<K: std::hash::Hash + Eq + Clone + Send + Sync + 'static> Default for KeyedCircuitBreaker<K> {
+    fn default() -> Self {
+        Self::new(CircuitBreakerConfig::default())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -682,5 +829,123 @@ mod tests {
         assert_eq!(format!("{}", CircuitState::Closed), "closed");
         assert_eq!(format!("{}", CircuitState::Open), "open");
         assert_eq!(format!("{}", CircuitState::HalfOpen), "half-open");
+    }
+
+    // KeyedCircuitBreaker tests
+
+    #[test]
+    fn test_keyed_circuit_breaker_basic() {
+        let cb = KeyedCircuitBreaker::<String>::new(CircuitBreakerConfig::default());
+
+        // Check should work for new keys
+        assert!(cb.check(&"key1".to_string()).is_ok());
+        assert!(cb.check(&"key2".to_string()).is_ok());
+
+        // Keys should be independent
+        assert_eq!(cb.len(), 2);
+    }
+
+    #[test]
+    fn test_keyed_circuit_breaker_isolation() {
+        let config = CircuitBreakerConfig::new(1); // 1 failure opens circuit
+        let cb = KeyedCircuitBreaker::<String>::new(config);
+
+        // Fail key1
+        cb.record_failure(&"key1".to_string());
+
+        // key1 should be open, key2 should still be closed
+        assert!(cb.check(&"key1".to_string()).is_err());
+        assert!(cb.check(&"key2".to_string()).is_ok());
+    }
+
+    #[test]
+    fn test_keyed_circuit_breaker_stats() {
+        let cb = KeyedCircuitBreaker::<String>::new(CircuitBreakerConfig::default());
+
+        cb.record_success(&"a".to_string());
+        cb.record_success(&"a".to_string());
+        cb.record_failure(&"b".to_string());
+
+        let stats_a = cb.get_stats(&"a".to_string()).unwrap();
+        assert_eq!(stats_a.success_count, 2);
+
+        let stats_b = cb.get_stats(&"b".to_string()).unwrap();
+        assert_eq!(stats_b.failure_count, 1);
+
+        let all_stats = cb.get_all_stats();
+        assert_eq!(all_stats.len(), 2);
+    }
+
+    #[test]
+    fn test_keyed_circuit_breaker_reset() {
+        let config = CircuitBreakerConfig::new(1);
+        let cb = KeyedCircuitBreaker::<String>::new(config);
+
+        cb.record_failure(&"key".to_string());
+        assert!(cb.check(&"key".to_string()).is_err());
+
+        cb.reset(&"key".to_string());
+        assert!(cb.check(&"key".to_string()).is_ok());
+    }
+
+    #[test]
+    fn test_keyed_circuit_breaker_reset_all() {
+        let config = CircuitBreakerConfig::new(1);
+        let cb = KeyedCircuitBreaker::<String>::new(config);
+
+        cb.record_failure(&"a".to_string());
+        cb.record_failure(&"b".to_string());
+
+        assert!(cb.check(&"a".to_string()).is_err());
+        assert!(cb.check(&"b".to_string()).is_err());
+
+        cb.reset_all();
+
+        assert!(cb.check(&"a".to_string()).is_ok());
+        assert!(cb.check(&"b".to_string()).is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_keyed_circuit_breaker_call() {
+        let cb = KeyedCircuitBreaker::<String>::new(CircuitBreakerConfig::default());
+
+        let result = cb
+            .call(&"test".to_string(), || async { Ok::<_, std::io::Error>("success") })
+            .await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "success");
+    }
+
+    #[test]
+    fn test_keyed_circuit_breaker_remove() {
+        let cb = KeyedCircuitBreaker::<String>::new(CircuitBreakerConfig::default());
+
+        cb.check(&"key".to_string()).ok();
+        assert_eq!(cb.len(), 1);
+
+        cb.remove(&"key".to_string());
+        assert_eq!(cb.len(), 0);
+    }
+
+    #[test]
+    fn test_keyed_circuit_breaker_clear() {
+        let cb = KeyedCircuitBreaker::<String>::new(CircuitBreakerConfig::default());
+
+        cb.check(&"a".to_string()).ok();
+        cb.check(&"b".to_string()).ok();
+        cb.check(&"c".to_string()).ok();
+
+        assert_eq!(cb.len(), 3);
+
+        cb.clear();
+        assert!(cb.is_empty());
+    }
+
+    #[test]
+    fn test_keyed_circuit_breaker_default() {
+        let cb = KeyedCircuitBreaker::<u64>::default();
+        assert!(cb.check(&1).is_ok());
+        assert!(cb.check(&2).is_ok());
     }
 }

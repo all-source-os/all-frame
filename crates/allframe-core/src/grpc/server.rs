@@ -95,7 +95,7 @@ impl GrpcServerBuilder {
         self
     }
 
-    /// Set the port (uses [::1] as host)
+    /// Set the port (uses `[::1]` as host)
     pub fn port(mut self, port: u16) -> Self {
         self.addr = SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], port));
         self

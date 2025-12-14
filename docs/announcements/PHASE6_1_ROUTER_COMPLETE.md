@@ -275,7 +275,7 @@ Your feedback shapes AllFrame.
 20/ Try It Yourself:
 
 // Add to Cargo.toml
-allframe-core = { features = ["router"] }
+allframe = { features = ["router"] }
 
 // Write your first route
 router.get("/hello", || async { "World" });
@@ -450,7 +450,7 @@ Secondary:
 **A**: "Zero. All new APIs are additive. Old `register()` still works."
 
 **Q**: "When can I use this?"
-**A**: "Now! Phase 6.1 is complete and production-ready. Add `allframe-core = { features = [\"router\"] }` to Cargo.toml"
+**A**: "Now! Phase 6.1 is complete and production-ready. Add `allframe = { features = [\"router\"] }` to Cargo.toml"
 
 **Q**: "What about GraphQL/gRPC docs?"
 **A**: "Coming in Phases 6.3 and 6.4. Router core is ready - now we're adding UI layers."

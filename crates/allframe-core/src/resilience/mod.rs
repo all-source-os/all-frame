@@ -39,13 +39,19 @@
 
 mod circuit_breaker;
 mod rate_limit;
+#[cfg(feature = "resilience-redis")]
+mod rate_limit_redis;
 mod retry;
 
 pub use circuit_breaker::{
     CircuitBreaker, CircuitBreakerConfig, CircuitBreakerManager, CircuitBreakerStats,
-    CircuitOpenError, CircuitState,
+    CircuitOpenError, CircuitState, KeyedCircuitBreaker,
 };
 pub use rate_limit::{
     AdaptiveRateLimiter, KeyedRateLimiter, RateLimitError, RateLimiter, RateLimiterStatus,
+};
+#[cfg(feature = "resilience-redis")]
+pub use rate_limit_redis::{
+    KeyedRedisRateLimiter, RedisRateLimiter, RedisRateLimiterConfig, RedisRateLimiterError,
 };
 pub use retry::{AdaptiveRetry, RetryBudget, RetryConfig, RetryError, RetryExecutor, RetryPolicy};

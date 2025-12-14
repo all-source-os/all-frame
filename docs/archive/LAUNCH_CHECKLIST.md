@@ -248,7 +248,7 @@ Zero bloat. Pure Rust speed.
 ```
 100% Open Source (MIT License)
 
-📦 Cargo: `cargo add allframe-core`
+📦 Cargo: `cargo add allframe`
 🐙 GitHub: github.com/all-source-os/all-frame
 📚 Docs: docs.rs/allframe-core
 🤖 MCP: modelcontextprotocol.io/servers
@@ -261,7 +261,7 @@ Star us! PRs welcome!
 Ready to build protocol-agnostic APIs?
 
 ⭐ Star on GitHub
-📦 `cargo add allframe-core`
+📦 `cargo add allframe`
 🤖 Try the MCP server
 📖 Read the docs
 
@@ -330,7 +330,7 @@ For teams building microservices or APIs:
 
 AllFrame is 100% open source (MIT License):
 • GitHub: github.com/all-source-os/all-frame
-• Cargo: `cargo add allframe-core`
+• Cargo: `cargo add allframe`
 • Docs: docs.rs/allframe-core
 
 We're building this in the open with full transparency. Feedback and contributions welcome!

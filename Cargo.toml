@@ -10,7 +10,7 @@ resolver = "2"
 # Main allframe crate - re-exports allframe-core
 [package]
 name = "allframe"
-version = "0.1.7"
+version = "0.1.10"
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
@@ -79,7 +79,7 @@ async-trait = { workspace = true }
 tracing = "0.1"
 
 [workspace.package]
-version = "0.1.9"
+version = "0.1.10"
 edition = "2021"
 rust-version = "1.86"  # Required for async-graphql 7.0.17
 authors = ["AllFrame Contributors"]
@@ -102,7 +102,7 @@ hyper = { version = "1.8", features = ["full"] }
 # === Core Utilities ===
 # Stable APIs - minor updates are safe
 async-trait = "0.1"
-thiserror = "1.0"
+thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
@@ -132,9 +132,9 @@ proc-macro2 = "1.0"
 #   1. Update workspace.package.version (line 73)
 #   2. Update these three version strings to match
 # This ensures crates.io consumers get the correct dependency versions.
-allframe-core = { version = "0.1.9", path = "crates/allframe-core", default-features = false }
-allframe-macros = { version = "0.1.9", path = "crates/allframe-macros" }
-allframe-forge = { version = "0.1.9", path = "crates/allframe-forge" }
+allframe-core = { version = "0.1.10", path = "crates/allframe-core", default-features = false }
+allframe-macros = { version = "0.1.10", path = "crates/allframe-macros" }
+allframe-forge = { version = "0.1.10", path = "crates/allframe-forge" }
 
 # Test configuration for the workspace
 [profile.test]

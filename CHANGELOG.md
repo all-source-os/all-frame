@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.9] - 2025-12-13
+
+### Added
+- **Protocol-Agnostic Routing Complete** - Full multi-protocol support
+  - REST adapter with path parameters and HTTP methods
+  - GraphQL adapter with queries, mutations, and schema generation
+  - gRPC adapter with all streaming modes and proto generation
+  - Single handler exposed via multiple protocols
+  - Automatic schema generation (OpenAPI, GraphQL SDL, .proto)
+  - Protocol-specific error handling
+  - 78 tests across 5 routing phases
+
+- **MCP Server (Zero-Bloat)** - Separate crate for LLM tool integration
+  - Auto-discovery: Handlers automatically become MCP tools
+  - JSON Schema generation and validation
+  - Type coercion (string → number, boolean)
+  - Tool listing and invocation
+  - Claude Desktop integration ready
+  - 37 tests in allframe-mcp crate
+
+- **`KeyedCircuitBreaker<K>`** - Generic keyed circuit breaker for per-resource isolation
+  - Independent circuit breaker state per key (e.g., per exchange, per endpoint)
+  - Failures in one resource don't affect others
+  - Same API as `KeyedRateLimiter<K>` for consistency
+  - Full statistics and reset capabilities per key
+
+- **`resilience-redis` Feature** - Redis-backed distributed rate limiting
+  - `RedisRateLimiter` with sliding window algorithm
+  - `KeyedRedisRateLimiter` with per-key configuration
+  - Atomic operations via Lua scripts
+  - Works across multiple instances for distributed deployments
+  - Auto-cleanup of expired entries
+
+- **Layered Authentication** - Zero-bloat, feature-gated auth infrastructure
+  - `auth`: Core traits only (`Authenticator`, `AuthContext`, `AuthError`) - zero deps
+  - `auth-jwt`: JWT validation with HS256/RS256/EdDSA support via `jsonwebtoken`
+  - `auth-axum`: Axum extractors (`AuthenticatedUser<C>`) and middleware (`AuthLayer`)
+  - `auth-tonic`: gRPC interceptors (`AuthInterceptor`) for tonic services
+  - Protocol-agnostic design - same claims work across REST/GraphQL/gRPC
+  - Environment-based configuration (`JwtConfig::from_env()`)
+
+### Changed
+- Updated workspace version to 0.1.9
+- Total test count now 455+ (was 361+)
+- **Upgraded `thiserror` from 1.0 to 2.0** - Resolves version conflicts with downstream crates
+
+---
+
+## [0.1.8] - 2025-12-09
+
+### Added
+- **Graceful Shutdown Utilities** - Production-ready shutdown handling
+  - `ShutdownAwareTaskSpawner` for named tasks with automatic cancellation
+  - `spawn()` - Spawn tasks that respond to shutdown signals
+  - `spawn_background()` - Background tasks (non-blocking)
+  - `spawn_with_result()` - Tasks that return values
+  - `GracefulShutdownExt` trait for cleanup orchestration
+  - `ShutdownExt` trait for making any future cancellable
+  - 17 tests for shutdown utilities
+
+### Documentation
+- Added `graceful_shutdown.rs` example
+- Added `shutdown_patterns.rs` with 5 common patterns
+
+---
+
 ## [0.1.7] - 2025-12-08
 
 ### Added
@@ -236,10 +302,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Statistics
 
 ### Test Coverage
-- **Total Tests**: 133 passing
+- **Total Tests**: 455+ passing
 - **CQRS Tests**: 72
+- **Router/Protocol Tests**: 78
 - **Scalar/OpenAPI Tests**: 42
-- **Other Tests**: 19
+- **MCP Tests**: 37
+- **Resilience/Security Tests**: 55
+- **Graceful Shutdown Tests**: 17
+- **Other Tests**: 154
 - **Coverage**: 100% (TDD-enforced)
 
 ### Binary Sizes (Release builds)
@@ -248,10 +318,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All features: 1.89MB
 
 ### Documentation
-- **Total Documentation**: 2,500+ lines
+- **Total Documentation**: 4,000+ lines
 - Scalar guides: 675+ lines
+- GraphQL guides: 600+ lines
 - CQRS guides: 1,000+ lines
-- Project documentation: 800+ lines
+- Routing guides: 500+ lines
+- Project documentation: 1,200+ lines
 
 ---
 

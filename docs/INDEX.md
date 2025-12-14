@@ -1,6 +1,6 @@
 # AllFrame Documentation Index
 
-**Last Updated**: 2025-11-27
+**Last Updated**: 2025-12-14
 
 Welcome to the AllFrame documentation! This index provides a comprehensive overview of all available documentation.
 
@@ -87,7 +87,11 @@ docs/
 | 3 | ProjectionRegistry | 90% | [PHASE3_COMPLETE.md](./phases/PHASE3_COMPLETE.md) |
 | 4 | Event Versioning | 95% | [PHASE4_COMPLETE.md](./phases/PHASE4_COMPLETE.md) |
 | 5 | Saga Orchestration | 75% | [PHASE5_COMPLETE.md](./phases/PHASE5_COMPLETE.md) |
-| **6.1** | **Router Core** | **-** | **[PHASE6_1_COMPLETE.md](./phases/PHASE6_1_COMPLETE.md)** ✅ **NEW** |
+| 6.1 | Router Core | - | [PHASE6_1_COMPLETE.md](./phases/PHASE6_1_COMPLETE.md) |
+| 6.2 | Scalar API Docs | - | [SCALAR_INTEGRATION_COMPLETE.md](./phases/SCALAR_INTEGRATION_COMPLETE.md) |
+| 6.3 | GraphQL Docs | - | [PHASE6_3_COMPLETE.md](./phases/PHASE6_3_COMPLETE.md) |
+| 6.4 | Protocol Routing | - | [PROTOCOL_AGNOSTIC_ROUTING_COMPLETE.md](./phases/PROTOCOL_AGNOSTIC_ROUTING_COMPLETE.md) |
+| MCP | MCP Server | - | [MCP_ZERO_BLOAT_COMPLETE.md](./phases/MCP_ZERO_BLOAT_COMPLETE.md) |
 
 **Summary**: [CQRS Infrastructure Complete Announcement](./announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)
 
@@ -235,10 +239,11 @@ Historical documentation moved to `/docs/archive/`:
 **Current Metrics**: See **[PROJECT_STATUS.md](./PROJECT_STATUS.md#repository-statistics)** for detailed, up-to-date statistics.
 
 ### Quick Stats
-- **Total Tests**: 99 (100% passing)
+- **Total Tests**: 455+ (100% passing)
 - **CQRS Phases**: 5 (all complete, 85% avg boilerplate reduction)
-- **Router Phase**: 6.1 (complete)
-- **Documentation**: 25+ files across phases, guides, and PRDs
+- **Router Phase**: 6 (complete - REST, GraphQL, gRPC)
+- **MCP Server**: Complete (zero-bloat separate crate)
+- **Documentation**: 30+ files across phases, guides, and PRDs
 
 ---
 

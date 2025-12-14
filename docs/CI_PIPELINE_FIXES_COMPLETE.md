@@ -371,11 +371,11 @@ The separate `allframe-mcp` crate ensures:
 
 # Without MCP (zero overhead)
 [dependencies]
-allframe-core = { version = "0.1", features = ["router"] }
+allframe = { version = "0.1", features = ["router"] }
 
 # With MCP (opt-in)
 [dependencies]
-allframe-core = { version = "0.1", features = ["router"] }
+allframe = { version = "0.1", features = ["router"] }
 allframe-mcp = "0.1"
 ```
 

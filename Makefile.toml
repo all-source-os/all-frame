@@ -231,18 +231,29 @@ echo ""
 
 ERRORS=0
 
+# Check root [package] version (allframe crate)
+ROOT_VERSION=$(awk '/^\[package\]/{found=1} found && /^version/{print; exit}' Cargo.toml | cut -d'"' -f2)
+echo "Checking root allframe crate:"
+if [ "$ROOT_VERSION" != "$WORKSPACE_VERSION" ]; then
+    echo "  ❌ allframe [package] version = ${ROOT_VERSION}, expected ${WORKSPACE_VERSION}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "  ✅ allframe [package] version = ${ROOT_VERSION}"
+fi
+
 # Check workspace.dependencies versions
 check_workspace_dep() {
     local crate=$1
     local version=$(grep "^${crate} = " Cargo.toml | grep -o 'version = "[^"]*"' | cut -d'"' -f2)
     if [ "$version" != "$WORKSPACE_VERSION" ]; then
-        echo "❌ ${crate} in workspace.dependencies has version ${version}, expected ${WORKSPACE_VERSION}"
+        echo "  ❌ ${crate} = ${version}, expected ${WORKSPACE_VERSION}"
         ERRORS=$((ERRORS + 1))
     else
-        echo "✅ ${crate} workspace.dependencies = ${version}"
+        echo "  ✅ ${crate} = ${version}"
     fi
 }
 
+echo ""
 echo "Checking workspace.dependencies:"
 check_workspace_dep "allframe-core"
 check_workspace_dep "allframe-macros"
@@ -295,23 +306,89 @@ case "$BUMP_TYPE" in
 esac
 
 NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+TODAY=$(date +%Y-%m-%d)
 echo "Bumping version: ${CURRENT} → ${NEW_VERSION}"
+echo ""
+
+# =============================================================================
+# 1. Update Cargo.toml versions
+# =============================================================================
+echo "📦 Updating Cargo.toml..."
 
 # Update workspace.package version (in [workspace.package] section only)
 sed -i '' "/\[workspace\.package\]/,/\[.*\]/{s/^version = \"${CURRENT}\"/version = \"${NEW_VERSION}\"/;}" "$CARGO_TOML"
+
+# Update root allframe crate version (in [package] section, before workspace.package)
+sed -i '' "/^\[package\]/,/^\[/{s/^version = \"[0-9]*\.[0-9]*\.[0-9]*\"/version = \"${NEW_VERSION}\"/;}" "$CARGO_TOML"
 
 # Update workspace.dependencies for internal crates
 sed -i '' "s/allframe-core = { version = \"${CURRENT}\"/allframe-core = { version = \"${NEW_VERSION}\"/" "$CARGO_TOML"
 sed -i '' "s/allframe-macros = { version = \"${CURRENT}\"/allframe-macros = { version = \"${NEW_VERSION}\"/" "$CARGO_TOML"
 sed -i '' "s/allframe-forge = { version = \"${CURRENT}\"/allframe-forge = { version = \"${NEW_VERSION}\"/" "$CARGO_TOML"
 
-echo "✅ Version bumped to ${NEW_VERSION}"
+echo "  ✅ workspace.package.version = ${NEW_VERSION}"
+echo "  ✅ [package] version = ${NEW_VERSION} (root allframe crate)"
+echo "  ✅ workspace.dependencies updated"
+
+# =============================================================================
+# 2. Update documentation
+# =============================================================================
 echo ""
-echo "Updated in Cargo.toml:"
-echo "  - workspace.package.version"
-echo "  - workspace.dependencies.allframe-core"
-echo "  - workspace.dependencies.allframe-macros"
-echo "  - workspace.dependencies.allframe-forge"
+echo "📚 Updating documentation..."
+
+# Update PROJECT_STATUS.md
+if [ -f "docs/PROJECT_STATUS.md" ]; then
+    sed -i '' "s/\*\*Version\*\*: [0-9]*\.[0-9]*\.[0-9]*/\*\*Version\*\*: ${NEW_VERSION}/" "docs/PROJECT_STATUS.md"
+    sed -i '' "s/\*\*Last Updated\*\*: [0-9-]*/\*\*Last Updated\*\*: ${TODAY}/" "docs/PROJECT_STATUS.md"
+    echo "  ✅ docs/PROJECT_STATUS.md"
+fi
+
+# Update docs/README.md
+if [ -f "docs/README.md" ]; then
+    sed -i '' "s/\*\*Last Updated\*\*: [0-9-]*/\*\*Last Updated\*\*: ${TODAY}/" "docs/README.md"
+    echo "  ✅ docs/README.md"
+fi
+
+# Update docs/INDEX.md
+if [ -f "docs/INDEX.md" ]; then
+    sed -i '' "s/\*\*Last Updated\*\*: [0-9-]*/\*\*Last Updated\*\*: ${TODAY}/" "docs/INDEX.md"
+    echo "  ✅ docs/INDEX.md"
+fi
+
+# Update README.md version references (dependency examples)
+if [ -f "README.md" ]; then
+    # Update allframe = "X.Y.Z" patterns
+    sed -i '' "s/allframe = \"${CURRENT}\"/allframe = \"${NEW_VERSION}\"/g" "README.md"
+    # Update allframe = { version = "X.Y.Z" patterns
+    sed -i '' "s/allframe = { version = \"${CURRENT}\"/allframe = { version = \"${NEW_VERSION}\"/g" "README.md"
+    # Update allframe-mcp = "X.Y.Z" patterns
+    sed -i '' "s/allframe-mcp = \"${CURRENT}\"/allframe-mcp = \"${NEW_VERSION}\"/g" "README.md"
+    # Update current status line
+    sed -i '' "s/v${CURRENT}/v${NEW_VERSION}/g" "README.md"
+    echo "  ✅ README.md"
+fi
+
+# =============================================================================
+# 3. Summary
+# =============================================================================
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ Version bumped: ${CURRENT} → ${NEW_VERSION}"
+echo ""
+echo "Files updated:"
+echo "  📦 Cargo.toml (workspace + allframe crate)"
+echo "  📚 docs/PROJECT_STATUS.md"
+echo "  📚 docs/README.md"
+echo "  📚 docs/INDEX.md"
+echo "  📚 README.md"
+echo ""
+echo "Next steps:"
+echo "  1. Update CHANGELOG.md with release notes"
+echo "  2. Run: cargo make ci"
+echo "  3. Commit: git commit -am \"release: v${NEW_VERSION}\""
+echo "  4. Tag: git tag v${NEW_VERSION}"
+echo "  5. Push: git push && git push --tags"
+echo "  6. Publish: cargo make publish-all"
 '''
 
 [tasks.version-check]

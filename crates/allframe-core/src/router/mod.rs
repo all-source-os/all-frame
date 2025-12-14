@@ -1,7 +1,65 @@
-//! Router module for protocol-agnostic request handling
+//! # Protocol-Agnostic Router
 //!
-//! This module provides the core abstractions for routing requests across
-//! multiple protocols (REST, GraphQL, gRPC) using a unified handler interface.
+//! Write handlers once, expose them via REST, GraphQL, and gRPC.
+//!
+//! This is AllFrame's core differentiator - the same handler can serve
+//! multiple protocols without code changes.
+//!
+//! ## Quick Start
+//!
+//! ```rust
+//! use allframe_core::router::{Router, RestAdapter, GraphQLAdapter, GrpcAdapter};
+//!
+//! // Create router and register handlers
+//! let mut router = Router::new();
+//! router.register("get_user", || async {
+//!     r#"{"id": 42, "name": "Alice"}"#.to_string()
+//! });
+//!
+//! // Expose via REST
+//! let mut rest = RestAdapter::new();
+//! rest.route("GET", "/users/:id", "get_user");
+//!
+//! // Expose via GraphQL
+//! let mut graphql = GraphQLAdapter::new();
+//! graphql.query("user", "get_user");
+//!
+//! // Expose via gRPC
+//! let mut grpc = GrpcAdapter::new();
+//! grpc.unary("UserService", "GetUser", "get_user");
+//! ```
+//!
+//! ## Key Types
+//!
+//! - `Router` - Central handler registry
+//! - `RestAdapter` - REST protocol adapter
+//! - `GraphQLAdapter` - GraphQL protocol adapter
+//! - `GrpcAdapter` - gRPC protocol adapter
+//! - `ProtocolAdapter` - Trait for custom protocol adapters
+//!
+//! ## API Documentation
+//!
+//! Generate beautiful API documentation automatically:
+//!
+//! - `scalar_html` - Scalar UI for REST APIs (<50KB)
+//! - `graphiql_html` - GraphiQL playground for GraphQL
+//! - `grpc_explorer_html` - gRPC Explorer for gRPC services
+//! - `OpenApiGenerator` - OpenAPI 3.1 spec generation
+//!
+//! ## Configuration-Driven Protocol Selection
+//!
+//! Use TOML configuration to select protocols without code changes:
+//!
+//! ```toml
+//! [server]
+//! protocols = ["rest", "graphql", "grpc"]
+//!
+//! [server.rest]
+//! port = 8080
+//!
+//! [server.graphql]
+//! port = 8081
+//! ```
 
 use std::{collections::HashMap, future::Future};
 

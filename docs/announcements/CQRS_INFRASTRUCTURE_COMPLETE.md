@@ -627,7 +627,7 @@ cat tests/06_cqrs_integration.rs
 # Build your first CQRS app
 cargo new my-cqrs-app
 cd my-cqrs-app
-cargo add allframe-core --features cqrs
+cargo add allframe --features cqrs
 ```
 
 ---

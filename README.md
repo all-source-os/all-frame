@@ -8,7 +8,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.86%2B-orange.svg)](https://www.rust-lang.org)
 [![TDD](https://img.shields.io/badge/TDD-100%25-green.svg)](docs/current/PRD_01.md)
 [![CQRS](https://img.shields.io/badge/CQRS-Complete-success.svg)](docs/announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)
-[![Tests](https://img.shields.io/badge/tests-361%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
+[![Tests](https://img.shields.io/badge/tests-450%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
 [![Routing](https://img.shields.io/badge/Protocol%20Agnostic-Complete-success.svg)](docs/phases/PROTOCOL_AGNOSTIC_ROUTING_COMPLETE.md)
 [![MCP](https://img.shields.io/badge/MCP%20Server-Zero%20Bloat-success.svg)](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md)
 
@@ -93,7 +93,7 @@ We ship **composable crates** that give you exactly what you need, with **zero e
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: **v0.1.8 - Graceful Shutdown Complete!** 361+ tests passing. Production-ready shutdown utilities, resilience patterns, and safe logging!
+**Current Status**: **v0.1.10 - Protocol-Agnostic Routing Complete!** 450+ tests passing. Production-ready multi-protocol routing, MCP server, resilience patterns, and safe logging!
 **Latest**: [Ignite Vision](docs/current/IGNITE_VISION.md) - Cloud-native microservice architecture generator roadmap!
 
 ---
@@ -339,15 +339,15 @@ Expose your AllFrame APIs as LLM-callable tools using the [Model Context Protoco
 ```toml
 # Opt-in to MCP server (zero overhead if not used!)
 [dependencies]
-allframe-core = "0.1.6"
-allframe-mcp = "0.1.6"  # Separate crate - 100% zero bloat!
+allframe = "0.1.10"       # Core framework
+allframe-mcp = "0.1.10"   # MCP server - separate crate for zero bloat
 tokio = { version = "1.48", features = ["full"] }
 ```
 
 **Quick Start:**
 
 ```rust
-use allframe_core::router::Router;
+use allframe::router::Router;
 use allframe_mcp::McpServer;
 
 #[tokio::main]
@@ -398,7 +398,7 @@ async fn main() {
 Production-ready retry, circuit breaker, and rate limiting for robust microservices:
 
 ```rust
-use allframe_core::resilience::{RetryConfig, RetryExecutor, CircuitBreaker, RateLimiter};
+use allframe::resilience::{RetryConfig, RetryExecutor, CircuitBreaker, RateLimiter};
 use std::time::Duration;
 
 // Retry with exponential backoff
@@ -426,7 +426,7 @@ if limiter.check().is_ok() {
 **Or use attribute macros:**
 
 ```rust
-use allframe_core::{retry, circuit_breaker, rate_limited};
+use allframe::{retry, circuit_breaker, rate_limited};
 
 #[retry(max_retries = 3, initial_interval_ms = 100)]
 async fn fetch_user(id: &str) -> Result<User, Error> {
@@ -452,9 +452,9 @@ async fn call_payment() -> Result<Payment, Error> {
 Safe logging utilities to prevent credential leaks:
 
 ```rust
-use allframe_core::security::{obfuscate_url, obfuscate_api_key, Sensitive};
-use allframe_core::Obfuscate;
-use allframe_core::security::Obfuscate as ObfuscateTrait;
+use allframe::security::{obfuscate_url, obfuscate_api_key, Sensitive};
+use allframe::Obfuscate;
+use allframe::security::Obfuscate as ObfuscateTrait;
 
 // URL obfuscation
 let url = "https://user:pass@api.example.com/v1/users?token=secret";
@@ -517,7 +517,7 @@ println!("{}", config.obfuscate());
 
 ```toml
 [dependencies]
-allframe = "0.1.6"
+allframe = "0.1.10"
 ```
 
 ### As a CLI Tool
@@ -564,7 +564,7 @@ AllFrame uses Cargo feature flags to minimize bloat - you only pay for what you 
 
 ```toml
 [dependencies]
-allframe-core = { version = "0.1.6", features = ["di", "openapi"] }
+allframe = { version = "0.1.10", features = ["di", "openapi"] }
 ```
 
 ### Core Features
@@ -608,7 +608,7 @@ MCP (Model Context Protocol) is now a **separate crate** for 100% zero bloat:
 ```toml
 # Only add if you need LLM integration
 [dependencies]
-allframe-mcp = "0.1.6"
+allframe-mcp = "0.1.10"
 ```
 
 **Benefits:**
@@ -625,17 +625,17 @@ See [MCP Zero-Bloat Strategy](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md) for detail
 
 **Minimal REST API:**
 ```toml
-allframe-core = { version = "0.1.6", default-features = false, features = ["router"] }
+allframe = { version = "0.1.10", default-features = false, features = ["router"] }
 ```
 
 **Production GraphQL API:**
 ```toml
-allframe-core = { version = "0.1.6", features = ["router-graphql"] }
+allframe = { version = "0.1.10", features = ["router-graphql"] }
 ```
 
 **Multi-Protocol Gateway:**
 ```toml
-allframe-core = { version = "0.1.6", features = ["router-full"] }
+allframe = { version = "0.1.10", features = ["router-full"] }
 ```
 
 ---
@@ -859,7 +859,7 @@ AllFrame targets **TechEmpower Round 23** benchmarks in future releases:
 | Multiple queries | > 50k req/s | 📋 Planned |
 | Binary size | < 8 MB | ✅ Achieved (<2 MB) |
 
-**Note**: Performance benchmarking is planned for Q2 2025. Current focus is on feature completeness and correctness. All functionality is production-ready with comprehensive test coverage (225 tests passing).
+**Note**: Performance benchmarking is planned for Q2 2025. Current focus is on feature completeness and correctness. All functionality is production-ready with comprehensive test coverage (450+ tests passing).
 
 ---
 

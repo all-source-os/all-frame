@@ -44,7 +44,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-allframe-core = { version = "0.1", features = ["router", "openapi"] }
+allframe = { version = "0.1", features = ["router", "openapi"] }
 ```
 
 ### 2. Create Router and Generate Docs

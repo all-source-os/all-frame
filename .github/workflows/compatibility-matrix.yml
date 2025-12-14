@@ -38,11 +38,10 @@ jobs:
       - name: Build
         # Exclude cqrs-allsource due to upstream compilation errors in allsource-core
         # See: docs/current/ALLSOURCE_CORE_ISSUES.md
-        # Use --locked to avoid allsource http crate version conflicts
-        run: cargo build --locked -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
+        run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
 
       - name: Test
-        run: cargo test --locked -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
+        run: cargo test -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
 
   # Test against different dependency versions
   dependency-versions:
@@ -97,7 +96,6 @@ jobs:
 
       - name: Build with ${{ matrix.profile.name }}
         # Exclude cqrs-allsource due to upstream compilation errors
-        # Note: --locked is omitted for dependency-versions tests that modify deps
         run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel" ${{ matrix.profile.flags }}
 
       - name: Test with ${{ matrix.profile.name }}
@@ -125,10 +123,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Build with features=${{ matrix.features }}
-        run: cargo build --locked -p allframe-core --features=${{ matrix.features }}
+        run: cargo build -p allframe-core --features=${{ matrix.features }}
 
       - name: Test with features=${{ matrix.features }}
-        run: cargo test --locked -p allframe-core --lib --features=${{ matrix.features }}
+        run: cargo test -p allframe-core --lib --features=${{ matrix.features }}
 
   # Platform compatibility
   platform-matrix:
@@ -150,10 +148,10 @@ jobs:
       - name: Build
         # Exclude cqrs-allsource due to upstream compilation errors in allsource-core
         # See: docs/current/ALLSOURCE_CORE_ISSUES.md
-        run: cargo build --locked -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
+        run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
 
       - name: Test
-        run: cargo test --locked -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
+        run: cargo test -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
 
   # External ecosystem compatibility
   ecosystem-compat:

@@ -48,14 +48,14 @@ jobs:
           key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build minimal configuration
-        # Use --locked to respect Cargo.lock versions (avoids allsource http crate issues)
-        run: cargo build --release --locked -p allframe-core --no-default-features
+        run: cargo build --release -p allframe-core --no-default-features
 
       - name: Build default configuration
-        run: cargo build --release --locked -p allframe-core
+        run: cargo build --release -p allframe-core
 
       - name: Build main features
-        run: cargo build --release --locked -p allframe-core --features "di,openapi,router,cqrs,otel"
+        # Note: Excludes cqrs-allsource due to upstream http crate version conflicts
+        run: cargo build --release -p allframe-core --features "di,openapi,router,cqrs,otel"
 
       - name: Measure binary sizes
         id: sizes

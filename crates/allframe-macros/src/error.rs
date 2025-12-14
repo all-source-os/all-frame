@@ -2,10 +2,37 @@
 //!
 //! Provides the #[derive(GrpcError)] macro that automatically generates
 //! `From<Error> for tonic::Status` implementations.
+//!
+//! ## Usage
+//!
+//! ```rust,ignore
+//! use allframe::GrpcError;
+//!
+//! #[derive(Debug, thiserror::Error, GrpcError)]
+//! pub enum MyError {
+//!     #[error("Not found: {0}")]
+//!     #[grpc(NOT_FOUND)]
+//!     NotFound(String),
+//!
+//!     #[error("Internal error")]
+//!     #[grpc(INTERNAL)]
+//!     Internal,
+//! }
+//! ```
+//!
+//! ## Custom Crate Path
+//!
+//! If you're using `allframe-core` directly instead of `allframe`, specify the crate path:
+//!
+//! ```rust,ignore
+//! #[derive(GrpcError)]
+//! #[grpc_error(crate = "allframe_core")]
+//! pub enum MyError { ... }
+//! ```
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{parse2, Attribute, Data, DeriveInput, Error, Fields, Ident, Result};
+use syn::{parse2, Attribute, Data, DeriveInput, Error, Fields, Ident, Lit, Meta, Result};
 
 /// Supported gRPC status codes
 const VALID_CODES: &[&str] = &[
@@ -32,6 +59,11 @@ const VALID_CODES: &[&str] = &[
 pub fn grpc_error_impl(input: TokenStream) -> Result<TokenStream> {
     let input = parse2::<DeriveInput>(input)?;
     let name = &input.ident;
+
+    // Extract custom crate path from #[grpc_error(crate = "...")] attribute
+    // Default to "allframe" for users of the main crate
+    let crate_path = extract_crate_path(&input.attrs)?.unwrap_or_else(|| "allframe".to_string());
+    let crate_ident = Ident::new(&crate_path, proc_macro2::Span::call_site());
 
     let data = match &input.data {
         Data::Enum(data) => data,
@@ -73,13 +105,13 @@ pub fn grpc_error_impl(input: TokenStream) -> Result<TokenStream> {
 
         match_arms.push(quote! {
             #pattern => {
-                ::allframe_core::tonic::Status::#code_ident(err.to_string())
+                ::#crate_ident::tonic::Status::#code_ident(err.to_string())
             }
         });
     }
 
     let expanded = quote! {
-        impl ::core::convert::From<#name> for ::allframe_core::tonic::Status {
+        impl ::core::convert::From<#name> for ::#crate_ident::tonic::Status {
             fn from(err: #name) -> Self {
                 match &err {
                     #(#match_arms),*
@@ -89,6 +121,28 @@ pub fn grpc_error_impl(input: TokenStream) -> Result<TokenStream> {
     };
 
     Ok(expanded)
+}
+
+/// Extract the crate path from #[grpc_error(crate = "...")] attribute
+fn extract_crate_path(attrs: &[Attribute]) -> Result<Option<String>> {
+    for attr in attrs {
+        if attr.path().is_ident("grpc_error") {
+            // Parse #[grpc_error(crate = "path")]
+            let meta = attr.parse_args::<Meta>()?;
+            if let Meta::NameValue(nv) = meta {
+                if nv.path.is_ident("crate") {
+                    if let syn::Expr::Lit(syn::ExprLit {
+                        lit: Lit::Str(lit_str),
+                        ..
+                    }) = &nv.value
+                    {
+                        return Ok(Some(lit_str.value()));
+                    }
+                }
+            }
+        }
+    }
+    Ok(None)
 }
 
 /// Extract the gRPC code from #[grpc(CODE)] attribute

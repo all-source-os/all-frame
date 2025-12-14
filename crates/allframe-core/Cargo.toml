@@ -103,7 +103,8 @@ grpc-tls = ["router-grpc-tls"]
 allframe-macros = { workspace = true, optional = true }
 
 # AllSource Core for CQRS + Event Sourcing
-allsource-core = { version = "0.7.0", optional = true, default-features = false }
+# Pinned to =0.7.0 due to 0.7.1 having broken deps (http ^1.2.0 doesn't exist)
+allsource-core = { version = "=0.7.0", optional = true, default-features = false }
 
 # GraphQL support (production-ready)
 async-graphql = { version = "7.0", optional = true }

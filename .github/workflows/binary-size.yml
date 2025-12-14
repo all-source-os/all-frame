@@ -55,7 +55,8 @@ jobs:
 
       - name: Build main features
         # Note: Excludes cqrs-allsource due to upstream http crate version conflicts
-        run: cargo build --release -p allframe-core --features "di,openapi,router,cqrs,otel"
+        # Includes all stable features for comprehensive size measurement
+        run: cargo build --release -p allframe-core --features "di,openapi,router,router-full,cqrs,otel,health,auth,auth-jwt,auth-axum,auth-tonic,security,resilience,cache-memory,http-client,metrics"
 
       - name: Measure binary sizes
         id: sizes

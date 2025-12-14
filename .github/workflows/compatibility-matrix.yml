@@ -38,10 +38,11 @@ jobs:
       - name: Build
         # Exclude cqrs-allsource due to upstream compilation errors in allsource-core
         # See: docs/current/ALLSOURCE_CORE_ISSUES.md
-        run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
+        # Include all stable features: router, cqrs, auth, resilience, cache
+        run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel,health,auth,auth-jwt,auth-axum,auth-tonic,security,resilience,cache-memory,http-client,metrics"
 
       - name: Test
-        run: cargo test -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
+        run: cargo test -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel,health,auth,auth-jwt,auth-axum,auth-tonic,security,resilience,cache-memory,http-client,metrics"
 
   # Test against different dependency versions
   dependency-versions:
@@ -96,10 +97,10 @@ jobs:
 
       - name: Build with ${{ matrix.profile.name }}
         # Exclude cqrs-allsource due to upstream compilation errors
-        run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel" ${{ matrix.profile.flags }}
+        run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel,health,auth,auth-jwt,auth-axum,auth-tonic,security,resilience,cache-memory,http-client,metrics" ${{ matrix.profile.flags }}
 
       - name: Test with ${{ matrix.profile.name }}
-        run: cargo test -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
+        run: cargo test -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel,health,auth,auth-jwt,auth-axum,auth-tonic,security,resilience,cache-memory,http-client,metrics"
 
   # Feature flag combinations
   feature-matrix:
@@ -116,6 +117,19 @@ jobs:
           - "router-full"
           - "di,openapi"
           - "di,openapi,router-full"
+          # Auth features
+          - "auth"
+          - "auth,auth-jwt"
+          - "auth,auth-axum"
+          - "auth,auth-tonic,router-grpc"
+          # Resilience features
+          - "resilience"
+          - "resilience,cache-memory"
+          # Additional features
+          - "security"
+          - "health"
+          - "http-client"
+          - "metrics"
 
     steps:
       - uses: actions/checkout@v4
@@ -148,10 +162,10 @@ jobs:
       - name: Build
         # Exclude cqrs-allsource due to upstream compilation errors in allsource-core
         # See: docs/current/ALLSOURCE_CORE_ISSUES.md
-        run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
+        run: cargo build -p allframe-core --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel,health,auth,auth-jwt,auth-axum,auth-tonic,security,resilience,cache-memory,http-client,metrics"
 
       - name: Test
-        run: cargo test -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel"
+        run: cargo test -p allframe-core --lib --features="di,openapi,router,router-graphql,router-grpc,router-full,cqrs,otel,health,auth,auth-jwt,auth-axum,auth-tonic,security,resilience,cache-memory,http-client,metrics"
 
   # External ecosystem compatibility
   ecosystem-compat:

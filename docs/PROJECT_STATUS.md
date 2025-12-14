@@ -12,8 +12,9 @@
 
 | Category | Status | Progress |
 |----------|--------|----------|
+| **Authentication** | ✅ Complete | Layered auth (JWT, Axum, gRPC) (100%) |
 | **Graceful Shutdown** | ✅ Complete | ShutdownAwareTaskSpawner, GracefulShutdownExt (100%) |
-| **Resilience Patterns** | ✅ Complete | Retry, CircuitBreaker, RateLimiter (100%) |
+| **Resilience Patterns** | ✅ Complete | Retry, CircuitBreaker, RateLimiter, Redis (100%) |
 | **Security Utilities** | ✅ Complete | Obfuscation, Safe Logging (100%) |
 | **GraphQL Documentation** | ✅ Complete | Phase 6.3 complete (100%) |
 | **Scalar API Documentation** | ✅ Complete | Track A complete (100%) |
@@ -302,6 +303,59 @@
 - `shutdown_patterns.rs` - 5 common patterns (basic spawning, results, cleanup, ext, workers)
 
 **Impact**: Production-ready shutdown handling for microservices with zero boilerplate
+
+---
+
+### Layered Authentication ✅
+**Status**: Complete (2025-12-14)
+**Achievement**: Zero-bloat, feature-gated auth infrastructure
+
+**Feature Flags**:
+| Feature | Dependencies | Description |
+|---------|--------------|-------------|
+| `auth` | None | Core traits only (`Authenticator`, `AuthContext`, `AuthError`) |
+| `auth-jwt` | jsonwebtoken | JWT validation (HS256/RS256/EdDSA) |
+| `auth-axum` | tower, hyper | Axum extractors (`AuthenticatedUser<C>`, `AuthLayer`) |
+| `auth-tonic` | tonic | gRPC interceptors (`AuthInterceptor`) |
+
+**Deliverables**:
+- `Authenticator` trait - Protocol-agnostic token validation
+- `JwtValidator<C>` - Type-safe JWT claims extraction
+- `JwtConfig` - Builder pattern with `from_env()` support
+- `AuthenticatedUser<C>` - Axum extractor for handlers
+- `AuthLayer` - Tower middleware for route protection
+- `AuthInterceptor` - gRPC interceptor with required/optional modes
+- `AuthContext<C>` - Unified auth state across protocols
+
+**Testing**:
+- 24 auth tests (100% passing)
+- JWT validation, expiration, signature verification
+- Protocol-specific extractor tests
+
+**Impact**: Same auth logic works across REST, GraphQL, and gRPC with zero code duplication
+
+---
+
+### Enhanced Resilience ✅
+**Status**: Complete (2025-12-14)
+**Achievement**: Keyed circuit breakers and distributed rate limiting
+
+**New Features**:
+- `KeyedCircuitBreaker<K>` - Per-resource circuit breaker isolation
+  - Independent state per key (e.g., per exchange, per endpoint)
+  - Failures in one resource don't affect others
+  - Same API as `KeyedRateLimiter<K>` for consistency
+- `resilience-redis` feature - Redis-backed distributed rate limiting
+  - `RedisRateLimiter` with sliding window algorithm
+  - `KeyedRedisRateLimiter` with per-key configuration
+  - Atomic operations via Lua scripts
+  - Works across multiple instances
+
+**Testing**:
+- 10 KeyedCircuitBreaker tests
+- Redis integration tests (requires Redis)
+
+**Impact**: Production-ready resilience for distributed microservices
 
 ---
 

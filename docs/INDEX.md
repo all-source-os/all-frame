@@ -230,7 +230,9 @@ Historical documentation moved to `/docs/archive/`:
 - **Event Versioning**: [PHASE4_COMPLETE.md](./phases/PHASE4_COMPLETE.md)
 - **Sagas**: [PHASE5_COMPLETE.md](./phases/PHASE5_COMPLETE.md)
 - **Storage Backends**: [PHASE1_COMPLETE.md](./phases/PHASE1_COMPLETE.md)
-- **Router & OpenAPI**: [PHASE6_1_COMPLETE.md](./phases/PHASE6_1_COMPLETE.md) ✅ **NEW**
+- **Router & OpenAPI**: [PHASE6_1_COMPLETE.md](./phases/PHASE6_1_COMPLETE.md)
+- **Authentication**: Layered auth system (auth, auth-jwt, auth-axum, auth-tonic) ✅ **NEW**
+- **Resilience**: KeyedCircuitBreaker, Redis rate limiting ✅ **NEW**
 
 ---
 
@@ -243,6 +245,8 @@ Historical documentation moved to `/docs/archive/`:
 - **CQRS Phases**: 5 (all complete, 85% avg boilerplate reduction)
 - **Router Phase**: 6 (complete - REST, GraphQL, gRPC)
 - **MCP Server**: Complete (zero-bloat separate crate)
+- **Authentication**: Complete (layered: core, JWT, Axum, gRPC)
+- **Enhanced Resilience**: KeyedCircuitBreaker, Redis rate limiting
 - **Documentation**: 30+ files across phases, guides, and PRDs
 
 ---

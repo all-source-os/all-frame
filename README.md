@@ -8,7 +8,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.86%2B-orange.svg)](https://www.rust-lang.org)
 [![TDD](https://img.shields.io/badge/TDD-100%25-green.svg)](docs/current/PRD_01.md)
 [![CQRS](https://img.shields.io/badge/CQRS-Complete-success.svg)](docs/announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)
-[![Tests](https://img.shields.io/badge/tests-450%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
+[![Tests](https://img.shields.io/badge/tests-455%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
 [![Routing](https://img.shields.io/badge/Protocol%20Agnostic-Complete-success.svg)](docs/phases/PROTOCOL_AGNOSTIC_ROUTING_COMPLETE.md)
 [![MCP](https://img.shields.io/badge/MCP%20Server-Zero%20Bloat-success.svg)](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md)
 
@@ -75,10 +75,18 @@ We ship **composable crates** that give you exactly what you need, with **zero e
 - ✅ **Resilience Patterns** - Production-ready retry, circuit breaker, rate limiting **[NEW!]**
   - RetryExecutor with exponential backoff and jitter
   - CircuitBreaker with Closed/Open/HalfOpen states
+  - **KeyedCircuitBreaker** for per-resource isolation (database, API, etc.)
   - RateLimiter with token bucket (per-endpoint, per-user)
+  - **Redis-backed RateLimiter** for distributed rate limiting
   - AdaptiveRetry that adjusts based on success rates
   - RetryBudget to prevent retry storms
   - `#[retry]`, `#[circuit_breaker]`, `#[rate_limited]` macros
+- ✅ **Layered Authentication** - Protocol-agnostic auth primitives **[NEW!]**
+  - Core `Authenticator` trait with zero dependencies
+  - JWT validation (HS256, RS256, EdDSA) with `auth-jwt`
+  - Axum extractors and middleware with `auth-axum`
+  - gRPC interceptors with `auth-tonic`
+  - `AuthContext<C>` for type-safe claims access
 - ✅ **Security Utilities** - Safe logging for sensitive data **[NEW!]**
   - URL/credential obfuscation for logs
   - `#[derive(Obfuscate)]` with `#[sensitive]` field attribute
@@ -93,7 +101,7 @@ We ship **composable crates** that give you exactly what you need, with **zero e
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: **v0.1.10 - Protocol-Agnostic Routing Complete!** 450+ tests passing. Production-ready multi-protocol routing, MCP server, resilience patterns, and safe logging!
+**Current Status**: **v0.1.10 - Protocol-Agnostic Routing Complete!** 455+ tests passing. Production-ready multi-protocol routing, MCP server, layered authentication, enhanced resilience (KeyedCircuitBreaker, Redis rate limiting), and safe logging!
 **Latest**: [Ignite Vision](docs/current/IGNITE_VISION.md) - Cloud-native microservice architecture generator roadmap!
 
 ---
@@ -393,6 +401,64 @@ async fn main() {
 - [MCP Distribution Model](docs/MCP_DISTRIBUTION_MODEL.md) - Library vs binary distribution
 - [Example: STDIO Server](crates/allframe-mcp/examples/mcp_stdio_server.rs) - Full implementation
 
+### 🔐 Layered Authentication
+
+Protocol-agnostic authentication with zero-bloat feature flags:
+
+```rust
+use allframe::auth::{Authenticator, AuthError, JwtValidator, JwtConfig};
+
+// Configure JWT validation
+let config = JwtConfig::hs256("your-secret-key")
+    .with_issuer("your-app")
+    .with_audience("your-api");
+
+let validator = JwtValidator::<MyClaims>::new(config);
+
+// Or load from environment
+let config = JwtConfig::from_env()?; // JWT_SECRET, JWT_ALGORITHM, etc.
+```
+
+**Axum Integration:**
+
+```rust
+use allframe::auth::{AuthLayer, AuthenticatedUser, JwtValidator};
+
+// Add auth middleware
+let app = Router::new()
+    .route("/protected", get(protected_handler))
+    .layer(AuthLayer::new(validator));
+
+// Extract authenticated user in handler
+async fn protected_handler(
+    AuthenticatedUser(claims): AuthenticatedUser<MyClaims>,
+) -> String {
+    format!("Hello, {}!", claims.sub)
+}
+```
+
+**gRPC Integration:**
+
+```rust
+use allframe::auth::{AuthInterceptor, GrpcAuthExt};
+
+let interceptor = AuthInterceptor::new(validator);
+let service = MyServiceServer::with_interceptor(impl, interceptor);
+
+// In your gRPC handler
+async fn my_method(&self, request: Request<Input>) -> Result<Response<Output>, Status> {
+    let claims = request.require_auth::<MyClaims>()?;
+    // ...
+}
+```
+
+**Features:**
+- 🔑 Core traits with zero dependencies (`auth`)
+- 🎫 JWT validation: HS256, RS256, EdDSA (`auth-jwt`)
+- 🌐 Axum extractors and middleware (`auth-axum`)
+- 📡 gRPC interceptors (`auth-tonic`)
+- 🔒 Type-safe claims with `AuthContext<C>`
+
 ### 🛡️ Resilience Patterns
 
 Production-ready retry, circuit breaker, and rate limiting for robust microservices:
@@ -442,7 +508,9 @@ async fn call_payment() -> Result<Payment, Error> {
 **Features:**
 - 🔄 Retry with exponential backoff and jitter
 - ⚡ Circuit breaker (Closed/Open/HalfOpen states)
+- 🔑 **KeyedCircuitBreaker** for per-resource isolation (database, API endpoints)
 - 🎯 Rate limiting (token bucket with burst support)
+- 🌐 **Redis-backed RateLimiter** for distributed rate limiting
 - 📊 AdaptiveRetry (adjusts based on success rate)
 - 🛡️ RetryBudget (prevents retry storms)
 - 🔑 KeyedRateLimiter (per-endpoint, per-user limits)
@@ -503,6 +571,7 @@ println!("{}", config.obfuscate());
 | **CommandBus** | ✅ **90% less code** | ❌ | ❌ | ❌ |
 | **Saga Orchestration** | ✅ **Auto compensation** | ❌ | ❌ | ❌ |
 | **Resilience Patterns** | ✅ **Built-in** | 🟡 External | 🟡 External | ❌ |
+| **Layered Auth** | ✅ **Protocol-agnostic** | 🟡 External | 🟡 External | 🟡 External |
 | **Safe Logging** | ✅ **Built-in** | ❌ | ❌ | ❌ |
 | Protocol-agnostic | ✅ | ❌ | ❌ | ❌ |
 | MCP Server | ✅ **Zero Bloat** | ❌ | ❌ | ❌ |
@@ -583,6 +652,12 @@ allframe = { version = "0.1.10", features = ["di", "openapi"] }
 | `router-grpc` | Production gRPC (tonic, streaming, reflection) | +3MB | ❌ |
 | `router-full` | Both GraphQL + gRPC production adapters | +5MB | ❌ |
 | `resilience` | Retry, circuit breaker, rate limiting | +120KB | ❌ |
+| `resilience-keyed` | KeyedCircuitBreaker for per-resource isolation | +10KB | ❌ |
+| `resilience-redis` | Redis-backed distributed rate limiting | +50KB | ❌ |
+| `auth` | Core authentication traits (zero deps) | +5KB | ❌ |
+| `auth-jwt` | JWT validation (HS256, RS256, EdDSA) | +80KB | ❌ |
+| `auth-axum` | Axum extractors and middleware | +20KB | ❌ |
+| `auth-tonic` | gRPC interceptors | +15KB | ❌ |
 | `security` | Safe logging, obfuscation utilities | +30KB | ❌ |
 
 ### CQRS Features (✅ Complete - Phases 1-5)

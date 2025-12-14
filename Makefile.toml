@@ -50,6 +50,7 @@ echo "Publishing:"
 echo "  cargo make version-check      - Check which crates need publishing"
 echo "  cargo make version-sync-check - Verify internal crate versions are in sync"
 echo "  cargo make version-bump       - Bump version (patch by default)"
+echo "  cargo make changelog-sync     - Sync CHANGELOG.md to GitHub Pages"
 echo "  cargo make publish-dry-run    - Verify all crates are ready to publish"
 echo "  cargo make publish-all        - Publish all crates (parallel, skips published)"
 '''
@@ -368,6 +369,15 @@ if [ -f "README.md" ]; then
     echo "  ✅ README.md"
 fi
 
+# Update GitHub Pages site (docs/site/index.html)
+if [ -f "docs/site/index.html" ]; then
+    # Update version badges (e.g., <span class="badge green">v0.1.10</span>)
+    sed -i '' "s/>v${CURRENT}</>v${NEW_VERSION}</g" "docs/site/index.html"
+    # Update stats section version (e.g., <h3>v0.1.10</h3>)
+    sed -i '' "s/<h3>v${CURRENT}</<h3>v${NEW_VERSION}</g" "docs/site/index.html"
+    echo "  ✅ docs/site/index.html (GitHub Pages)"
+fi
+
 # =============================================================================
 # 3. Summary
 # =============================================================================
@@ -381,14 +391,37 @@ echo "  📚 docs/PROJECT_STATUS.md"
 echo "  📚 docs/README.md"
 echo "  📚 docs/INDEX.md"
 echo "  📚 README.md"
+echo "  🌐 docs/site/index.html (GitHub Pages)"
 echo ""
 echo "Next steps:"
-echo "  1. Update CHANGELOG.md with release notes"
-echo "  2. Run: cargo make ci"
-echo "  3. Commit: git commit -am \"release: v${NEW_VERSION}\""
-echo "  4. Tag: git tag v${NEW_VERSION}"
-echo "  5. Push: git push && git push --tags"
-echo "  6. Publish: cargo make publish-all"
+echo "  1. Update CHANGELOG.md with release notes for v${NEW_VERSION}"
+echo "  2. Run: cargo make changelog-sync (regenerates docs/site/changelog.html)"
+echo "  3. Run: cargo make ci"
+echo "  4. Commit: git commit -am \"release: v${NEW_VERSION}\""
+echo "  5. Tag: git tag v${NEW_VERSION}"
+echo "  6. Push: git push && git push --tags (auto-deploys GitHub Pages)"
+echo "  7. Publish: cargo make publish-all"
+'''
+
+[tasks.changelog-sync]
+description = "Sync changelog from CHANGELOG.md to GitHub Pages site"
+workspace = false
+script_runner = "@shell"
+script = '''
+#!/usr/bin/env bash
+set -e
+
+# Navigate to workspace root
+cd "$(git rev-parse --show-toplevel)"
+
+echo "📝 Syncing changelog to GitHub Pages..."
+
+# Generate the changelog HTML using the Python script
+python3 scripts/generate_changelog_html.py CHANGELOG.md > docs/site/changelog.html
+
+echo "  ✅ docs/site/changelog.html updated from CHANGELOG.md"
+echo ""
+echo "Done! The changelog page has been regenerated from CHANGELOG.md"
 '''
 
 [tasks.version-check]

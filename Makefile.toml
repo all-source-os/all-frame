@@ -181,31 +181,41 @@ dependencies = ["size-minimal", "size-default", "size-all"]
 
 [tasks.check-size]
 description = "Check binary sizes against limits"
-script = '''\n#!/usr/bin/env bash
+script_runner = "@shell"
+script = '''
+#!/usr/bin/env bash
 ./scripts/check_size.sh
 '''
 
 [tasks.analyze-size]
 description = "Analyze binary sizes in detail"
-script = '''\n#!/usr/bin/env bash
+script_runner = "@shell"
+script = '''
+#!/usr/bin/env bash
 ./scripts/analyze_size.sh full
 '''
 
 [tasks.analyze-size-minimal]
 description = "Analyze minimal binary size"
-script = '''\n#!/usr/bin/env bash
+script_runner = "@shell"
+script = '''
+#!/usr/bin/env bash
 ./scripts/analyze_size.sh minimal
 '''
 
 [tasks.analyze-size-default]
 description = "Analyze default binary size"
-script = '''\n#!/usr/bin/env bash
+script_runner = "@shell"
+script = '''
+#!/usr/bin/env bash
 ./scripts/analyze_size.sh default
 '''
 
 [tasks.analyze-size-main]
 description = "Analyze main features binary size"
-script = '''\n#!/usr/bin/env bash
+script_runner = "@shell"
+script = '''
+#!/usr/bin/env bash
 ./scripts/analyze_size.sh all
 '''
 

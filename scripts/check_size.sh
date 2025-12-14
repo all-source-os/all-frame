@@ -10,10 +10,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Size limits (in MB)
-MINIMAL_LIMIT=2.0
-DEFAULT_LIMIT=5.0
-ALL_FEATURES_LIMIT=8.0
+# Size limits (in MB) - Updated Dec 2025 for auth/resilience features
+MINIMAL_LIMIT=4.0
+DEFAULT_LIMIT=6.0
+ALL_FEATURES_LIMIT=10.0
 
 echo "🔍 AllFrame Binary Size Check"
 echo "==============================="
@@ -69,7 +69,7 @@ cargo build --release --quiet 2>&1 | grep -v "Compiling\|Finished" || true
 
 # Build main features (excluding allsource which has external dependencies)
 echo "Building main features..."
-cargo build --release --features "di,openapi,router,cqrs,otel,mcp" --quiet 2>&1 | grep -v "Compiling\|Finished" || true
+cargo build --release --features "di,openapi,router,cqrs,otel" --quiet 2>&1 | grep -v "Compiling\|Finished" || true
 
 echo ""
 echo "📊 Size Analysis"

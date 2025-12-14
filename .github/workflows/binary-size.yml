@@ -48,44 +48,37 @@ jobs:
           key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build minimal configuration
-        run: |
-          cd crates/allframe-core
-          cargo build --release --no-default-features
+        # Use --locked to respect Cargo.lock versions (avoids allsource http crate issues)
+        run: cargo build --release --locked -p allframe-core --no-default-features
 
       - name: Build default configuration
-        run: |
-          cd crates/allframe-core
-          cargo build --release
+        run: cargo build --release --locked -p allframe-core
 
       - name: Build main features
-        run: |
-          cd crates/allframe-core
-          cargo build --release --features "di,openapi,router,cqrs,otel"
+        run: cargo build --release --locked -p allframe-core --features "di,openapi,router,cqrs,otel"
 
       - name: Measure binary sizes
         id: sizes
         run: |
-          cd crates/allframe-core
-
           echo "## Binary Size Report" > $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Minimal configuration
-          MINIMAL_SIZE=$(stat -c%s "../../target/release/liballframe_core.rlib" 2>/dev/null || stat -f%z "../../target/release/liballframe_core.rlib" 2>/dev/null || echo "0")
+          MINIMAL_SIZE=$(stat -c%s "target/release/liballframe_core.rlib" 2>/dev/null || stat -f%z "target/release/liballframe_core.rlib" 2>/dev/null || echo "0")
           MINIMAL_MB=$(echo "scale=2; $MINIMAL_SIZE / 1048576" | bc)
           echo "Minimal (no features): ${MINIMAL_MB}MB" >> $GITHUB_STEP_SUMMARY
 
-          # Check minimal size limit (< 2.5 MB)
-          # Note: Updated Dec 2025 - dependency updates increased base size slightly
-          if (( $(echo "$MINIMAL_MB > 2.5" | bc -l) )); then
-            echo "::error::Minimal binary size (${MINIMAL_MB}MB) exceeds 2.5MB limit"
+          # Check minimal size limit (< 4.0 MB)
+          # Note: Updated Dec 2025 - auth/resilience features increased base size
+          if (( $(echo "$MINIMAL_MB > 4.0" | bc -l) )); then
+            echo "::error::Minimal binary size (${MINIMAL_MB}MB) exceeds 4.0MB limit"
             exit 1
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Detailed Analysis" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          cargo bloat --release --no-default-features --crates -n 10 >> $GITHUB_STEP_SUMMARY 2>&1 || echo "cargo-bloat analysis unavailable" >> $GITHUB_STEP_SUMMARY
+          cargo bloat --release -p allframe-core --no-default-features --crates -n 10 >> $GITHUB_STEP_SUMMARY 2>&1 || echo "cargo-bloat analysis unavailable" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Check size limits

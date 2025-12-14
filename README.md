@@ -101,7 +101,7 @@ We ship **composable crates** that give you exactly what you need, with **zero e
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: **v0.1.10 - Protocol-Agnostic Routing Complete!** 455+ tests passing. Production-ready multi-protocol routing, MCP server, layered authentication, enhanced resilience (KeyedCircuitBreaker, Redis rate limiting), and safe logging!
+**Current Status**: **v0.1.11 - Protocol-Agnostic Routing Complete!** 455+ tests passing. Production-ready multi-protocol routing, MCP server, layered authentication, enhanced resilience (KeyedCircuitBreaker, Redis rate limiting), and safe logging!
 **Latest**: [Ignite Vision](docs/current/IGNITE_VISION.md) - Cloud-native microservice architecture generator roadmap!
 
 ---
@@ -347,8 +347,8 @@ Expose your AllFrame APIs as LLM-callable tools using the [Model Context Protoco
 ```toml
 # Opt-in to MCP server (zero overhead if not used!)
 [dependencies]
-allframe = "0.1.10"       # Core framework
-allframe-mcp = "0.1.10"   # MCP server - separate crate for zero bloat
+allframe = "0.1.11"       # Core framework
+allframe-mcp = "0.1.11"   # MCP server - separate crate for zero bloat
 tokio = { version = "1.48", features = ["full"] }
 ```
 
@@ -586,7 +586,7 @@ println!("{}", config.obfuscate());
 
 ```toml
 [dependencies]
-allframe = "0.1.10"
+allframe = "0.1.11"
 ```
 
 ### As a CLI Tool
@@ -633,7 +633,7 @@ AllFrame uses Cargo feature flags to minimize bloat - you only pay for what you 
 
 ```toml
 [dependencies]
-allframe = { version = "0.1.10", features = ["di", "openapi"] }
+allframe = { version = "0.1.11", features = ["di", "openapi"] }
 ```
 
 ### Core Features
@@ -683,7 +683,7 @@ MCP (Model Context Protocol) is now a **separate crate** for 100% zero bloat:
 ```toml
 # Only add if you need LLM integration
 [dependencies]
-allframe-mcp = "0.1.10"
+allframe-mcp = "0.1.11"
 ```
 
 **Benefits:**
@@ -700,17 +700,17 @@ See [MCP Zero-Bloat Strategy](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md) for detail
 
 **Minimal REST API:**
 ```toml
-allframe = { version = "0.1.10", default-features = false, features = ["router"] }
+allframe = { version = "0.1.11", default-features = false, features = ["router"] }
 ```
 
 **Production GraphQL API:**
 ```toml
-allframe = { version = "0.1.10", features = ["router-graphql"] }
+allframe = { version = "0.1.11", features = ["router-graphql"] }
 ```
 
 **Multi-Protocol Gateway:**
 ```toml
-allframe = { version = "0.1.10", features = ["router-full"] }
+allframe = { version = "0.1.11", features = ["router-full"] }
 ```
 
 ---

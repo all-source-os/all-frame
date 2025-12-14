@@ -450,6 +450,7 @@ check_crate() {
 }
 
 echo "Crate status:"
+check_crate "allframe"
 check_crate "allframe-macros"
 check_crate "allframe-core"
 check_crate "allframe-mcp"
@@ -504,6 +505,9 @@ LOCAL_VERSION=$(sed -n '/\[workspace\.package\]/,/\[/p' Cargo.toml | grep '^vers
 echo "🚀 Publishing AllFrame crates v${LOCAL_VERSION} to crates.io"
 echo ""
 
+# Track if anything was actually published (to decide if we need to wait)
+PUBLISHED_SOMETHING=false
+
 # Function to check if version is already published
 is_published() {
     local crate=$1
@@ -514,65 +518,119 @@ is_published() {
 }
 
 # Function to publish a crate if not already published
+# Returns 0 if skipped, 1 if published
 publish_crate() {
     local crate=$1
     local path=$2
 
     if is_published "$crate" "$LOCAL_VERSION"; then
-        echo "⏭️  ${crate}@${LOCAL_VERSION} already published, skipping"
+        echo "  ⏭️  ${crate} - already published"
         return 0
     fi
 
-    echo "📦 Publishing ${crate}@${LOCAL_VERSION}..."
+    echo "  📦 Publishing ${crate}..."
     cd "$path" && cargo publish --allow-dirty && cd - > /dev/null
-    echo "✅ ${crate}@${LOCAL_VERSION} published"
+    echo "  ✅ ${crate} published"
+    return 1  # Signal that we published something
 }
 
 # Wave 1: No internal dependencies (parallel)
-echo "━━━ Wave 1: Independent crates (parallel) ━━━"
-publish_crate "allframe-macros" "crates/allframe-macros" &
+echo "━━━ Wave 1: Independent crates ━━━"
+WAVE1_PUBLISHED=false
+
+if ! is_published "allframe-macros" "$LOCAL_VERSION"; then
+    echo "  📦 Publishing allframe-macros..."
+    cd crates/allframe-macros && cargo publish --allow-dirty && cd - > /dev/null
+    echo "  ✅ allframe-macros published"
+    WAVE1_PUBLISHED=true
+else
+    echo "  ⏭️  allframe-macros - already published"
+fi &
 PID_MACROS=$!
-publish_crate "allframe-forge" "crates/allframe-forge" &
+
+if ! is_published "allframe-forge" "$LOCAL_VERSION"; then
+    echo "  📦 Publishing allframe-forge..."
+    cd crates/allframe-forge && cargo publish --allow-dirty && cd - > /dev/null
+    echo "  ✅ allframe-forge published"
+    WAVE1_PUBLISHED=true
+else
+    echo "  ⏭️  allframe-forge - already published"
+fi &
 PID_FORGE=$!
 
 # Wait for wave 1
-wait $PID_MACROS
-MACROS_EXIT=$?
-wait $PID_FORGE
+wait $PID_MACROS || true
+wait $PID_FORGE || true
 
-if [ $MACROS_EXIT -ne 0 ]; then
-    echo "❌ Failed to publish allframe-macros"
-    exit 1
+# Only wait for indexing if we published something in wave 1
+if ! is_published "allframe-macros" "$LOCAL_VERSION" || ! is_published "allframe-forge" "$LOCAL_VERSION"; then
+    # Re-check - if either still not published, we need to wait
+    :
 fi
 
-# Brief wait for crates.io indexing
-echo "⏳ Waiting 15s for crates.io indexing..."
-sleep 15
+# Check if wave 1 published anything (need fresh check after parallel)
+NEED_WAIT=false
+if ! is_published "allframe-macros" "$LOCAL_VERSION" 2>/dev/null; then
+    NEED_WAIT=true
+fi
 
 # Wave 2: Depends on macros
 echo ""
-echo "━━━ Wave 2: allframe-core (depends on macros) ━━━"
-publish_crate "allframe-core" "crates/allframe-core"
-
-# Brief wait for crates.io indexing
-echo "⏳ Waiting 15s for crates.io indexing..."
-sleep 15
+echo "━━━ Wave 2: allframe-core ━━━"
+if ! is_published "allframe-core" "$LOCAL_VERSION"; then
+    # Need to wait for macros to be indexed first
+    echo "  ⏳ Waiting 15s for crates.io indexing..."
+    sleep 15
+    echo "  📦 Publishing allframe-core..."
+    cd crates/allframe-core && cargo publish --allow-dirty && cd - > /dev/null
+    echo "  ✅ allframe-core published"
+    PUBLISHED_SOMETHING=true
+else
+    echo "  ⏭️  allframe-core - already published"
+fi
 
 # Wave 3: Depends on core
 echo ""
-echo "━━━ Wave 3: allframe-mcp (depends on core) ━━━"
-publish_crate "allframe-mcp" "crates/allframe-mcp"
+echo "━━━ Wave 3: allframe-mcp ━━━"
+if ! is_published "allframe-mcp" "$LOCAL_VERSION"; then
+    if [ "$PUBLISHED_SOMETHING" = true ]; then
+        echo "  ⏳ Waiting 15s for crates.io indexing..."
+        sleep 15
+    fi
+    echo "  📦 Publishing allframe-mcp..."
+    cd crates/allframe-mcp && cargo publish --allow-dirty && cd - > /dev/null
+    echo "  ✅ allframe-mcp published"
+    PUBLISHED_SOMETHING=true
+else
+    echo "  ⏭️  allframe-mcp - already published"
+fi
+
+# Wave 4: Root allframe crate (depends on forge)
+echo ""
+echo "━━━ Wave 4: allframe (root crate) ━━━"
+if ! is_published "allframe" "$LOCAL_VERSION"; then
+    if [ "$PUBLISHED_SOMETHING" = true ]; then
+        echo "  ⏳ Waiting 15s for crates.io indexing..."
+        sleep 15
+    fi
+    echo "  📦 Publishing allframe..."
+    cargo publish --allow-dirty
+    echo "  ✅ allframe published"
+else
+    echo "  ⏭️  allframe - already published"
+fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ All crates published successfully!"
+echo "✅ All crates at v${LOCAL_VERSION}"
 echo ""
+echo "  allframe         @ ${LOCAL_VERSION}  (root - what users import)"
 echo "  allframe-macros  @ ${LOCAL_VERSION}"
 echo "  allframe-core    @ ${LOCAL_VERSION}"
 echo "  allframe-mcp     @ ${LOCAL_VERSION}"
 echo "  allframe-forge   @ ${LOCAL_VERSION}"
 echo ""
-echo "View at: https://crates.io/crates/allframe-core"
+echo "View at: https://crates.io/crates/allframe"
 '''
 
 [tasks.publish-dry-run]
@@ -584,17 +642,20 @@ set -e
 echo "🔍 Dry-run publish for AllFrame crates"
 echo ""
 
-echo "📦 [1/4] Checking allframe-macros..."
+echo "📦 [1/5] Checking allframe-macros..."
 cd crates/allframe-macros && cargo publish --dry-run && cd ../..
 
-echo "📦 [2/4] Checking allframe-core..."
+echo "📦 [2/5] Checking allframe-forge..."
+cd crates/allframe-forge && cargo publish --dry-run && cd ../..
+
+echo "📦 [3/5] Checking allframe-core..."
 cd crates/allframe-core && cargo publish --dry-run && cd ../..
 
-echo "📦 [3/4] Checking allframe-mcp..."
+echo "📦 [4/5] Checking allframe-mcp..."
 cd crates/allframe-mcp && cargo publish --dry-run && cd ../..
 
-echo "📦 [4/4] Checking allframe-forge..."
-cd crates/allframe-forge && cargo publish --dry-run && cd ../..
+echo "📦 [5/5] Checking allframe (root)..."
+cargo publish --dry-run
 
 echo ""
 echo "✅ All crates ready for publishing!"

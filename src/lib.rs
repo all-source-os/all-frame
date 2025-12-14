@@ -1,11 +1,11 @@
 //! # AllFrame
 //!
-//! **The Composable Rust API Framework**
+//! **Complete Rust Web Framework with Built-in HTTP/2 Server**
 //!
 //! > *One frame to rule them all. Transform, compose, ignite.*
 //!
-//! AllFrame is the first Rust web framework designed, built, and evolved
-//! exclusively through Test-Driven Development (TDD).
+//! AllFrame is a complete Rust web framework with a built-in HTTP/2 server,
+//! designed and evolved exclusively through Test-Driven Development (TDD).
 //!
 //! ## Quick Start
 //!
@@ -14,15 +14,15 @@
 //! allframe = "0.1"
 //! ```
 //!
-//! ## Features
+//! ## What's Included
 //!
+//! - **Built-in HTTP/2 Server** - Powered by Hyper, no external server needed
+//! - **Multi-Protocol Support** - REST, GraphQL, and gRPC from one codebase
 //! - **Compile-time DI** - Dependency injection resolved at compile time
 //! - **Auto OpenAPI 3.1** - API documentation generated automatically
-//! - **CQRS + Event Sourcing** - Production-ready infrastructure (85% less
-//!   boilerplate)
-//! - **Protocol-Agnostic** - Write once, expose via REST, GraphQL, and gRPC
+//! - **CQRS + Event Sourcing** - Production-ready infrastructure (85% less boilerplate)
 //! - **Beautiful API Docs** - Scalar UI, GraphiQL, gRPC Explorer built-in
-//! - **Zero Runtime Deps** - Only Tokio, Hyper, and std
+//! - **Zero External Dependencies** - Only Tokio, Hyper, and std
 //!
 //! ## Example
 //!

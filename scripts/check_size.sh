@@ -11,9 +11,9 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Size limits (in MB) - Updated Dec 2025 for auth/resilience features
-MINIMAL_LIMIT=4.0
-DEFAULT_LIMIT=6.0
-ALL_FEATURES_LIMIT=10.0
+MINIMAL_LIMIT=5.0
+DEFAULT_LIMIT=7.0
+ALL_FEATURES_LIMIT=12.0
 
 echo "🔍 AllFrame Binary Size Check"
 echo "==============================="

@@ -10,7 +10,7 @@ homepage.workspace = true
 documentation.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "The composable Rust API framework - core library"
+description = "AllFrame core - complete web framework with HTTP/2 server, REST/GraphQL/gRPC, DI, CQRS"
 readme = "README.md"
 
 [features]
@@ -90,9 +90,12 @@ utils = ["chrono", "url", "parking_lot", "rand"]
 cqrs = ["allframe-macros"]
 
 # AllSource Core integration (production event store)
-cqrs-allsource = ["cqrs", "allsource-core"]
-cqrs-postgres = ["cqrs-allsource", "allsource-core/postgres"]
-cqrs-rocksdb = ["cqrs-allsource", "allsource-core/rocksdb-storage"]
+# TEMPORARILY DISABLED: allsource-core has broken upstream deps (http ^1.2.0)
+# These features exist but are non-functional until upstream is fixed
+# See: docs/current/ALLSOURCE_CORE_ISSUES.md
+cqrs-allsource = ["cqrs"]  # Would need: allsource-core
+cqrs-postgres = ["cqrs-allsource"]  # Would need: allsource-core/postgres
+cqrs-rocksdb = ["cqrs-allsource"]  # Would need: allsource-core/rocksdb-storage
 
 # Legacy alias (deprecated, use router-grpc-tls)
 grpc-tls = ["router-grpc-tls"]
@@ -103,8 +106,11 @@ grpc-tls = ["router-grpc-tls"]
 allframe-macros = { workspace = true, optional = true }
 
 # AllSource Core for CQRS + Event Sourcing
-# Pinned to =0.7.0 due to 0.7.1 having broken deps (http ^1.2.0 doesn't exist)
-allsource-core = { version = "=0.7.0", optional = true, default-features = false }
+# TEMPORARILY REMOVED: allsource-core 0.7.x has broken transitive deps
+# (datafusion 51 → object_store 0.12.4 → http ^1.2.0 which doesn't exist)
+# Users who need cqrs-allsource should add allsource-core directly to their Cargo.toml
+# See: docs/current/ALLSOURCE_CORE_ISSUES.md
+# allsource-core = { version = "0.7", optional = true, default-features = false }
 
 # GraphQL support (production-ready)
 async-graphql = { version = "7.0", optional = true }

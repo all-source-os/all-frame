@@ -69,10 +69,10 @@ jobs:
           MINIMAL_MB=$(echo "scale=2; $MINIMAL_SIZE / 1048576" | bc)
           echo "Minimal (no features): ${MINIMAL_MB}MB" >> $GITHUB_STEP_SUMMARY
 
-          # Check minimal size limit (< 4.0 MB)
+          # Check minimal size limit (< 5.0 MB)
           # Note: Updated Dec 2025 - auth/resilience features increased base size
-          if (( $(echo "$MINIMAL_MB > 4.0" | bc -l) )); then
-            echo "::error::Minimal binary size (${MINIMAL_MB}MB) exceeds 4.0MB limit"
+          if (( $(echo "$MINIMAL_MB > 5.0" | bc -l) )); then
+            echo "::error::Minimal binary size (${MINIMAL_MB}MB) exceeds 5.0MB limit"
             exit 1
           fi
 

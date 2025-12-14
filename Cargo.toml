@@ -20,7 +20,7 @@ homepage.workspace = true
 documentation.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "The Composable Rust API Framework - TDD-first, compile-time DI, CQRS, protocol-agnostic"
+description = "Complete Rust web framework with built-in HTTP/2 server, REST/GraphQL/gRPC, compile-time DI, CQRS - TDD from day zero"
 readme = "README.md"
 
 [dependencies]
@@ -52,6 +52,8 @@ router-grpc = ["allframe-core/router-grpc"]
 router-grpc-tls = ["allframe-core/router-grpc-tls"]
 router-full = ["allframe-core/router-full"]
 cqrs = ["allframe-core/cqrs"]
+# NOTE: allsource features are defined but non-functional due to upstream deps issue
+# See: docs/current/ALLSOURCE_CORE_ISSUES.md
 cqrs-allsource = ["allframe-core/cqrs-allsource"]
 cqrs-postgres = ["allframe-core/cqrs-postgres"]
 cqrs-rocksdb = ["allframe-core/cqrs-rocksdb"]

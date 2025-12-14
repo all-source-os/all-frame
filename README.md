@@ -16,9 +16,14 @@
 
 ## What is AllFrame?
 
-AllFrame is the **first Rust web framework designed, built, and evolved exclusively through Test-Driven Development (TDD)**. Every feature, macro, and public API has a failing test before it is written.
+AllFrame is a **complete Rust web framework** with a built-in HTTP/2 server, designed and evolved exclusively through Test-Driven Development (TDD). Every feature, macro, and public API has a failing test before it is written.
 
-We ship **composable crates** that give you exactly what you need, with **zero external runtime dependencies**:
+**AllFrame includes everything you need to build production APIs:**
+- **Built-in HTTP/2 server** powered by Hyper - no external server required
+- **Multi-protocol support** - REST, GraphQL, and gRPC from a single codebase
+- **Zero external runtime dependencies** - only Tokio, Hyper, and std
+
+We ship **composable crates** that give you exactly what you need:
 
 - ✅ **Project Scaffolding** - `allframe ignite` creates Clean Architecture projects (v0.1)
 - ✅ **Compile-time DI** - Dependency injection resolved at compile time (v0.2)

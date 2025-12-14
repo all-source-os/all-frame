@@ -31,7 +31,128 @@ allframe-mcp = "0.1"
 tokio = { version = "1.48", features = ["full"] }
 ```
 
-## Quick Start
+## Quick Start with Claude Desktop
+
+Follow these steps to create an MCP server that Claude Desktop can use:
+
+### Step 1: Create a new project
+
+```bash
+cargo new my-mcp-server
+cd my-mcp-server
+```
+
+### Step 2: Add dependencies to `Cargo.toml`
+
+```toml
+[package]
+name = "my-mcp-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+allframe-core = "0.1"
+allframe-mcp = "0.1"
+tokio = { version = "1.48", features = ["full"] }
+serde_json = "1.0"
+```
+
+### Step 3: Create your MCP server (`src/main.rs`)
+
+```rust
+use std::io::{stdin, stdout, BufRead, Write};
+use allframe_core::router::Router;
+use allframe_mcp::McpServer;
+use serde_json::{json, Value};
+
+#[tokio::main]
+async fn main() {
+    // Create router with your tools
+    let mut router = Router::new();
+
+    router.register("greet", || async {
+        r#"{"message": "Hello from AllFrame MCP!"}"#.to_string()
+    });
+
+    router.register("get_weather", || async {
+        r#"{"temp": 72, "conditions": "sunny"}"#.to_string()
+    });
+
+    // Create MCP server
+    let mcp = McpServer::new(router);
+    eprintln!("MCP Server started with {} tools", mcp.tool_count());
+
+    // Handle stdio communication
+    let stdin = stdin();
+    let mut stdout = stdout();
+
+    for line in stdin.lock().lines().flatten() {
+        if line.trim().is_empty() { continue; }
+
+        let request: Value = serde_json::from_str(&line).unwrap_or(json!({}));
+        let method = request["method"].as_str().unwrap_or("");
+        let id = request.get("id").cloned();
+
+        let result = match method {
+            "initialize" => json!({
+                "protocolVersion": "0.1.0",
+                "capabilities": { "tools": {} },
+                "serverInfo": { "name": "my-mcp-server", "version": "0.1.0" }
+            }),
+            "tools/list" => {
+                let tools = mcp.list_tools().await;
+                json!({ "tools": tools.iter().map(|t| json!({
+                    "name": t.name,
+                    "description": t.description,
+                    "inputSchema": t.input_schema
+                })).collect::<Vec<_>>() })
+            },
+            "tools/call" => {
+                let name = request["params"]["name"].as_str().unwrap_or("");
+                let args = request["params"].get("arguments").cloned().unwrap_or(json!({}));
+                match mcp.call_tool(name, args).await {
+                    Ok(r) => json!({ "content": [{ "type": "text", "text": r.to_string() }] }),
+                    Err(e) => json!({ "isError": true, "content": [{ "type": "text", "text": e }] })
+                }
+            },
+            _ => json!({})
+        };
+
+        let response = json!({ "jsonrpc": "2.0", "result": result, "id": id });
+        writeln!(stdout, "{}", serde_json::to_string(&response).unwrap()).ok();
+        stdout.flush().ok();
+    }
+}
+```
+
+### Step 4: Build the server
+
+```bash
+cargo build --release
+```
+
+### Step 5: Configure Claude Desktop
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+```json
+{
+  "mcpServers": {
+    "my-mcp-server": {
+      "command": "/path/to/my-mcp-server/target/release/my-mcp-server",
+      "args": []
+    }
+  }
+}
+```
+
+### Step 6: Restart Claude Desktop
+
+Quit and reopen Claude Desktop. Your tools will now be available!
+
+---
+
+## Programmatic Usage
 
 ```rust
 use allframe_core::router::Router;

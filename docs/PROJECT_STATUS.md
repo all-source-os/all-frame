@@ -1,7 +1,7 @@
 # AllFrame Project Status
 
-**Last Updated**: 2025-12-09
-**Version**: 0.1.8
+**Last Updated**: 2025-12-14
+**Version**: 0.1.10
 **Status**: Active Development
 
 > **Vision**: AllFrame is evolving from a composable Rust API framework into a **cloud-native microservice architecture generator**. See [ROADMAP.md](./current/ROADMAP.md) and [IGNITE_VISION.md](./current/IGNITE_VISION.md) for the full vision.
@@ -524,11 +524,12 @@
 
 | Component | Files | Lines | Tests |
 |-----------|-------|-------|-------|
-| allframe-core | ~55 | ~8,500 | 316 |
+| allframe-core | ~55 | ~8,500 | 308 |
 | allframe-macros | ~12 | ~2,000 | 15 |
 | allframe-forge | ~5 | ~500 | 5 |
-| Integration tests | ~15 | ~3,000 | 25 |
-| **Total** | **~87** | **~14,000** | **361** |
+| allframe-mcp | ~10 | ~1,500 | 37 |
+| Integration tests | ~20 | ~4,000 | 90 |
+| **Total** | **~102** | **~16,500** | **455** |
 
 **Phase Breakdown**:
 - CQRS (Phases 1-5): 39 tests

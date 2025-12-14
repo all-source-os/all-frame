@@ -1,6 +1,6 @@
 # AllFrame Documentation Index
 
-**Last Updated**: 2025-11-26
+**Last Updated**: 2025-12-14
 **Repository**: all-frame
 **Project**: AllFrame - The Composable Rust API Framework
 
@@ -11,7 +11,7 @@
 AllFrame is the first Rust web framework **designed, built, and evolved exclusively through Test-Driven Development (TDD)**. This documentation supports the development and use of AllFrame as a framework, not an application.
 
 **Core Promise:**
-One crate (`allframe-core`) that provides compile-time DI, auto OpenAPI 3.1, OpenTelemetry, protocol-agnostic routing, CQRS/ES enforcement, and MCP server capabilities — all with zero external runtime dependencies.
+A composable crate ecosystem (`allframe-core`, `allframe-mcp`, `allframe-forge`) that provides compile-time DI, auto OpenAPI 3.1, OpenTelemetry, protocol-agnostic routing (REST/GraphQL/gRPC), CQRS/ES infrastructure, resilience patterns, and MCP server capabilities — all with zero external runtime dependencies.
 
 ---
 

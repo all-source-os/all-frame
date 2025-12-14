@@ -191,7 +191,7 @@ Built in public. For the community. By the community.
 Want to try it?
 
 ```bash
-cargo add allframe-core --features "router,openapi"
+cargo add allframe --features "router,openapi"
 cargo run --example scalar_docs
 ```
 
@@ -348,7 +348,7 @@ Quality obsessed. Performance first. Docs mandatory.
 ### Short Tweet 5
 Try it:
 ```bash
-cargo add allframe-core --features "router,openapi"
+cargo add allframe --features "router,openapi"
 cargo run --example scalar_docs
 ```
 

@@ -335,7 +335,7 @@ cargo new my-allframe-mcp --bin
 cd my-allframe-mcp
 
 # Add dependencies
-cargo add allframe-core allframe-mcp tokio --features full
+cargo add allframe allframe-mcp tokio --features full
 ```
 
 ```rust

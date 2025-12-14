@@ -52,7 +52,7 @@ AllFrame provides beautiful, interactive GraphQL API documentation through Graph
 
 ```toml
 [dependencies]
-allframe-core = { version = "0.1", features = ["router", "openapi"] }
+allframe = { version = "0.1", features = ["router", "openapi"] }
 async-graphql = "7.0"  # Or your preferred GraphQL library
 ```
 

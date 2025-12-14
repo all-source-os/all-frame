@@ -33,7 +33,8 @@
       "Bash(cargo info:*)",
       "Bash(cargo metadata:*)",
       "Bash(printf:*)",
-      "Bash(jq:*)"
+      "Bash(jq:*)",
+      "Bash(cargo doc:*)"
     ],
     "deny": [],
     "ask": []

@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.12] - 2025-12-15
+
+### Added
+- **MCP Server Debuggability** - Production-ready stdio transport with comprehensive debugging
+  - `StdioTransport` - New production-ready stdio transport with graceful shutdown
+  - `StdioConfig` - Builder-style configuration for MCP servers
+  - Built-in `allframe/debug` tool - Claude can call to get server diagnostics (uptime, request count, tool count, PID)
+  - Request/response tracing for debugging MCP protocol issues
+  - Graceful shutdown handling (SIGTERM/SIGINT on Unix, Ctrl+C on Windows)
+  - Notification handling (`initialized`, `notifications/cancelled`)
+  - Optional `tracing` feature for structured logging with tracing-subscriber
+
+- **Environment Variables for MCP Debugging**
+  - `ALLFRAME_MCP_DEBUG=1` - Enable debug output to stderr
+  - `ALLFRAME_MCP_LOG_FILE=/path/to/file` - Write logs to file instead of stderr
+  - `RUST_LOG=debug` - Log level control (when using `tracing` feature)
+
+- **Claude Code Setup Guide** - Comprehensive documentation for Claude Code CLI
+  - Step-by-step `.mcp.json` configuration
+  - `.claude/settings.local.json` setup with `enabledMcpjsonServers`
+  - Troubleshooting guide for connection issues
+  - Manual testing commands for debugging
+
+### Fixed
+- **AllSource Core Re-enabled** - `cqrs-allsource` features now work
+  - Upstream fix in allsource-core 0.7.2 resolved `http ^1.2.0` dependency conflict
+  - `cqrs-allsource`, `cqrs-postgres`, `cqrs-rocksdb` features are functional again
+  - Updated to allsource-core 0.7.2
+
+### Documentation
+- Added "Quick Start with Claude Code (CLI)" section to MCP README
+- Added debugging section with environment variables table
+- Added `StdioTransport` and `StdioConfig` to API Overview
+- Updated `ALLSOURCE_CORE_ISSUES.md` to mark issue as resolved
+- Added social media content for MCP launch (`docs/social/`)
+
+---
+
 ## [0.1.9] - 2025-12-13
 
 ### Added

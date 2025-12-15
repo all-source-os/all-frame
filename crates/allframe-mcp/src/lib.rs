@@ -35,10 +35,12 @@
 pub mod forge;
 pub mod schema;
 pub mod server;
+pub mod stdio;
 pub mod tools;
 
 pub use schema::{coerce_type, extract_enum_values, openapi_to_json_schema, validate_input};
 pub use server::McpServer;
+pub use stdio::{init_tracing, StdioConfig, StdioTransport};
 pub use tools::McpTool;
 
 #[cfg(test)]

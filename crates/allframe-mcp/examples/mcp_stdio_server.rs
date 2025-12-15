@@ -9,6 +9,19 @@
 //! cargo run --example mcp_stdio_server
 //! ```
 //!
+//! # Debug Mode
+//!
+//! Enable debug logging with environment variables:
+//!
+//! ```bash
+//! # Basic debug output to stderr
+//! ALLFRAME_MCP_DEBUG=1 cargo run --example mcp_stdio_server
+//!
+//! # Full tracing with file output (when built with tracing feature)
+//! RUST_LOG=debug ALLFRAME_MCP_LOG_FILE=/tmp/allframe-mcp.log \
+//!     cargo run --example mcp_stdio_server --features tracing
+//! ```
+//!
 //! # Claude Desktop Configuration
 //!
 //! Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
@@ -18,22 +31,34 @@
 //!   "mcpServers": {
 //!     "allframe-example": {
 //!       "command": "/path/to/target/debug/examples/mcp_stdio_server",
-//!       "args": []
+//!       "args": [],
+//!       "env": {
+//!         "ALLFRAME_MCP_DEBUG": "1"
+//!       }
 //!     }
 //!   }
 //! }
 //! ```
-
-use std::io::{stdin, stdout, BufRead, Write};
+//!
+//! # Testing Manually
+//!
+//! ```bash
+//! # Test initialize
+//! echo '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}' | \
+//!     cargo run --example mcp_stdio_server
+//!
+//! # Test tools/list
+//! echo '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}' | \
+//!     cargo run --example mcp_stdio_server
+//! ```
 
 use allframe_core::router::Router;
-use allframe_mcp::McpServer;
-use serde_json::{json, Value};
+use allframe_mcp::{init_tracing, McpServer, StdioConfig, StdioTransport};
 
 #[tokio::main]
 async fn main() {
-    // Initialize logging (optional)
-    env_logger::init();
+    // Initialize tracing (works with or without the feature)
+    init_tracing();
 
     // Create AllFrame router with example handlers
     let router = create_router();
@@ -41,11 +66,13 @@ async fn main() {
     // Create MCP server
     let mcp = McpServer::new(router);
 
-    eprintln!("MCP Server started with {} tools", mcp.tool_count());
-    eprintln!("Listening on stdio...");
+    // Configure the stdio transport
+    let config = StdioConfig::default()
+        .with_debug_tool(true)  // Enable allframe/debug tool
+        .with_server_name("allframe-example");
 
-    // Run stdio transport
-    serve_stdio(mcp).await;
+    // Run the server
+    StdioTransport::new(mcp, config).serve().await;
 }
 
 /// Create router with example handlers
@@ -84,149 +111,3 @@ fn create_router() -> Router {
 
     router
 }
-
-/// Serve MCP protocol over stdio
-async fn serve_stdio(mcp: McpServer) {
-    let stdin = stdin();
-    let mut stdout = stdout();
-
-    for line in stdin.lock().lines() {
-        let line = match line {
-            Ok(l) => l,
-            Err(e) => {
-                eprintln!("Error reading line: {}", e);
-                continue;
-            }
-        };
-
-        // Skip empty lines
-        if line.trim().is_empty() {
-            continue;
-        }
-
-        // Parse request
-        let request: Value = match serde_json::from_str(&line) {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("Error parsing JSON: {}", e);
-                let error = json!({
-                    "jsonrpc": "2.0",
-                    "error": {
-                        "code": -32700,
-                        "message": "Parse error"
-                    },
-                    "id": null
-                });
-                writeln!(stdout, "{}", serde_json::to_string(&error).unwrap()).unwrap();
-                stdout.flush().unwrap();
-                continue;
-            }
-        };
-
-        // Handle request
-        let response = handle_request(&mcp, request).await;
-
-        // Write response
-        match serde_json::to_string(&response) {
-            Ok(json_str) => {
-                writeln!(stdout, "{}", json_str).unwrap();
-                stdout.flush().unwrap();
-            }
-            Err(e) => {
-                eprintln!("Error serializing response: {}", e);
-            }
-        }
-    }
-}
-
-/// Handle MCP request
-async fn handle_request(mcp: &McpServer, request: Value) -> Value {
-    let method = request["method"].as_str().unwrap_or("");
-    let id = request.get("id").cloned();
-
-    let result = match method {
-        // Initialize
-        "initialize" => {
-            json!({
-                "protocolVersion": "0.1.0",
-                "capabilities": {
-                    "tools": {}
-                },
-                "serverInfo": {
-                    "name": "allframe-mcp",
-                    "version": "0.1.0"
-                }
-            })
-        }
-
-        // List available tools
-        "tools/list" => {
-            let tools = mcp.list_tools().await;
-            json!({
-                "tools": tools.iter().map(|t| {
-                    json!({
-                        "name": t.name,
-                        "description": t.description,
-                        "inputSchema": t.input_schema
-                    })
-                }).collect::<Vec<_>>()
-            })
-        }
-
-        // Call a tool
-        "tools/call" => {
-            let params = &request["params"];
-            let name = params["name"].as_str().unwrap_or("");
-            let arguments = params.get("arguments").cloned().unwrap_or(json!({}));
-
-            match mcp.call_tool(name, arguments).await {
-                Ok(result) => {
-                    json!({
-                        "content": [{
-                            "type": "text",
-                            "text": result.to_string()
-                        }]
-                    })
-                }
-                Err(e) => {
-                    json!({
-                        "isError": true,
-                        "content": [{
-                            "type": "text",
-                            "text": format!("Error: {}", e)
-                        }]
-                    })
-                }
-            }
-        }
-
-        // Ping
-        "ping" => {
-            json!({})
-        }
-
-        // Unknown method
-        _ => {
-            return json!({
-                "jsonrpc": "2.0",
-                "error": {
-                    "code": -32601,
-                    "message": format!("Method not found: {}", method)
-                },
-                "id": id
-            });
-        }
-    };
-
-    // Return successful response
-    json!({
-        "jsonrpc": "2.0",
-        "result": result,
-        "id": id
-    })
-}
-
-// Note: You'll need to add uuid to Cargo.toml for this example
-// [dev-dependencies]
-// uuid = { version = "1.0", features = ["v4"] }
-// env_logger = "0.11"

@@ -1,12 +1,37 @@
 # AllSource-Core Integration Issues
 
-## Overview
-The `allsource-core` dependency (from https://github.com/all-source-os/chronos-monorepo) has compilation errors preventing AllFrame from building with the `cqrs-allsource` feature enabled.
+## Status: RESOLVED (v0.7.2)
+
+The `http ^1.2.0` dependency issue has been fixed in allsource-core v0.7.2.
+
+**Fix**: Added explicit `http = "1"` dependency to prevent version conflicts.
+
+AllFrame now supports `cqrs-allsource`, `cqrs-postgres`, and `cqrs-rocksdb` features again.
+
+```toml
+[dependencies]
+allframe = { version = "0.1", features = ["cqrs-allsource"] }
+```
+
+---
+
+## Historical Issues (Now Fixed)
+
+### HTTP Dependency Conflict (Fixed in 0.7.2)
+
+The transitive dependency chain `datafusion 51 → object_store 0.12.4` required `http ^1.2.0` which didn't exist in the registry (only 1.1.0 was available).
+
+**Fix**: allsource-core 0.7.2 added explicit `http = "1"` dependency to ensure compatibility.
+
+---
+
+## Previous Issues (Reference)
+
+The issues below were from an earlier version and may no longer apply:
 
 **Repository**: https://github.com/all-source-os/chronos-monorepo
 **Commit**: dd22949a
 **AllFrame Feature**: `cqrs-allsource`
-**Impact**: Cannot run `cargo test --all-features` or build with AllSource backend support
 
 ---
 

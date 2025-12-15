@@ -60,13 +60,14 @@ serde_json = "1.0"
 ### Step 3: Create your MCP server (`src/main.rs`)
 
 ```rust
-use std::io::{stdin, stdout, BufRead, Write};
 use allframe_core::router::Router;
-use allframe_mcp::McpServer;
-use serde_json::{json, Value};
+use allframe_mcp::{init_tracing, McpServer, StdioConfig, StdioTransport};
 
 #[tokio::main]
 async fn main() {
+    // Initialize tracing for debug logging (optional)
+    init_tracing();
+
     // Create router with your tools
     let mut router = Router::new();
 
@@ -80,48 +81,13 @@ async fn main() {
 
     // Create MCP server
     let mcp = McpServer::new(router);
-    eprintln!("MCP Server started with {} tools", mcp.tool_count());
 
-    // Handle stdio communication
-    let stdin = stdin();
-    let mut stdout = stdout();
+    // Configure and run the stdio transport
+    let config = StdioConfig::default()
+        .with_debug_tool(true)  // Enable allframe/debug diagnostics tool
+        .with_server_name("my-mcp-server");
 
-    for line in stdin.lock().lines().flatten() {
-        if line.trim().is_empty() { continue; }
-
-        let request: Value = serde_json::from_str(&line).unwrap_or(json!({}));
-        let method = request["method"].as_str().unwrap_or("");
-        let id = request.get("id").cloned();
-
-        let result = match method {
-            "initialize" => json!({
-                "protocolVersion": "0.1.0",
-                "capabilities": { "tools": {} },
-                "serverInfo": { "name": "my-mcp-server", "version": "0.1.0" }
-            }),
-            "tools/list" => {
-                let tools = mcp.list_tools().await;
-                json!({ "tools": tools.iter().map(|t| json!({
-                    "name": t.name,
-                    "description": t.description,
-                    "inputSchema": t.input_schema
-                })).collect::<Vec<_>>() })
-            },
-            "tools/call" => {
-                let name = request["params"]["name"].as_str().unwrap_or("");
-                let args = request["params"].get("arguments").cloned().unwrap_or(json!({}));
-                match mcp.call_tool(name, args).await {
-                    Ok(r) => json!({ "content": [{ "type": "text", "text": r.to_string() }] }),
-                    Err(e) => json!({ "isError": true, "content": [{ "type": "text", "text": e }] })
-                }
-            },
-            _ => json!({})
-        };
-
-        let response = json!({ "jsonrpc": "2.0", "result": result, "id": id });
-        writeln!(stdout, "{}", serde_json::to_string(&response).unwrap()).ok();
-        stdout.flush().ok();
-    }
+    StdioTransport::new(mcp, config).serve().await;
 }
 ```
 
@@ -149,6 +115,214 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 ### Step 6: Restart Claude Desktop
 
 Quit and reopen Claude Desktop. Your tools will now be available!
+
+---
+
+## Quick Start with Claude Code (CLI)
+
+Claude Code uses a different configuration system than Claude Desktop. Follow these steps:
+
+### Step 1: Build your MCP server
+
+```bash
+# From your project directory
+cargo build --release
+
+# Note the full path to your binary:
+# /path/to/your/project/target/release/my-mcp-server
+```
+
+### Step 2: Add to `.mcp.json` in your project root
+
+Create or edit `.mcp.json` in your project directory:
+
+```json
+{
+  "mcpServers": {
+    "my-mcp-server": {
+      "command": "/absolute/path/to/target/release/my-mcp-server",
+      "args": [],
+      "env": {
+        "ALLFRAME_MCP_DEBUG": "1"
+      }
+    }
+  }
+}
+```
+
+**Important**: Use the absolute path to your compiled binary.
+
+### Step 3: Enable the server in Claude Code settings
+
+Edit `.claude/settings.local.json` in your project directory:
+
+```json
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "my-mcp-server"
+  ]
+}
+```
+
+Or if you have existing servers, add to the array:
+
+```json
+{
+  "enabledMcpjsonServers": [
+    "my-mcp-server",
+    "playwright",
+    "other-servers"
+  ]
+}
+```
+
+### Step 4: Restart Claude Code
+
+Run `/mcp` in Claude Code to reconnect, or restart Claude Code entirely. Your tools will now be available.
+
+### Using the AllFrame Example Server
+
+To use the built-in example server from the AllFrame repository:
+
+```bash
+# Clone and build
+git clone https://github.com/all-source-os/all-frame
+cd all-frame
+cargo build --example mcp_stdio_server -p allframe-mcp --release
+
+# The binary is at:
+# ./target/release/examples/mcp_stdio_server
+```
+
+Then configure `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "allframe": {
+      "command": "/path/to/all-frame/target/release/examples/mcp_stdio_server",
+      "args": [],
+      "env": {
+        "ALLFRAME_MCP_DEBUG": "1"
+      }
+    }
+  }
+}
+```
+
+And `.claude/settings.local.json`:
+
+```json
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["allframe"]
+}
+```
+
+### Troubleshooting Claude Code
+
+If the MCP server fails to connect:
+
+1. **Check the binary exists and is executable**:
+   ```bash
+   ls -la /path/to/target/release/my-mcp-server
+   ```
+
+2. **Test the server manually**:
+   ```bash
+   echo '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}' | \
+       /path/to/target/release/my-mcp-server
+   ```
+
+3. **Check for debug output** (if `ALLFRAME_MCP_DEBUG=1`):
+   - Look in the Claude Code output panel
+   - Or set `ALLFRAME_MCP_LOG_FILE` to log to a file
+
+4. **Verify configuration files exist**:
+   ```bash
+   cat .mcp.json
+   cat .claude/settings.local.json
+   ```
+
+5. **Run `/mcp` in Claude Code** to see server status and reconnect
+
+---
+
+## Debugging
+
+### Environment Variables
+
+Enable debug logging with environment variables in your Claude Desktop config:
+
+```json
+{
+  "mcpServers": {
+    "my-mcp-server": {
+      "command": "/path/to/my-mcp-server/target/release/my-mcp-server",
+      "args": [],
+      "env": {
+        "ALLFRAME_MCP_DEBUG": "1",
+        "ALLFRAME_MCP_LOG_FILE": "/tmp/allframe-mcp.log"
+      }
+    }
+  }
+}
+```
+
+| Variable | Description |
+|----------|-------------|
+| `ALLFRAME_MCP_DEBUG` | Enable debug output to stderr |
+| `ALLFRAME_MCP_LOG_FILE` | Write logs to a file instead of stderr |
+| `RUST_LOG` | Set log level when using the `tracing` feature (e.g., `debug`, `info`) |
+
+### Built-in Debug Tool
+
+Enable the `allframe/debug` tool to get server diagnostics from Claude:
+
+```rust
+let config = StdioConfig::default()
+    .with_debug_tool(true);
+```
+
+When enabled, Claude can call `allframe/debug` to get:
+- Server name and version
+- Uptime and request count
+- Tool count and PID
+- Build information
+
+### Testing Manually
+
+Test your MCP server from the command line:
+
+```bash
+# Test initialize
+echo '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}' | \
+    ./target/release/my-mcp-server
+
+# Test tools/list
+echo '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}' | \
+    ./target/release/my-mcp-server
+
+# Test a tool call
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"greet","arguments":{}},"id":3}' | \
+    ./target/release/my-mcp-server
+```
+
+### Tracing Feature
+
+For structured logging with tracing, build with the `tracing` feature:
+
+```toml
+[dependencies]
+allframe-mcp = { version = "0.1", features = ["tracing"] }
+```
+
+Then set `RUST_LOG` for log level control:
+
+```bash
+RUST_LOG=debug ALLFRAME_MCP_LOG_FILE=/tmp/mcp.log ./my-mcp-server
+```
 
 ---
 
@@ -383,6 +557,37 @@ impl McpServer {
         name: &str,
         args: serde_json::Value
     ) -> Result<serde_json::Value, String>;
+}
+```
+
+### `StdioTransport`
+
+Production-ready stdio transport with debugging support.
+
+```rust
+impl StdioTransport {
+    /// Create a new STDIO transport
+    pub fn new(mcp: McpServer, config: StdioConfig) -> Self;
+
+    /// Serve MCP protocol over stdio (handles graceful shutdown)
+    pub async fn serve(self);
+}
+```
+
+### `StdioConfig`
+
+Configuration for the stdio transport.
+
+```rust
+impl StdioConfig {
+    /// Enable the built-in debug tool
+    pub fn with_debug_tool(self, enabled: bool) -> Self;
+
+    /// Set the server name
+    pub fn with_server_name(self, name: impl Into<String>) -> Self;
+
+    /// Set a log file path
+    pub fn with_log_file(self, path: impl Into<String>) -> Self;
 }
 ```
 

@@ -209,7 +209,7 @@ Claude: [calls get_user tool]
 - [MCP Specification](https://modelcontextprotocol.io)
 - [AllFrame MCP Plan](../plans/MCP_SERVER_PLAN.md)
 - [Anthropic MCP Announcement](https://www.anthropic.com/news/model-context-protocol)
-- [AllSource MCP Server (Elixir)](https://github.com/all-source-os/chronos-monorepo/tree/main/apps/mcp-server-elixir)
+- [AllSource MCP Server (Elixir)](https://github.com/all-source-os/allsource-monorepo/tree/main/apps/mcp-server-elixir)
 
 ## Success Criteria ✅
 

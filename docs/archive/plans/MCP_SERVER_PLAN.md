@@ -262,7 +262,7 @@ Once MCP server is complete, proceed to:
 
 - [MCP Specification](https://modelcontextprotocol.io)
 - [rmcp Rust SDK](https://github.com/modelcontextprotocol/rust-sdk)
-- [AllSource MCP Server](https://github.com/all-source-os/chronos-monorepo/tree/main/apps/mcp-server-elixir)
+- [AllSource MCP Server](https://github.com/all-source-os/allsource-monorepo/tree/main/apps/mcp-server-elixir)
 - [Anthropic MCP Announcement](https://www.anthropic.com/news/model-context-protocol)
 
 ---

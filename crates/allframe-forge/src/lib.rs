@@ -100,6 +100,56 @@ impl From<CliArchetype> for Archetype {
     }
 }
 
+#[derive(Subcommand)]
+enum SagaCommands {
+    /// Create a new saga with specified steps
+    New {
+        /// Name of the saga to create
+        name: String,
+
+        /// Comma-separated list of step names
+        #[arg(short, long)]
+        steps: String,
+
+        /// Base path for sagas (default: src/application/cqrs/sagas)
+        #[arg(long, default_value = "src/application/cqrs/sagas")]
+        path: PathBuf,
+    },
+    /// Add a step to an existing saga
+    AddStep {
+        /// Name of the saga to modify
+        saga: String,
+
+        /// Name of the step to add
+        name: String,
+
+        /// Position to insert the step (first, last, after:<step>, before:<step>)
+        #[arg(short, long, default_value = "last")]
+        position: String,
+
+        /// Step timeout in seconds
+        #[arg(short, long, default_value = "30")]
+        timeout: u64,
+
+        /// Whether the step requires compensation
+        #[arg(long)]
+        requires_compensation: bool,
+
+        /// Base path for sagas (default: src/application/cqrs/sagas)
+        #[arg(long, default_value = "src/application/cqrs/sagas")]
+        path: PathBuf,
+    },
+    /// Validate saga implementation
+    Validate {
+        /// Name of the saga to validate
+        name: String,
+
+        /// Base path for sagas (default: src/application/cqrs/sagas)
+        #[arg(long, default_value = "src/application/cqrs/sagas")]
+        path: PathBuf,
+    },
+}
+
 #[derive(Parser)]
 #[command(name = "allframe")]
 #[command(about = "AllFrame CLI - The composable Rust API framework", long_about = None)]
@@ -140,6 +190,11 @@ enum Commands {
         #[arg(long)]
         all_features: bool,
     },
+    /// Saga generation and management commands
+    Saga {
+        #[command(subcommand)]
+        command: SagaCommands,
+    },
     /// Generate code from LLM prompts (coming soon)
     Forge {
         /// The prompt for code generation
@@ -168,6 +223,9 @@ pub fn run() -> anyhow::Result<()> {
             all_features: _,
         } => {
             ignite_project(&name, archetype, service_name, api_base_url, group_id)?;
+        }
+        Commands::Saga { command } => {
+            handle_saga_command(command)?;
         }
         Commands::Forge { prompt } => {
             forge_code(&prompt)?;
@@ -484,6 +542,253 @@ fn to_title_case(s: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+/// Handle saga-related commands
+fn handle_saga_command(command: SagaCommands) -> anyhow::Result<()> {
+    match command {
+        SagaCommands::New { name, steps, path } => {
+            saga_new(&name, &steps, &path)?;
+        }
+        SagaCommands::AddStep {
+            saga,
+            name,
+            position,
+            timeout,
+            requires_compensation,
+            path,
+        } => {
+            saga_add_step(&saga, &name, &position, timeout, requires_compensation, &path)?;
+        }
+        SagaCommands::Validate { name, path } => {
+            saga_validate(&name, &path)?;
+        }
+    }
+    Ok(())
+}
+
+/// Create a new saga with specified steps
+fn saga_new(name: &str, steps: &str, base_path: &Path) -> anyhow::Result<()> {
+    println!("Creating saga '{}' with steps: {}", name, steps);
+    println!("Base path: {}", base_path.display());
+
+    // Parse steps from comma-separated string
+    let step_list: Vec<&str> = steps.split(',').map(|s| s.trim()).collect();
+
+    // Create saga directory if it doesn't exist
+    let saga_path = base_path.join(name.to_lowercase());
+    std::fs::create_dir_all(&saga_path)?;
+
+    // Generate saga files
+    generate_saga_files(&saga_path, name, &step_list)?;
+
+    println!("Saga '{}' created successfully!", name);
+    Ok(())
+}
+
+/// Add a step to an existing saga
+fn saga_add_step(
+    saga: &str,
+    step_name: &str,
+    position: &str,
+    timeout: u64,
+    requires_compensation: bool,
+    base_path: &Path,
+) -> anyhow::Result<()> {
+    println!("Adding step '{}' to saga '{}' at position '{}'", step_name, saga, position);
+    println!("Timeout: {}s, Requires compensation: {}", timeout, requires_compensation);
+
+    let saga_path = base_path.join(saga.to_lowercase());
+    if !saga_path.exists() {
+        anyhow::bail!("Saga '{}' not found at {}", saga, saga_path.display());
+    }
+
+    // Generate step file
+    generate_step_file(&saga_path, step_name, timeout, requires_compensation)?;
+
+    println!("Step '{}' added to saga '{}' successfully!", step_name, saga);
+    Ok(())
+}
+
+/// Validate saga implementation
+fn saga_validate(name: &str, base_path: &Path) -> anyhow::Result<()> {
+    println!("Validating saga '{}'...", name);
+
+    let saga_path = base_path.join(name.to_lowercase());
+    if !saga_path.exists() {
+        anyhow::bail!("Saga '{}' not found at {}", name, saga_path.display());
+    }
+
+    // Basic validation - check if files exist
+    let mod_file = saga_path.join("mod.rs");
+    let saga_file = saga_path.join(format!("{}.rs", name.to_lowercase()));
+
+    if !mod_file.exists() {
+        println!("⚠️  Missing mod.rs file");
+    } else {
+        println!("✅ mod.rs found");
+    }
+
+    if !saga_file.exists() {
+        println!("⚠️  Missing saga implementation file");
+    } else {
+        println!("✅ Saga implementation file found");
+    }
+
+    println!("Saga '{}' validation completed!", name);
+    Ok(())
+}
+
+/// Generate saga files
+fn generate_saga_files(saga_path: &Path, name: &str, steps: &[&str]) -> anyhow::Result<()> {
+    // Generate mod.rs
+    let step_mods = steps.iter().map(|step| {
+        format!("pub mod {};", step.to_lowercase())
+    }).collect::<Vec<_>>().join("\n");
+
+    let mod_content = format!(
+        "//! {} saga implementation
+//!
+//! This module contains the {} saga and its associated steps.
+
+pub mod {};
+{}",
+        name, name, name.to_lowercase(), step_mods
+    );
+    std::fs::write(saga_path.join("mod.rs"), mod_content)?;
+
+    // Generate saga implementation file
+    let saga_file_name = format!("{}.rs", name.to_lowercase());
+    let saga_content = generate_saga_content(name, steps);
+    std::fs::write(saga_path.join(saga_file_name), saga_content)?;
+
+    // Generate step files
+    for step in steps {
+        generate_step_file(saga_path, step, 30, true)?;
+    }
+
+    Ok(())
+}
+
+/// Generate saga implementation content
+fn generate_saga_content(name: &str, steps: &[&str]) -> String {
+    let data_struct_name = format!("{}Data", name);
+    let _workflow_enum_name = format!("{}Workflow", name);
+
+    let step_imports = steps.iter().map(|step| {
+        format!("use super::{};", step.to_lowercase())
+    }).collect::<Vec<_>>().join("\n");
+
+    let workflow_variants = steps.iter().enumerate().map(|(i, step)| {
+        format!("    /// Step {}: {}\n    {},", i + 1, step, step)
+    }).collect::<Vec<_>>().join("\n");
+
+    format!(
+        "//! {} Saga Implementation
+//!
+//! This file contains the {} saga implementation using AllFrame macros.
+
+use std::sync::Arc;
+use serde::{{Deserialize, Serialize}};
+use allframe_core::cqrs::{{Saga, MacroSagaStep}};
+
+{}
+
+// Saga data structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct {} {{
+    pub user_id: String,
+    // Add saga-specific data fields here
+}}
+
+// Saga implementation
+#[allframe_macros::saga(name = \"{}\", data_field = \"data\")]
+pub struct {} {{
+    #[saga_data]
+    data: {},
+
+    // Add dependency injections here
+    // #[inject] repository: Arc<dyn SomeRepository>,
+}}
+
+// Saga workflow
+#[allframe_macros::saga_workflow({})]
+pub enum {} {{
+{}
+}}
+
+// Step constructor implementations
+impl {} {{
+{}
+}}
+",
+        name, name, step_imports, data_struct_name, name, name, data_struct_name, name, name, workflow_variants, name,
+        steps.iter().map(|step| {
+            let step_struct = format!("{}Step", step);
+            let constructor = format!("create_{}_step", step.to_lowercase());
+            format!("    pub fn {}(&self) -> Arc<dyn MacroSagaStep> {{
+        Arc::new({} {{
+            // TODO: Initialize step with saga dependencies
+            user_id: self.data.user_id.clone(),
+            // Add other dependencies from saga fields
+        }})
+    }}", constructor, step_struct)
+        }).collect::<Vec<_>>().join("\n\n")
+    )
+}
+
+/// Generate step file content
+fn generate_step_file(saga_path: &Path, step_name: &str, _timeout: u64, requires_compensation: bool) -> anyhow::Result<()> {
+    let file_name = format!("{}.rs", step_name.to_lowercase());
+    let struct_name = format!("{}Step", step_name);
+
+    let compensation_attr = if requires_compensation {
+        ""
+    } else {
+        ", requires_compensation = false"
+    };
+
+    let content = format!(
+        "//! {} Step Implementation
+
+use std::sync::Arc;
+use serde::{{Deserialize, Serialize}};
+use allframe_core::cqrs::{{MacroSagaStep, SagaContext, StepExecutionResult}};
+
+#[derive(Serialize, Deserialize)]
+pub struct {}Output {{
+    // Define step output fields here
+    pub success: bool,
+}}
+
+// Step implementation
+#[allframe_macros::saga_step(name = \"{}\"{}))]
+pub struct {} {{
+    pub user_id: String,
+    // Add step-specific fields and injected dependencies here
+}}
+
+impl {} {{
+    pub fn new(user_id: String) -> Self {{
+        Self {{ user_id }}
+    }}
+
+    async fn execute(&self, _ctx: &SagaContext) -> StepExecutionResult {{
+        // TODO: Implement step execution logic
+        println!(\"Executing step: {}\");
+
+        // Return success with output
+        {}Output {{
+            success: true,
+        }}.into()
+    }}
+}}
+",
+        step_name, step_name, step_name, compensation_attr, struct_name, struct_name, step_name, step_name
+    );
+
+    std::fs::write(saga_path.join(file_name), content)?;
+    Ok(())
 }
 
 /// Generate code from LLM prompts (not yet implemented)

@@ -37,6 +37,9 @@
 //! - `list_services` - List application services
 //! - `list_handlers` - List presentation handlers
 //! - `read_file` - Read project file
+//! - `create_saga` - Create a new saga with specified steps
+//! - `add_saga_step` - Add a step to an existing saga
+//! - `analyze_saga` - Analyze a saga for issues and best practices
 //!
 //! # Available Resources
 //!
@@ -44,6 +47,10 @@
 //! - `allframe://project/entities` - Domain entities
 //! - `allframe://project/services` - Application services
 //! - `allframe://project/handlers` - Presentation handlers
+//! - `sagas://registry` - List of all registered sagas
+//! - `saga://{name}` - Saga definition, steps, and implementation
+//! - `saga://{name}/steps` - List of steps with their status
+//! - `saga://{name}/step/{step_name}` - Step implementation details
 
 use std::env;
 use std::path::PathBuf;

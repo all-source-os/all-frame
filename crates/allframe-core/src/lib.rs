@@ -147,6 +147,17 @@
 // Enable doc_cfg for showing feature requirements on docs.rs
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+/// Domain layer contracts and business logic primitives.
+/// This module provides the building blocks for Clean Architecture domain layers,
+/// including resilience contracts, business rules, and domain models.
+pub mod domain;
+
+/// Application layer orchestration and use case implementations.
+/// This module provides the orchestration layer that coordinates between
+/// domain logic and infrastructure, including resilience orchestration,
+/// transaction management, and business workflow coordination.
+pub mod application;
+
 /// Clean Architecture enforcement with compile-time dependency injection.
 ///
 /// The `arch` module provides traits and utilities for enforcing Clean Architecture

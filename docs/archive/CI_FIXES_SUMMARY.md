@@ -119,7 +119,7 @@ cargo run --example mcp_server
 ### 2. AllSource Core Compilation Errors
 **Status**: Upstream dependency issue
 **Features Affected**: `cqrs-postgres`, `cqrs-rocksdb`
-**Source**: `allsource-core` crate from chronos-monorepo
+**Source**: `allsource-core` crate from allsource-monorepo
 **Error**: 25 compilation errors in allsource-core
 **Solution**: Exclude these features from CI workflows
 **Impact**: Core CQRS features (`cqrs`) still work fine

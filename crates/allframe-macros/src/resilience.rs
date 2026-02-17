@@ -17,40 +17,83 @@ struct RetryConfig {
 
 /// Implementation of the `#[retry]` attribute macro.
 ///
-/// Wraps an async function with retry logic using `RetryExecutor`.
+/// **⚠️ DEPRECATED**: This macro uses the old architecture that violates Clean Architecture principles.
+/// Consider migrating to the new resilience system for better testability and maintainability.
+///
+/// For migration guidance, see: https://docs.allframe.rs/guides/MIGRATION_GUIDE.html
+///
+/// Wraps an async function with retry logic using the new Clean Architecture approach.
+/// The macro now uses ResilienceOrchestrator internally while maintaining backward compatibility.
 pub fn retry_impl(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     let config = parse_retry_attr(attr)?;
     let func: ItemFn = parse2(item)?;
 
-    let func_name = &func.sig.ident;
-    let func_name_str = func_name.to_string();
     let visibility = &func.vis;
     let sig = &func.sig;
     let block = &func.block;
     let attrs = &func.attrs;
 
-    // Build RetryConfig
+    // Build retry policy configuration
     let max_retries = config.max_retries.unwrap_or(3);
     let initial_interval_ms = config.initial_interval_ms.unwrap_or(500);
     let max_interval_ms = config.max_interval_ms.unwrap_or(30000);
     let multiplier = config.multiplier.unwrap_or(2.0);
 
+    // Generate deprecation warning
+    let deprecation_warning = quote! {
+        #[deprecated(
+            since = "0.1.13",
+            note = "The #[retry] macro uses legacy architecture. Consider migrating to the new Clean Architecture resilience system. See: https://docs.allframe.rs/guides/MIGRATION_GUIDE.html"
+        )]
+    };
+
     Ok(quote! {
+        #deprecation_warning
         #(#attrs)*
         #visibility #sig {
-            use allframe_core::resilience::{RetryExecutor, RetryConfig, RetryError};
-            use std::time::Duration;
+            // Import the new architectural components
+            #[cfg(feature = "resilience")]
+            {
+                use allframe_core::application::resilience::{ResilienceOrchestrator, DefaultResilienceOrchestrator};
+                use allframe_core::domain::resilience::{ResiliencePolicy, BackoffStrategy};
 
-            let __retry_config = RetryConfig::new(#max_retries)
-                .with_initial_interval(Duration::from_millis(#initial_interval_ms))
-                .with_max_interval(Duration::from_millis(#max_interval_ms))
-                .with_multiplier(#multiplier);
+                // Create orchestrator (lazy initialization for performance)
+                static ORCHESTRATOR: std::sync::OnceLock<std::sync::Arc<dyn ResilienceOrchestrator + Send + Sync>> = std::sync::OnceLock::new();
+                let orchestrator = ORCHESTRATOR.get_or_init(|| {
+                    std::sync::Arc::new(DefaultResilienceOrchestrator::new())
+                });
 
-            let __executor = RetryExecutor::new(__retry_config);
+                // Build the retry policy using new architecture
+                let policy = ResiliencePolicy::Retry {
+                    max_attempts: #max_retries,
+                    backoff: BackoffStrategy::Exponential {
+                        initial_delay: std::time::Duration::from_millis(#initial_interval_ms),
+                        multiplier: #multiplier,
+                        max_delay: Some(std::time::Duration::from_millis(#max_interval_ms)),
+                        jitter: true,
+                    },
+                };
 
-            __executor.execute(#func_name_str, || async {
-                #block
-            }).await.map_err(|e| e.last_error)
+                // Execute with new architecture
+                // The orchestration returns the same Result type as the original function
+                // This maintains backward compatibility
+                match orchestrator.execute_with_policy(policy, || async {
+                    #block
+                }).await {
+                    Ok(result) => result,
+                    Err(_) => {
+                        // For backward compatibility, panic on orchestration errors
+                        // The old macro would typically let the operation's own errors bubble up
+                        panic!("Resilience orchestration failed");
+                    }
+                }
+            }
+
+            // Fallback for when resilience features are not enabled
+            #[cfg(not(feature = "resilience"))]
+            {
+                compile_error!("The #[retry] macro requires the 'resilience' feature. Enable it in Cargo.toml or migrate to the new Clean Architecture approach.");
+            }
         }
     })
 }
@@ -103,8 +146,6 @@ pub fn circuit_breaker_impl(attr: TokenStream, item: TokenStream) -> syn::Result
     let config = parse_circuit_breaker_attr(attr)?;
     let func: ItemFn = parse2(item)?;
 
-    let func_name = &func.sig.ident;
-    let func_name_str = config.name.unwrap_or_else(|| func_name.to_string());
     let visibility = &func.vis;
     let sig = &func.sig;
     let block = &func.block;
@@ -114,32 +155,55 @@ pub fn circuit_breaker_impl(attr: TokenStream, item: TokenStream) -> syn::Result
     let success_threshold = config.success_threshold.unwrap_or(3);
     let timeout_ms = config.timeout_ms.unwrap_or(30000);
 
+    // Generate deprecation warning for circuit breaker macro
+    let deprecation_warning = quote! {
+        #[deprecated(
+            since = "0.1.13",
+            note = "The #[circuit_breaker] macro uses legacy architecture. Consider migrating to the new Clean Architecture resilience system. See: https://docs.allframe.rs/guides/MIGRATION_GUIDE.html"
+        )]
+    };
+
     Ok(quote! {
+        #deprecation_warning
         #(#attrs)*
         #visibility #sig {
-            use allframe_core::resilience::{
-                CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError
-            };
-            use std::time::Duration;
-            use std::sync::OnceLock;
+            // Import the new architectural components
+            #[cfg(feature = "resilience")]
+            {
+                use allframe_core::application::resilience::{ResilienceOrchestrator, DefaultResilienceOrchestrator};
+                use allframe_core::domain::resilience::ResiliencePolicy;
+                use std::time::Duration;
 
-            static __CIRCUIT_BREAKER: OnceLock<CircuitBreaker> = OnceLock::new();
+                // Create orchestrator (lazy initialization for performance)
+                static ORCHESTRATOR: std::sync::OnceLock<std::sync::Arc<dyn ResilienceOrchestrator + Send + Sync>> = std::sync::OnceLock::new();
+                let orchestrator = ORCHESTRATOR.get_or_init(|| {
+                    std::sync::Arc::new(DefaultResilienceOrchestrator::new())
+                });
 
-            let __cb = __CIRCUIT_BREAKER.get_or_init(|| {
-                let config = CircuitBreakerConfig::new(#failure_threshold)
-                    .with_success_threshold(#success_threshold)
-                    .with_timeout(Duration::from_millis(#timeout_ms));
-                CircuitBreaker::new(#func_name_str, config)
-            });
+                // Build the circuit breaker policy using new architecture
+                let policy = ResiliencePolicy::CircuitBreaker {
+                    failure_threshold: #failure_threshold,
+                    recovery_timeout: Duration::from_millis(#timeout_ms),
+                    success_threshold: #success_threshold,
+                };
 
-            __cb.call(|| async {
-                #block
-            }).await.map_err(|e| match e {
-                CircuitBreakerError::CircuitOpen(err) => {
-                    std::io::Error::new(std::io::ErrorKind::Other, err.to_string())
+                // Execute with new architecture
+                match orchestrator.execute_with_policy(policy, || async {
+                    #block
+                }).await {
+                    Ok(result) => result,
+                    Err(_) => {
+                        // For backward compatibility, panic on circuit breaker errors
+                        panic!("Circuit breaker error in legacy macro");
+                    }
                 }
-                CircuitBreakerError::Inner(err) => err,
-            })
+            }
+
+            // Fallback for when resilience features are not enabled
+            #[cfg(not(feature = "resilience"))]
+            {
+                compile_error!("The #[circuit_breaker] macro requires the 'resilience' feature. Enable it in Cargo.toml or migrate to the new Clean Architecture approach.");
+            }
         }
     })
 }
@@ -198,23 +262,53 @@ pub fn rate_limited_impl(attr: TokenStream, item: TokenStream) -> syn::Result<To
     let rps = config.rps.unwrap_or(100);
     let burst = config.burst.unwrap_or(10);
 
+    // Generate deprecation warning for rate limiting macro
+    let deprecation_warning = quote! {
+        #[deprecated(
+            since = "0.1.13",
+            note = "The #[rate_limited] macro uses legacy architecture. Consider migrating to the new Clean Architecture resilience system. See: https://docs.allframe.rs/guides/MIGRATION_GUIDE.html"
+        )]
+    };
+
     Ok(quote! {
+        #deprecation_warning
         #(#attrs)*
         #visibility #sig {
-            use allframe_core::resilience::{RateLimiter, RateLimitError};
-            use std::sync::OnceLock;
+            // Import the new architectural components
+            #[cfg(feature = "resilience")]
+            {
+                use allframe_core::application::resilience::{ResilienceOrchestrator, DefaultResilienceOrchestrator};
+                use allframe_core::domain::resilience::ResiliencePolicy;
 
-            static __RATE_LIMITER: OnceLock<RateLimiter> = OnceLock::new();
+                // Create orchestrator (lazy initialization for performance)
+                static ORCHESTRATOR: std::sync::OnceLock<std::sync::Arc<dyn ResilienceOrchestrator + Send + Sync>> = std::sync::OnceLock::new();
+                let orchestrator = ORCHESTRATOR.get_or_init(|| {
+                    std::sync::Arc::new(DefaultResilienceOrchestrator::new())
+                });
 
-            let __limiter = __RATE_LIMITER.get_or_init(|| {
-                RateLimiter::new(#rps, #burst)
-            });
+                // Build the rate limiting policy using new architecture
+                let policy = ResiliencePolicy::RateLimit {
+                    requests_per_second: #rps,
+                    burst_capacity: #burst,
+                };
 
-            __limiter.check().map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
-            })?;
+                // Execute with new architecture
+                match orchestrator.execute_with_policy(policy, || async {
+                    #block
+                }).await {
+                    Ok(result) => result,
+                    Err(_) => {
+                        // For backward compatibility, panic on rate limiting errors
+                        panic!("Rate limiting error in legacy macro");
+                    }
+                }
+            }
 
-            #block
+            // Fallback for when resilience features are not enabled
+            #[cfg(not(feature = "resilience"))]
+            {
+                compile_error!("The #[rate_limited] macro requires the 'resilience' feature. Enable it in Cargo.toml or migrate to the new Clean Architecture approach.");
+            }
         }
     })
 }

@@ -1,0 +1,14 @@
+{
+  "id": "90d7ea25-8408-43a4-83bc-41a35ab25730",
+  "status": "running",
+  "startedAt": "2026-02-17T01:11:51.054Z",
+  "updatedAt": "2026-02-17T01:11:51.055Z",
+  "agentPlugin": "claude",
+  "trackerPlugin": "beads-rust",
+  "epicId": "bd-3tx",
+  "currentIteration": 0,
+  "maxIterations": 0,
+  "totalTasks": 0,
+  "tasksCompleted": 0,
+  "cwd": "/Users/decebaldobrica/Projects/open-source/all-frame"
+}

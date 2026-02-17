@@ -74,6 +74,7 @@ tempfile = "3.8"
 allframe-macros = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+toml = "0.8"
 tokio = { workspace = true }
 async-trait = { workspace = true }
 tracing = "0.1"

@@ -257,10 +257,64 @@ store.append("user-123", vec![
 
 **Binary Impact**: +150KB (event store + CQRS runtime)
 
-**Future enhancements** (planned):
-- `cqrs-chronos` - Integration with Chronos event store
-- `cqrs-postgres` - PostgreSQL persistence
-- `cqrs-sqlite` - SQLite persistence
+**Backend Options**:
+- `cqrs-allsource` - AllSource embedded database (recommended for production)
+- `cqrs-postgres` - PostgreSQL database backend
+- `cqrs-rocksdb` - RocksDB embedded database backend
+
+---
+
+### `cqrs-allsource` - AllSource Event Store
+
+**Enables**: AllSource embedded database as the CQRS event store backend
+
+**Dependencies**: `allsource-core`
+
+**Example**:
+```rust
+use allframe_core::cqrs::{EventStore, AllSourceEventStore};
+
+let store = AllSourceEventStore::new("event_store.db").await?;
+store.append("aggregate-123", events).await?;
+```
+
+**Binary Impact**: +50KB (AllSource runtime)
+
+---
+
+### `cqrs-postgres` - PostgreSQL Event Store
+
+**Enables**: PostgreSQL database as the CQRS event store backend
+
+**Dependencies**: `sqlx`, PostgreSQL driver
+
+**Example**:
+```rust
+use allframe_core::cqrs::{EventStore, PostgresEventStore};
+
+let store = PostgresEventStore::connect("postgresql://...").await?;
+store.append("aggregate-123", events).await?;
+```
+
+**Binary Impact**: +500KB (PostgreSQL + SQLx)
+
+---
+
+### `cqrs-rocksdb` - RocksDB Event Store
+
+**Enables**: RocksDB embedded database as the CQRS event store backend
+
+**Dependencies**: `rocksdb`
+
+**Example**:
+```rust
+use allframe_core::cqrs::{EventStore, RocksDbEventStore};
+
+let store = RocksDbEventStore::open("event_store.db")?;
+store.append("aggregate-123", events).await?;
+```
+
+**Binary Impact**: +200KB (RocksDB)
 
 ---
 
@@ -816,6 +870,21 @@ router-full
   ├─ router-graphql
   └─ router-grpc
 
+cqrs
+  └─ (no dependencies)
+
+cqrs-allsource
+  ├─ cqrs
+  └─ allsource-core
+
+cqrs-postgres
+  ├─ cqrs
+  └─ sqlx (postgres)
+
+cqrs-rocksdb
+  ├─ cqrs
+  └─ rocksdb
+
 otel
   ├─ allframe-macros
   └─ tracing
@@ -1017,7 +1086,7 @@ cargo build --features "cqrs,router-graphql"
 ## Future Feature Flags (Planned)
 
 - `cqrs-sqlite` - SQLite persistence for CQRS
-- `mcp` - Model Context Protocol integration
+- `mcp` - Model Context Protocol integration (separate crate available)
 - `auth` - Authentication/authorization helpers
 - `websockets` - WebSocket support
 
@@ -1025,6 +1094,6 @@ cargo build --features "cqrs,router-graphql"
 
 ## See Also
 
-- [CQRS + Chronos Assessment](./CQRS_CHRONOS_ASSESSMENT.md)
+- [CQRS + AllSource Assessment](./CQRS_ALLSOURCE_ASSESSMENT.md)
 - [Milestone 0.4 Complete](./MILESTONE_0.4_COMPLETE.md)
 - Main README.md

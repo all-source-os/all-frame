@@ -27,6 +27,9 @@ serde_json = { workspace = true }
 clap = { version = "4.4", features = ["derive"] }
 anyhow = { workspace = true }
 
+# Template processing
+tera = "1.19"
+
 [dev-dependencies]
 assert_cmd = { workspace = true }
 predicates = { workspace = true }

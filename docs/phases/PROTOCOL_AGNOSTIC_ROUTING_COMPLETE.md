@@ -92,7 +92,7 @@
 - Fully qualified names: `ServiceName.MethodName`
 - Standard gRPC status code handling
 
-**Documentation**: Phase 4 completion document (to be created)
+**Documentation**: Integrated into this complete routing document
 
 ---
 
@@ -565,7 +565,7 @@ While the implementation is complete, potential future enhancements could includ
 
 ## 📚 Related Documentation
 
-- [Protocol-Agnostic Routing Plan](./PROTOCOL_AGNOSTIC_ROUTING_PLAN.md)
+- [Protocol-Agnostic Routing Plan](../archive/phases/PROTOCOL_AGNOSTIC_ROUTING_PLAN.md)
 - [Phase 1 Complete](./PROTOCOL_AGNOSTIC_ROUTING_PHASE1_COMPLETE.md)
 - [Phase 3 Complete](./PROTOCOL_AGNOSTIC_ROUTING_PHASE3_COMPLETE.md)
 - [Router Module](../../crates/allframe-core/src/router/mod.rs)

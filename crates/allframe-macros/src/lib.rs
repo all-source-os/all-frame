@@ -13,6 +13,7 @@ mod error;
 mod health;
 mod otel;
 mod resilience;
+mod saga;
 mod security;
 
 use proc_macro::TokenStream;
@@ -536,6 +537,167 @@ pub fn rate_limited(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = proc_macro2::TokenStream::from(item);
 
     resilience::rate_limited_impl(attr, item)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Marks a struct as a saga step with automatic Debug and SagaStep trait implementation
+///
+/// Reduces boilerplate by generating:
+/// - Debug impl (skipping #[inject] fields)
+/// - SagaStep trait impl with metadata methods
+/// - Placeholder execute/compensate methods (user implements in separate impl block)
+///
+/// # Attributes
+///
+/// - `#[inject]` - Mark fields that should be dependency injected (skipped in Debug)
+///
+/// # Example
+/// ```ignore
+/// #[saga_step(name = "ValidateIndex", timeout_seconds = 10, requires_compensation = false)]
+/// struct ValidateIndexStep {
+///     #[inject] index_repository: Arc<dyn IndexRepository>,
+///     user_id: String,
+///     index_id: Uuid,
+/// }
+///
+/// impl ValidateIndexStep {
+///     async fn execute(&self, ctx: &SagaContext) -> StepExecutionResult {
+///         // actual logic
+///         Ok(StepExecutionResult::success())
+///     }
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn saga_step(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = proc_macro2::TokenStream::from(attr);
+    let item = proc_macro2::TokenStream::from(item);
+
+    saga::saga_step_impl(attr, item)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Marks a struct as a saga container with automatic Saga trait implementation
+///
+/// Reduces boilerplate by generating:
+/// - Constructor accepting all #[inject] dependencies
+/// - Saga trait implementation
+/// - Automatic dependency injection setup
+///
+/// # Attributes
+///
+/// - `#[saga_data]` - Mark the field containing saga data (one per struct)
+/// - `#[inject]` - Mark fields that should be dependency injected
+///
+/// # Example
+/// ```ignore
+/// #[saga(name = "RebalancingSaga")]
+/// struct RebalancingSaga {
+///     #[saga_data]
+///     data: RebalancingSagaData,
+///
+///     #[inject]
+///     index_repository: Arc<dyn IndexRepository>,
+///     #[inject]
+///     trade_service: Arc<TradeService>,
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn saga(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = proc_macro2::TokenStream::from(attr);
+    let item = proc_macro2::TokenStream::from(item);
+
+    saga::saga_impl(attr, item)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Defines the workflow for a saga using an enum
+///
+/// Generates step vector construction from enum variants.
+/// Each enum variant corresponds to a step struct (e.g., `ValidateIndex` -> `ValidateIndexStep`).
+///
+/// # Example
+/// ```ignore
+/// #[saga_workflow(RebalancingSaga)]
+/// enum RebalancingWorkflow {
+///     ValidateIndex,
+///     FetchBalances,
+///     ExecuteTrades,
+///     UpdateBalances,
+///     EmitCompletionEvent,
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn saga_workflow(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = proc_macro2::TokenStream::from(attr);
+    let item = proc_macro2::TokenStream::from(item);
+
+    saga::saga_workflow_impl(attr, item)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Derive macro for type-safe step output extraction
+///
+/// Generates:
+/// - `from_context(ctx, step_name)` method for extracting typed output
+/// - `Into<StepExecutionResult>` impl for returning typed output
+///
+/// # Example
+/// ```ignore
+/// #[derive(StepOutput)]
+/// struct ValidateAndCreateTradeOutput {
+///     trade_id: Uuid,
+///     idempotency_key: String,
+/// }
+///
+/// // In step execute method:
+/// let output: ValidateAndCreateTradeOutput = ValidateAndCreateTradeOutput {
+///     trade_id: trade.id,
+///     idempotency_key: trade.idempotency_key,
+/// };
+/// return output.into(); // Converts to StepExecutionResult
+///
+/// // In another step:
+/// let output = ValidateAndCreateTradeOutput::from_context(ctx, "ValidateAndCreateTrade")?;
+/// let trade_id = output.trade_id;
+/// ```
+#[proc_macro_derive(StepOutput)]
+pub fn derive_step_output(input: TokenStream) -> TokenStream {
+    let input = proc_macro2::TokenStream::from(input);
+
+    saga::derive_step_output(input)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Extract step output with type safety and error handling
+///
+/// Note: This proc-macro provides guidance but doesn't implement a declarative macro.
+/// Use the StepOutput trait for type-safe extraction instead.
+///
+/// # Example
+/// ```ignore
+/// // Type-safe extraction using StepOutput derive
+/// #[derive(StepOutput)]
+/// struct ValidateAndCreateTradeOutput {
+///     trade_id: Uuid,
+///     amount: f64,
+/// }
+///
+/// let output = ValidateAndCreateTradeOutput::from_context(ctx, "ValidateAndCreateTrade")?;
+/// let trade_id = output.trade_id;
+///
+/// // Or access raw JSON
+/// let raw_output = ctx.get_step_output("ValidateAndCreateTrade");
+/// ```
+#[proc_macro]
+pub fn extract_output(input: TokenStream) -> TokenStream {
+    let input = proc_macro2::TokenStream::from(input);
+
+    saga::extract_output_impl(input)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }

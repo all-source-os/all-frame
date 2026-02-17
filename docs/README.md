@@ -36,10 +36,10 @@ All timestamped documentation uses format: `YYYY-MM-DD_FILENAME.md`
 Example: `2025-11-23_ARCHITECTURE_DECISIONS.md`
 
 ### Status Markers
-- ✅ **CURRENT** - Active, up-to-date documentation
-- ⚠️ **DEPRECATED** - No longer accurate, kept for history
-- 🔄 **SUPERSEDED** - Replaced by newer document (link provided)
-- 📝 **DRAFT** - Work in progress
+- ✅ **Complete** - Feature fully implemented and tested
+- 🚧 **Active** - Currently being worked on
+- 📋 **Planned** - Planned for future implementation
+- ⚠️ **Issues** - Known problems or deprecated content
 
 ### Linking
 Always use relative paths:

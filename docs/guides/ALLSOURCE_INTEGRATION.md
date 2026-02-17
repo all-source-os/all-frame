@@ -714,7 +714,7 @@ let store: EventStore<MyEvent, InMemoryBackend<MyEvent>> = EventStore::new();
 AllFrame and AllSource Core are built together. Contributions welcome:
 
 - **AllFrame**: https://github.com/all-source-os/all-frame
-- **AllSource Core**: https://github.com/all-source-os/chronos-monorepo
+- **AllSource Core**: https://github.com/all-source-os/allsource-monorepo
 
 ---
 

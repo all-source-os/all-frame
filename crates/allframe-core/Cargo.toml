@@ -102,8 +102,8 @@ grpc-tls = ["router-grpc-tls"]
 # Optional features - uses workspace version for consistency
 allframe-macros = { workspace = true, optional = true }
 
-# AllSource Core for CQRS + Event Sourcing (re-enabled in 0.7.2)
-allsource-core = { version = "0.7.2", optional = true, default-features = false }
+# AllSource Core for CQRS + Event Sourcing
+allsource-core = { version = "0.10.3", optional = true, default-features = false }
 
 # GraphQL support (production-ready)
 async-graphql = { version = "7.0", optional = true }

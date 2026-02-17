@@ -7,18 +7,18 @@
 
 ## What Was Accomplished
 
-### 1. Comprehensive CQRS + Chronos Integration Assessment
+### 1. Comprehensive CQRS + AllSource Integration Assessment
 
-Created a detailed 13,000+ word analysis evaluating whether AllFrame should adopt [Chronos event store](https://github.com/all-source-os/chronos-monorepo) to reduce CQRS complexity and boilerplate.
+Created a detailed 13,000+ word analysis evaluating whether AllFrame should adopt [AllSource event store](https://github.com/all-source-os/allsource-monorepo) to reduce CQRS complexity and boilerplate.
 
 **Key Findings**:
 - **62% boilerplate reduction** in typical applications (1,220 → 450 lines)
-- **12 critical feature gaps** that Chronos would fill
+- **12 critical feature gaps** that AllSource would fill
 - **5 clean integration points** identified
 - **Current implementation**: 398 lines (runtime + macros), well-tested MVP
 - **Test coverage**: 25 tests, 1,291 lines, 80% average quality
 
-**Recommendation**: **Hybrid approach** - make CQRS optional via feature flags, integrate Chronos as `cqrs-chronos` feature for production deployments.
+**Recommendation**: **Hybrid approach** - make CQRS optional via feature flags, integrate AllSource as `cqrs-allsource` feature for production deployments.
 
 ---
 
@@ -40,15 +40,15 @@ default = ["di", "openapi", "router", "otel"]
 
 # CQRS + Event Sourcing features (optional, not in default)
 cqrs = ["allframe-macros"]
-# Future: cqrs-chronos = ["cqrs", "chronos-core"]
-# Future: cqrs-postgres = ["cqrs-chronos", "chronos-postgres"]
-# Future: cqrs-sqlite = ["cqrs-chronos", "chronos-sqlite"]
+# Future: cqrs-allsource = ["cqrs", "allsource-core"]
+# Future: cqrs-postgres = ["cqrs-allsource", "allsource-postgres"]
+# Future: cqrs-sqlite = ["cqrs-allsource", "allsource-sqlite"]
 ```
 
 **Impact**:
 - Default binary size: ~1.1MB (reduced from ~1.3MB)
 - CQRS only included when explicitly requested
-- Clear upgrade path to Chronos integration
+- Clear upgrade path to AllSource integration
 - No breaking changes for existing users
 
 ---
@@ -86,9 +86,9 @@ cargo build --all-features
 
 ---
 
-### 4. Chronos Integration Assessment Document
+### 4. AllSource Integration Assessment Document
 
-Created **CQRS_CHRONOS_ASSESSMENT.md** (70+ pages) covering:
+Created **CQRS_ALLSOURCE_ASSESSMENT.md** (70+ pages) covering:
 
 #### Current State Analysis
 - 290 lines of CQRS runtime code
@@ -104,7 +104,7 @@ Created **CQRS_CHRONOS_ASSESSMENT.md** (70+ pages) covering:
 5. **EventStore Persistence** (10%) - Critical for production
 
 #### Feature Gaps
-| Feature | Current Status | Chronos Solution |
+| Feature | Current Status | AllSource Solution |
 |---------|-------|------------------|
 | Persistent storage | Stub | PostgreSQL/SQLite/EventStoreDB adapters |
 | Event upcasting | Manual | Automatic versioning pipeline |
@@ -121,7 +121,7 @@ Created **CQRS_CHRONOS_ASSESSMENT.md** (70+ pages) covering:
 
 #### Integration Points
 1. **EventStore Abstraction** - Replace HashMap with trait-based backend
-2. **CommandBus Dispatch** - Add Chronos router for auto-dispatch
+2. **CommandBus Dispatch** - Add AllSource router for auto-dispatch
 3. **Projection Registry** - Add lifecycle management and consistency
 4. **Event Versioning** - Add automatic upcasting pipeline
 5. **Saga Orchestration** - Add step ordering and compensation engine
@@ -185,7 +185,7 @@ struct UserProjection {
     users: HashMap<String, User>,
 }
 
-// Chronos auto-implements Projection trait
+// AllSource auto-implements Projection trait
 // Auto-generates apply() logic
 // Auto-creates indices
 ```
@@ -219,7 +219,7 @@ struct UserCreated {
     name: String,
 }
 
-// Chronos handles all versioning automatically
+// AllSource handles all versioning automatically
 ```
 
 #### Implementation Plan
@@ -230,9 +230,9 @@ struct UserCreated {
 - **Week 5**: Saga orchestration
 
 #### Recommendation
-**Adopt Chronos with hybrid approach**:
+**Adopt AllSource with hybrid approach**:
 - Keep current simple implementation for MVP users
-- Add `cqrs-chronos` feature flag for production
+- Add `cqrs-allsource` feature flag for production
 - Add persistence flags: `cqrs-postgres`, `cqrs-sqlite`
 - Estimated ROI: 62% boilerplate reduction, 12 feature gaps filled, 5 weeks development time
 
@@ -243,7 +243,7 @@ struct UserCreated {
 ### Documentation
 ```
 docs/
-├── CQRS_CHRONOS_ASSESSMENT.md  (NEW - 13,000+ words)
+├── CQRS_ALLSOURCE_ASSESSMENT.md  (NEW - 13,000+ words)
 ├── FEATURE_FLAGS.md             (NEW - Comprehensive guide)
 ├── MILESTONE_0.4_COMPLETE.md    (Existing - 70 tests complete)
 └── SUMMARY.md                   (THIS FILE)
@@ -308,9 +308,9 @@ mcp             = []
 
 ## Decision Points
 
-### 1. Should we integrate Chronos?
+### 1. Should we integrate AllSource?
 
-**Assessment completed**: YES, but as optional `cqrs-chronos` feature
+**Assessment completed**: YES, but as optional `cqrs-allsource` feature
 
 **Rationale**:
 - Eliminates 62% of boilerplate
@@ -322,7 +322,7 @@ mcp             = []
 **Next steps**:
 1. User confirms decision to proceed
 2. Begin Week 1: EventStore abstraction
-3. Add Chronos as optional dependency
+3. Add AllSource as optional dependency
 4. Implement backend trait pattern
 
 ### 2. Feature flag architecture
@@ -334,14 +334,14 @@ mcp             = []
 - ✅ Clear documentation of all flags
 - ✅ Binary size comparisons documented
 - ✅ Usage examples for all scenarios
-- ✅ Future flags planned (cqrs-chronos, etc.)
+- ✅ Future flags planned (cqrs-allsource, etc.)
 
 ---
 
 ## Achievements
 
 ### Documentation
-- 13,000+ word Chronos integration assessment
+- 13,000+ word AllSource integration assessment
 - Comprehensive feature flags guide
 - Binary size analysis
 - Code reduction examples with precise percentages
@@ -356,7 +356,7 @@ mcp             = []
 
 ### Technical Decisions
 - CQRS made optional (reduces default size)
-- Chronos integration path defined
+- AllSource integration path defined
 - Boilerplate quantified (62% reduction possible)
 - Integration points identified
 - Migration strategy planned
@@ -368,12 +368,12 @@ mcp             = []
 ### Immediate (if approved)
 1. ✅ Feature flag documentation (DONE)
 2. ✅ CQRS assessment (DONE)
-3. ⏳ **Decision**: Proceed with Chronos integration?
+3. ⏳ **Decision**: Proceed with AllSource integration?
 
 ### Short-term (Weeks 1-2)
 - EventStore backend abstraction
 - CommandBus dispatch router
-- Chronos dependency integration
+- AllSource dependency integration
 - PostgreSQL/SQLite persistence adapters
 
 ### Medium-term (Weeks 3-4)
@@ -399,16 +399,16 @@ mcp             = []
 - **Test coverage**: 80% average
 - **Production readiness**: MVP (placeholders for 12 features)
 
-### With Chronos Integration
+### With AllSource Integration
 - **Boilerplate reduction**: 62% (1,220 → 450 lines)
 - **Feature completeness**: 100% (12 gaps filled)
 - **Performance**: 469K events/sec, 11.9μs p99
 - **Development time**: 5 weeks
-- **Binary size increase**: +200KB for chronos features
+- **Binary size increase**: +200KB for allsource features
 
 ### User Impact
 - **MVP users**: No change (CQRS optional)
-- **Production users**: Opt-in to Chronos via feature flag
+- **Production users**: Opt-in to AllSource via feature flag
 - **Enterprise users**: Full event sourcing with minimal code
 - **Migration**: Zero breaking changes
 
@@ -416,13 +416,13 @@ mcp             = []
 
 ## Conclusion
 
-AllFrame's Milestone 0.4 is complete with 70/70 tests passing. The CQRS implementation is now properly feature-flagged and optional, reducing default binary size while maintaining production readiness through a clear Chronos integration path.
+AllFrame's Milestone 0.4 is complete with 70/70 tests passing. The CQRS implementation is now properly feature-flagged and optional, reducing default binary size while maintaining production readiness through a clear AllSource integration path.
 
-The comprehensive assessment demonstrates that Chronos integration would provide:
+The comprehensive assessment demonstrates that AllSource integration would provide:
 - 62% reduction in application boilerplate
 - 12 critical production features
 - 5 clean integration points
 - No breaking changes for existing users
 - Clear 5-week implementation plan
 
-**Recommendation**: Proceed with Chronos integration as optional `cqrs-chronos` feature flag, maintaining the hybrid approach that serves both MVP and production use cases.
+**Recommendation**: Proceed with AllSource integration as optional `cqrs-allsource` feature flag, maintaining the hybrid approach that serves both MVP and production use cases.

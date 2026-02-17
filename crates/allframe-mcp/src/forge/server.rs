@@ -195,6 +195,77 @@ impl ForgeMcpServer {
                     "required": ["path"]
                 }"#,
             ),
+            McpTool::new(
+                "create_saga",
+                "Create a new saga with specified steps",
+                r#"{
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Saga name (e.g., RebalancingSaga)"
+                        },
+                        "steps": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Ordered list of step names"
+                        },
+                        "data_fields": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {"type": "string"},
+                                    "field_type": {"type": "string"},
+                                    "description": {"type": "string"}
+                                },
+                                "required": ["name", "field_type"]
+                            },
+                            "description": "Saga data structure fields"
+                        },
+                        "dependencies": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Required service dependencies"
+                        }
+                    },
+                    "required": ["name", "steps"]
+                }"#,
+            ),
+            McpTool::new(
+                "add_saga_step",
+                "Add a step to an existing saga",
+                r#"{
+                    "type": "object",
+                    "properties": {
+                        "saga_name": {"type": "string", "description": "Name of the saga to modify"},
+                        "step_name": {"type": "string", "description": "Name of the step to add"},
+                        "position": {
+                            "type": "string",
+                            "enum": ["first", "last", "after:<step>", "before:<step>"],
+                            "description": "Position to insert the step"
+                        },
+                        "timeout_seconds": {"type": "number", "description": "Step timeout in seconds"},
+                        "requires_compensation": {"type": "boolean", "description": "Whether step requires compensation"},
+                        "execute_logic": {"type": "string", "description": "Natural language description of step logic"},
+                        "compensate_logic": {"type": "string", "description": "Natural language description of compensation"}
+                    },
+                    "required": ["saga_name", "step_name"]
+                }"#,
+            ),
+            McpTool::new(
+                "analyze_saga",
+                "Analyze a saga for potential issues and best practices",
+                r#"{
+                    "type": "object",
+                    "properties": {
+                        "saga_name": {"type": "string", "description": "Name of the saga to analyze"}
+                    },
+                    "required": ["saga_name"]
+                }"#,
+            ),
         ]
     }
 
@@ -225,6 +296,12 @@ impl ForgeMcpServer {
                 mime_type: "application/json".to_string(),
                 description: "List of HTTP handlers".to_string(),
             },
+            McpResource {
+                uri: "sagas://registry".to_string(),
+                name: "Saga Registry".to_string(),
+                mime_type: "application/json".to_string(),
+                description: "List of all registered sagas".to_string(),
+            },
         ]
     }
 
@@ -244,6 +321,12 @@ impl ForgeMcpServer {
             }
             "allframe://project/handlers" => {
                 Ok(serde_json::to_value(&structure.handlers).map_err(|e| e.to_string())?)
+            }
+            "sagas://registry" => {
+                self.read_saga_registry()
+            }
+            uri if uri.starts_with("saga://") => {
+                self.read_saga_resource(uri)
             }
             _ => Err(format!("Unknown resource: {}", uri)),
         }
@@ -310,6 +393,49 @@ impl ForgeMcpServer {
                     "path": path,
                     "content": content
                 }))
+            }
+
+            "create_saga" => {
+                let saga_name = args.get("name")
+                    .and_then(|n| n.as_str())
+                    .ok_or("Missing 'name' parameter")?;
+                let steps = args.get("steps")
+                    .and_then(|s| s.as_array())
+                    .ok_or("Missing or invalid 'steps' parameter")?
+                    .iter()
+                    .filter_map(|s| s.as_str())
+                    .collect::<Vec<_>>();
+
+                // Use the forge CLI to create the saga
+                self.create_saga(saga_name, &steps, &args)
+            }
+
+            "add_saga_step" => {
+                let saga_name = args.get("saga_name")
+                    .and_then(|n| n.as_str())
+                    .ok_or("Missing 'saga_name' parameter")?;
+                let step_name = args.get("step_name")
+                    .and_then(|n| n.as_str())
+                    .ok_or("Missing 'step_name' parameter")?;
+                let position = args.get("position")
+                    .and_then(|p| p.as_str())
+                    .unwrap_or("last");
+                let timeout = args.get("timeout_seconds")
+                    .and_then(|t| t.as_u64())
+                    .unwrap_or(30);
+                let requires_compensation = args.get("requires_compensation")
+                    .and_then(|c| c.as_bool())
+                    .unwrap_or(true);
+
+                self.add_saga_step(saga_name, step_name, position, timeout, requires_compensation)
+            }
+
+            "analyze_saga" => {
+                let saga_name = args.get("saga_name")
+                    .and_then(|n| n.as_str())
+                    .ok_or("Missing 'saga_name' parameter")?;
+
+                self.analyze_saga(saga_name)
             }
 
             _ => Err(format!("Unknown tool: {}", name)),
@@ -491,6 +617,209 @@ impl ForgeMcpServer {
             "id": id
         })
     }
+
+    /// Create a new saga using the forge CLI
+    fn create_saga(&self, name: &str, steps: &[&str], args: &Value) -> Result<Value, String> {
+        use std::process::Command;
+
+        let steps_str = steps.join(",");
+        let mut cmd = Command::new("allframe");
+        cmd.arg("saga").arg("new").arg(name)
+           .arg("--steps").arg(steps_str)
+           .current_dir(&self.project_path);
+
+        // Add optional path parameter
+        if let Some(path) = args.get("path").and_then(|p| p.as_str()) {
+            cmd.arg("--path").arg(path);
+        }
+
+        let output = cmd.output().map_err(|e| format!("Failed to run forge command: {}", e))?;
+
+        if output.status.success() {
+            Ok(json!({
+                "success": true,
+                "message": format!("Saga '{}' created successfully", name),
+                "steps": steps
+            }))
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Err(format!("Forge command failed: {}", stderr))
+        }
+    }
+
+    /// Add a step to an existing saga
+    fn add_saga_step(&self, saga_name: &str, step_name: &str, position: &str, timeout: u64, requires_compensation: bool) -> Result<Value, String> {
+        use std::process::Command;
+
+        let mut cmd = Command::new("allframe");
+        cmd.arg("saga").arg("add-step").arg(saga_name).arg(step_name)
+           .arg("--position").arg(position)
+           .arg("--timeout").arg(timeout.to_string())
+           .current_dir(&self.project_path);
+
+        if !requires_compensation {
+            cmd.arg("--requires-compensation").arg("false");
+        }
+
+        let output = cmd.output().map_err(|e| format!("Failed to run forge command: {}", e))?;
+
+        if output.status.success() {
+            Ok(json!({
+                "success": true,
+                "message": format!("Step '{}' added to saga '{}' successfully", step_name, saga_name),
+                "step": {
+                    "name": step_name,
+                    "position": position,
+                    "timeout": timeout,
+                    "requires_compensation": requires_compensation
+                }
+            }))
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Err(format!("Forge command failed: {}", stderr))
+        }
+    }
+
+    /// Analyze a saga for issues and best practices
+    fn analyze_saga(&self, saga_name: &str) -> Result<Value, String> {
+        use std::process::Command;
+
+        let mut cmd = Command::new("allframe");
+        cmd.arg("saga").arg("validate").arg(saga_name)
+           .current_dir(&self.project_path);
+
+        let output = cmd.output().map_err(|e| format!("Failed to run forge command: {}", e))?;
+
+        let success = output.status.success();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        Ok(json!({
+            "saga_name": saga_name,
+            "valid": success,
+            "output": stdout,
+            "errors": if success { Value::Null } else { json!(stderr) },
+            "recommendations": if success {
+                vec!["Saga structure looks good", "Consider adding more comprehensive error handling"]
+            } else {
+                vec!["Fix validation errors", "Check saga step implementations"]
+            }
+        }))
+    }
+
+    /// Read saga registry resource
+    fn read_saga_registry(&self) -> Result<Value, String> {
+        use std::fs;
+
+        let saga_path = self.project_path.join("src/application/cqrs/sagas");
+        if !saga_path.exists() {
+            return Ok(json!([]));
+        }
+
+        let mut sagas = Vec::new();
+
+        if let Ok(entries) = fs::read_dir(&saga_path) {
+            for entry in entries.flatten() {
+                if let Ok(file_type) = entry.file_type() {
+                    if file_type.is_dir() {
+                        if let Some(name) = entry.file_name().to_str() {
+                            sagas.push(json!({
+                                "name": name,
+                                "path": format!("src/application/cqrs/sagas/{}", name)
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(json!(sagas))
+    }
+
+    /// Read individual saga resources
+    fn read_saga_resource(&self, uri: &str) -> Result<Value, String> {
+        use std::fs;
+
+        // Parse URI like "saga://SagaName" or "saga://SagaName/steps" or "saga://SagaName/step/StepName"
+        let path = uri.strip_prefix("saga://").ok_or("Invalid saga URI")?;
+
+        let parts: Vec<&str> = path.split('/').collect();
+        let saga_name = parts.get(0).ok_or("Missing saga name")?;
+
+        let saga_path = self.project_path.join("src/application/cqrs/sagas").join(saga_name);
+
+        match parts.len() {
+            1 => {
+                // saga://{name} - Return saga definition
+                let saga_file = saga_path.join(format!("{}.rs", saga_name));
+                if !saga_file.exists() {
+                    return Err(format!("Saga '{}' not found", saga_name));
+                }
+
+                let content = fs::read_to_string(&saga_file)
+                    .map_err(|e| format!("Failed to read saga file: {}", e))?;
+
+                Ok(json!({
+                    "name": saga_name,
+                    "path": saga_file.to_string_lossy(),
+                    "content": content,
+                    "steps": self.get_saga_steps(&saga_path)?
+                }))
+            }
+            2 if parts[1] == "steps" => {
+                // saga://{name}/steps - Return list of steps
+                Ok(json!(self.get_saga_steps(&saga_path)?))
+            }
+            3 if parts[1] == "step" => {
+                // saga://{name}/step/{step_name} - Return step details
+                let step_name = parts[2];
+                let step_file = saga_path.join(format!("{}.rs", step_name.to_lowercase()));
+
+                if !step_file.exists() {
+                    return Err(format!("Step '{}' not found in saga '{}'", step_name, saga_name));
+                }
+
+                let content = fs::read_to_string(&step_file)
+                    .map_err(|e| format!("Failed to read step file: {}", e))?;
+
+                Ok(json!({
+                    "saga_name": saga_name,
+                    "step_name": step_name,
+                    "path": step_file.to_string_lossy(),
+                    "content": content
+                }))
+            }
+            _ => Err(format!("Invalid saga resource URI: {}", uri))
+        }
+    }
+
+    /// Get list of steps in a saga
+    fn get_saga_steps(&self, saga_path: &std::path::Path) -> Result<Vec<Value>, String> {
+        use std::fs;
+
+        let mut steps = Vec::new();
+
+        if let Ok(entries) = fs::read_dir(saga_path) {
+            for entry in entries.flatten() {
+                if let Ok(file_type) = entry.file_type() {
+                    if file_type.is_file() {
+                        if let Some(file_name) = entry.file_name().to_str() {
+                            if file_name != "mod.rs" && file_name.ends_with(".rs") {
+                                if let Some(step_name) = file_name.strip_suffix(".rs") {
+                                    steps.push(json!({
+                                        "name": step_name,
+                                        "file": file_name
+                                    }));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(steps)
+    }
 }
 
 #[cfg(test)]
@@ -498,7 +827,7 @@ mod tests {
     #[test]
     fn test_list_tools() {
         // Can't test without a real project, but we can check tool definitions
-        let tools_count = 8; // analyze, add_entity, add_service, add_handler, list_*, read_file
+        let tools_count = 11; // analyze, add_entity, add_service, add_handler, list_*, read_file, saga tools
         assert!(tools_count > 0);
     }
 }

@@ -48,7 +48,7 @@ We ship **composable crates** that give you exactly what you need:
   - Query history persistence
   - Dark/Light themes
   - Production-ready with 7 tests
-- ✅ **gRPC Documentation** - Interactive service explorer **[NEW!]**
+- 📋 **gRPC Documentation** - Interactive service explorer **[PLANNED]**
   - gRPC reflection for auto-discovery
   - Service and method browser
   - Stream testing (unary, server, client, bidirectional)
@@ -699,7 +699,7 @@ allframe-mcp = "0.1.12"
 
 See [MCP Zero-Bloat Strategy](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md) for details.
 
-**💡 Tip:** Start minimal and add features as needed. See [docs/feature-flags.md](docs/feature-flags.md) for detailed guidance.
+**💡 Tip:** Start minimal and add features as needed. See [docs/guides/FEATURE_FLAGS.md](docs/guides/FEATURE_FLAGS.md) for detailed guidance.
 
 ### Examples
 
@@ -806,7 +806,7 @@ allframe ignite --config architecture.toml
 
 ### Completed ✅
 
-- [x] **Phase 6.4: gRPC Documentation** ✅ (Dec 2025)
+- [ ] **Phase 6.4: gRPC Documentation** 📋 (Q1 2025)
   - Interactive gRPC service explorer
   - gRPC reflection for auto-discovery
   - Stream testing (unary, server, client, bidirectional)
@@ -854,7 +854,7 @@ allframe ignite --config architecture.toml
   - ✅ Router Core (protocol-agnostic)
   - ✅ REST Documentation (Scalar)
   - ✅ GraphQL Documentation (GraphiQL)
-  - ✅ gRPC Documentation (Service Explorer)
+  - 📋 gRPC Documentation (Service Explorer)
   - ✅ Contract Testing (Complete - 9 tests)
 
 ### Planned 📋

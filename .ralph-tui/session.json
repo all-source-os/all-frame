@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "sessionId": "90d7ea25-8408-43a4-83bc-41a35ab25730",
+  "status": "running",
+  "startedAt": "2026-02-17T01:11:51.185Z",
+  "updatedAt": "2026-02-17T01:15:29.336Z",
+  "currentIteration": 0,
+  "maxIterations": 0,
+  "tasksCompleted": 0,
+  "isPaused": false,
+  "agentPlugin": "claude",
+  "trackerState": {
+    "plugin": "beads-rust",
+    "epicId": "bd-3tx",
+    "totalTasks": 7,
+    "tasks": [
+      {
+        "id": "bd-3tx.3",
+        "title": "US-003: Fix snapshot methods to properly persist data and track versions",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "bd-3tx.2",
+        "title": "US-002: Fix get_events_after() to use server-side filtering",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "bd-3tx.1",
+        "title": "US-001: Bump allsource-core dependency from 0.7.2 to 0.10.3",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "bd-3tx.5",
+        "title": "US-005: Expose AllSource ExactlyOnce, SchemaRegistry, and PipelineManager",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "bd-3tx.4",
+        "title": "US-004: Deprecate cqrs-postgres feature flag",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "bd-3tx.7",
+        "title": "US-007: Update event type naming from type_name to trait-based approach",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "bd-3tx.6",
+        "title": "US-006: Add vector-search and keyword-search feature flags",
+        "status": "open",
+        "completedInSession": false
+      }
+    ]
+  },
+  "iterations": [],
+  "skippedTaskIds": [],
+  "cwd": "/Users/decebaldobrica/Projects/open-source/all-frame",
+  "activeTaskIds": [],
+  "subagentPanelVisible": true
+}

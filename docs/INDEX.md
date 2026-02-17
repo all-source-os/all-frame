@@ -41,7 +41,7 @@ docs/
 │   ├── PHASE3_COMPLETE.md      # ProjectionRegistry (90% reduction) ✅
 │   ├── PHASE4_COMPLETE.md      # Event Versioning (95% reduction) ✅
 │   ├── PHASE5_COMPLETE.md      # Saga Orchestration (75% reduction) ✅
-│   └── PHASE6_1_ROUTER_CORE_PLAN.md  # Router Core Enhancement (READY) 📋
+│   ├── PHASE6_1_COMPLETE.md           # Router Core Enhancement ✅
 │
 ├── announcements/               # Public announcements
 │   ├── CQRS_INFRASTRUCTURE_COMPLETE.md  # Main announcement (2025-11-26)
@@ -63,7 +63,7 @@ docs/
 │   └── feature-flags.md
 │
 └── archive/                     # Historical documentation
-    ├── CQRS_CHRONOS_ASSESSMENT.md
+    ├── CQRS_ALLSOURCE_ASSESSMENT.md
     ├── MIGRATION_SUMMARY.md
     ├── NEXT_STEPS.md
     ├── SESSION_COMPLETE.md
@@ -73,7 +73,7 @@ docs/
 
 ---
 
-## CQRS Infrastructure (Phases 1-5) ✅ COMPLETE
+## CQRS Infrastructure (Phases 1-5) ✅ Complete
 
 **Status**: Production-ready
 **Achievement**: 85% average boilerplate reduction
@@ -203,7 +203,7 @@ All 5 CQRS phases complete with 85% average boilerplate reduction:
 ## Archive
 
 Historical documentation moved to `/docs/archive/`:
-- CQRS Chronos Assessment
+- CQRS AllSource Assessment
 - Migration Summaries
 - Session Summaries
 - Previous Status Documents

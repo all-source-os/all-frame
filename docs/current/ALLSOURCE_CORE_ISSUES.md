@@ -29,7 +29,7 @@ The transitive dependency chain `datafusion 51 → object_store 0.12.4` required
 
 The issues below were from an earlier version and may no longer apply:
 
-**Repository**: https://github.com/all-source-os/chronos-monorepo
+**Repository**: https://github.com/all-source-os/allsource-monorepo
 **Commit**: dd22949a
 **AllFrame Feature**: `cqrs-allsource`
 
@@ -262,7 +262,7 @@ Until upstream fixes are available, AllFrame will:
 ## Upstream Issue Tracking
 
 **Recommended Actions**:
-1. Open GitHub issue in chronos-monorepo repository
+1. Open GitHub issue in allsource-monorepo repository
 2. Link to this document for detailed error analysis
 3. Provide reproduction steps
 4. Suggest fixes with code examples
@@ -275,7 +275,7 @@ Until upstream fixes are available, AllFrame will:
 
 ## Version Information
 
-- **AllSource Core**: Commit dd22949a from chronos-monorepo
+- **AllSource Core**: Commit dd22949a from allsource-monorepo
 - **AllFrame**: v0.1.0
 - **Rust**: 1.80+
 - **sqlx**: 0.7.4
@@ -290,5 +290,5 @@ For AllFrame-specific questions:
 - Issues: https://github.com/all-source-os/all-frame/issues
 
 For AllSource-Core fixes:
-- Repository: https://github.com/all-source-os/chronos-monorepo
+- Repository: https://github.com/all-source-os/allsource-monorepo
 - Path: `apps/core/`

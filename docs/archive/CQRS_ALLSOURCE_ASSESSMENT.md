@@ -1,23 +1,23 @@
-# CQRS + Chronos Integration Assessment
+# CQRS + AllSource Integration Assessment
 
 **Date**: 2025-11-26
 **Status**: Architectural Decision Required
-**Decision**: Should AllFrame adopt Chronos event store to reduce CQRS complexity?
+**Decision**: Should AllFrame adopt AllSource event store to reduce CQRS complexity?
 
 ---
 
 ## Executive Summary
 
-AllFrame's current CQRS implementation is a well-tested MVP (25 tests, 80% coverage) with **intentional placeholders** for production features. Integrating [Chronos](https://github.com/all-source-os/chronos-monorepo) would eliminate **62% of boilerplate** (1,120 → 430 lines in typical apps) and add production-grade event sourcing capabilities.
+AllFrame's current CQRS implementation is a well-tested MVP (25 tests, 80% coverage) with **intentional placeholders** for production features. Integrating [AllSource](https://github.com/all-source-os/allsource-monorepo) would eliminate **62% of boilerplate** (1,120 → 430 lines in typical apps) and add production-grade event sourcing capabilities.
 
 **Key Findings**:
 - Current implementation: 398 lines of runtime + macro code
 - Boilerplate in typical app: 1,150-2,870 lines
-- **Chronos reduction: 62%** (validation, projections, sagas, versioning)
-- 12 critical feature gaps that Chronos fills
+- **AllSource reduction: 62%** (validation, projections, sagas, versioning)
+- 12 critical feature gaps that AllSource fills
 - 5 clean integration points without breaking existing APIs
 
-**Recommendation**: **Hybrid approach with feature flags** - make Chronos **optional** via `cqrs-chronos` feature, maintain current simple implementation for MVPs.
+**Recommendation**: **Hybrid approach with feature flags** - make AllSource **optional** via `cqrs-allsource` feature, maintain current simple implementation for MVPs.
 
 ---
 
@@ -77,9 +77,9 @@ pub trait Saga: Send + Sync {
 
 ---
 
-## 2. Chronos Event Store Capabilities
+## 2. AllSource Event Store Capabilities
 
-### 2.1 What Chronos Provides
+### 2.1 What AllSource Provides
 
 **Performance** (from benchmarks):
 - 469,000 events/second ingestion
@@ -170,7 +170,7 @@ for event in events {
 - No caching strategy
 - No indexing
 
-**Chronos solution**:
+**AllSource solution**:
 ```rust
 #[projection(indexed_by = "email")]
 #[derive(serde::Serialize)]
@@ -243,7 +243,7 @@ for serialized_event in events {
 - No migration tooling
 - No backward/forward compatibility validation
 
-**Chronos solution**:
+**AllSource solution**:
 ```rust
 #[event]
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -255,7 +255,7 @@ struct UserCreated {
     name: String,
 }
 
-// Chronos auto-generates:
+// AllSource auto-generates:
 // - Version detection
 // - Upcasting pipeline (V0 → V1 → V2)
 // - Backward compatibility validation
@@ -263,7 +263,7 @@ struct UserCreated {
 // - Schema registry entry
 
 // Usage during replay:
-let event: UserCreated = chronos::deserialize_with_upcast(serialized)?;
+let event: UserCreated = allsource::deserialize_with_upcast(serialized)?;
 ```
 
 **Code reduction**: 30 lines per version → 1 attribute (95% reduction)
@@ -327,7 +327,7 @@ impl Saga for TransferMoneySaga {
 - No timeout management
 - Easy to get execute/compensate out of sync
 
-**Chronos solution**:
+**AllSource solution**:
 ```rust
 #[saga]
 struct TransferMoneySaga {
@@ -346,7 +346,7 @@ async fn credit_account(&self, store: &EventStore) -> Result<CreditEvent, Transa
     // Implementation
 }
 
-// Chronos auto-generates:
+// AllSource auto-generates:
 // - SagaOrchestrator (step ordering)
 // - Compensation derivation
 // - Idempotency tracking
@@ -388,7 +388,7 @@ async fn handle_create_user(cmd: CreateUserCommand) -> Result<Vec<UserEvent>, St
 - No reusable validators
 - Scattered across handlers
 
-**Chronos solution**:
+**AllSource solution**:
 ```rust
 #[command]
 struct CreateUserCommand {
@@ -434,7 +434,7 @@ pub async fn save_snapshot<A: Aggregate<Event = E>>(
 - Connection pooling, transactions, retry logic all custom
 - Subscriber notification during write lock (deadlock risk)
 
-**Chronos solution**:
+**AllSource solution**:
 - Automatic PostgreSQL/SQLite/EventStoreDB adapters
 - Transaction-aware subscribers
 - Backpressure handling
@@ -475,19 +475,19 @@ default = ["di", "openapi", "router", "otel"]
 # CQRS - simple in-memory implementation (MVP)
 cqrs = ["allframe-macros"]
 
-# CQRS with Chronos integration (production)
-cqrs-chronos = ["cqrs", "chronos-core"]
+# CQRS with AllSource integration (production)
+cqrs-allsource = ["cqrs", "allsource-core"]
 
-# Persistence backends (requires cqrs-chronos)
-cqrs-postgres = ["cqrs-chronos", "chronos-postgres"]
-cqrs-sqlite = ["cqrs-chronos", "chronos-sqlite"]
-cqrs-eventstore = ["cqrs-chronos", "chronos-eventstore"]
+# Persistence backends (requires cqrs-allsource)
+cqrs-postgres = ["cqrs-allsource", "allsource-postgres"]
+cqrs-sqlite = ["cqrs-allsource", "allsource-sqlite"]
+cqrs-eventstore = ["cqrs-allsource", "allsource-eventstore"]
 
 [dependencies]
-chronos-core = { version = "0.1", optional = true }
-chronos-postgres = { version = "0.1", optional = true }
-chronos-sqlite = { version = "0.1", optional = true }
-chronos-eventstore = { version = "0.1", optional = true }
+allsource-core = { version = "0.1", optional = true }
+allsource-postgres = { version = "0.1", optional = true }
+allsource-sqlite = { version = "0.1", optional = true }
+allsource-eventstore = { version = "0.1", optional = true }
 ```
 
 ### 4.2 Migration Path
@@ -498,10 +498,10 @@ chronos-eventstore = { version = "0.1", optional = true }
 cargo build --features cqrs
 ```
 
-**Phase 2: Opt-in to Chronos**
+**Phase 2: Opt-in to AllSource**
 ```bash
-# Get Chronos benefits without changing code
-cargo build --features cqrs-chronos
+# Get AllSource benefits without changing code
+cargo build --features cqrs-allsource
 ```
 
 **Phase 3: Production Features**
@@ -526,24 +526,24 @@ async fn main() {
 }
 ```
 
-**After** (with Chronos - zero code changes!):
+**After** (with AllSource - zero code changes!):
 ```rust
 use allframe_core::cqrs::{EventStore, Projection};
 
 #[tokio::main]
 async fn main() {
     let store = EventStore::new();
-    // Now backed by Chronos with persistence!
+    // Now backed by AllSource with persistence!
 }
 ```
 
 **Advanced** (explicit configuration):
 ```rust
-use allframe_core::cqrs::{EventStore, ChronosConfig};
+use allframe_core::cqrs::{EventStore, AllSourceConfig};
 
 #[tokio::main]
 async fn main() {
-    let config = ChronosConfig::postgres("postgres://localhost/events");
+    let config = AllSourceConfig::postgres("postgres://localhost/events");
     let store = EventStore::with_backend(config).await?;
 }
 ```
@@ -564,40 +564,40 @@ pub struct EventStore<E: Event> {
 }
 ```
 
-**With Chronos**:
+**With AllSource**:
 ```rust
-#[cfg(not(feature = "cqrs-chronos"))]
+#[cfg(not(feature = "cqrs-allsource"))]
 pub struct EventStore<E: Event> {
     // Current simple implementation
     events: Arc<RwLock<HashMap<String, Vec<E>>>>,
     subscribers: Arc<RwLock<Vec<mpsc::Sender<E>>>>,
 }
 
-#[cfg(feature = "cqrs-chronos")]
+#[cfg(feature = "cqrs-allsource")]
 pub struct EventStore<E: Event> {
-    backend: chronos::EventStoreBackend<E>,
-    subscribers: chronos::SubscriberRegistry<E>,
+    backend: allsource::EventStoreBackend<E>,
+    subscribers: allsource::SubscriberRegistry<E>,
 }
 
 impl<E: Event> EventStore<E> {
-    #[cfg(not(feature = "cqrs-chronos"))]
+    #[cfg(not(feature = "cqrs-allsource"))]
     pub fn new() -> Self {
         // Current implementation
     }
 
-    #[cfg(feature = "cqrs-chronos")]
+    #[cfg(feature = "cqrs-allsource")]
     pub fn new() -> Self {
         Self {
-            backend: chronos::EventStoreBackend::in_memory(),
-            subscribers: chronos::SubscriberRegistry::new(),
+            backend: allsource::EventStoreBackend::in_memory(),
+            subscribers: allsource::SubscriberRegistry::new(),
         }
     }
 
-    #[cfg(feature = "cqrs-chronos")]
-    pub async fn with_backend(config: ChronosConfig) -> Result<Self, String> {
+    #[cfg(feature = "cqrs-allsource")]
+    pub async fn with_backend(config: AllSourceConfig) -> Result<Self, String> {
         Ok(Self {
-            backend: chronos::EventStoreBackend::from_config(config).await?,
-            subscribers: chronos::SubscriberRegistry::new(),
+            backend: allsource::EventStoreBackend::from_config(config).await?,
+            subscribers: allsource::SubscriberRegistry::new(),
         })
     }
 }
@@ -623,20 +623,20 @@ impl CommandBus {
 }
 ```
 
-**With Chronos**:
+**With AllSource**:
 ```rust
-#[cfg(not(feature = "cqrs-chronos"))]
+#[cfg(not(feature = "cqrs-allsource"))]
 pub struct CommandBus {
     handlers_count: usize,
 }
 
-#[cfg(feature = "cqrs-chronos")]
+#[cfg(feature = "cqrs-allsource")]
 pub struct CommandBus {
-    router: chronos::CommandRouter,
+    router: allsource::CommandRouter,
 }
 
 impl CommandBus {
-    #[cfg(feature = "cqrs-chronos")]
+    #[cfg(feature = "cqrs-allsource")]
     pub async fn dispatch<C: Send + Sync>(&self, cmd: C) -> Result<Vec<Event>, ValidationError> {
         self.router.route(cmd).await
     }
@@ -659,7 +659,7 @@ pub trait Projection: Send + Sync {
 }
 ```
 
-**With Chronos**:
+**With AllSource**:
 ```rust
 // Keep existing trait
 pub trait Projection: Send + Sync {
@@ -667,21 +667,21 @@ pub trait Projection: Send + Sync {
     fn apply(&mut self, event: &Self::Event);
 }
 
-// Add registry (only with Chronos)
-#[cfg(feature = "cqrs-chronos")]
+// Add registry (only with AllSource)
+#[cfg(feature = "cqrs-allsource")]
 pub struct ProjectionRegistry {
     projections: HashMap<String, ProjectionHandle>,
-    consistency_manager: chronos::ConsistencyManager,
+    consistency_manager: allsource::ConsistencyManager,
 }
 
-#[cfg(feature = "cqrs-chronos")]
+#[cfg(feature = "cqrs-allsource")]
 impl ProjectionRegistry {
     pub async fn apply_event<E: Event>(&self, event: &E) -> Result<(), String> {
-        // Chronos applies to all registered projections
+        // AllSource applies to all registered projections
     }
 
     pub async fn rebuild_all<E: Event>(&self, store: &EventStore<E>) -> Result<(), String> {
-        // Chronos replays all events to all projections
+        // AllSource replays all events to all projections
     }
 
     pub async fn list_projections(&self) -> Vec<ProjectionInfo> {
@@ -698,10 +698,10 @@ impl ProjectionRegistry {
 
 #### **Point 4: Event Versioning**
 
-**With Chronos**:
+**With AllSource**:
 ```rust
-#[cfg(feature = "cqrs-chronos")]
-pub use chronos::versioning::{EventUpcast, VersionedEvent};
+#[cfg(feature = "cqrs-allsource")]
+pub use allsource::versioning::{EventUpcast, VersionedEvent};
 
 // Macro generates versioning code automatically
 #[event]
@@ -722,10 +722,10 @@ struct UserCreated {
 
 #### **Point 5: Saga Orchestration**
 
-**With Chronos**:
+**With AllSource**:
 ```rust
-#[cfg(feature = "cqrs-chronos")]
-pub use chronos::saga::{SagaOrchestrator, SagaStep};
+#[cfg(feature = "cqrs-allsource")]
+pub use allsource::saga::{SagaOrchestrator, SagaStep};
 
 // Macro generates orchestration code
 #[saga]
@@ -768,14 +768,14 @@ async fn debit_account(saga: &TransferMoneySaga) -> Result<DebitEvent, Transacti
 | 06_cqrs_queries.rs | 301 | +150 (consistency, registry) | 2 days |
 | 06_cqrs_integration.rs | 340 | +150 (distributed, sagas) | 2 days |
 | 06_cqrs_property.rs | 273 | +150 (new invariants) | 2 days |
-| **New test suites** | 0 | +300 (Chronos-specific) | 3 days |
+| **New test suites** | 0 | +300 (AllSource-specific) | 3 days |
 | **Total** | 1,291 | +1,000 | **13 days** |
 
 ---
 
 ## 7. Trade-off Analysis
 
-### 7.1 Benefits of Chronos Integration
+### 7.1 Benefits of AllSource Integration
 
 | Benefit | Impact | Evidence |
 |---------|--------|----------|
@@ -786,9 +786,9 @@ async fn debit_account(saga: &TransferMoneySaga) -> Result<DebitEvent, Transacti
 | **Event versioning** | High | 95% reduction in migration code |
 | **Saga orchestration** | Medium | 70% reduction in saga code |
 | **Performance** | High | 469K events/sec, 11.9μs p99 query |
-| **Battle-tested** | Medium | 242 tests in Chronos, Clean Architecture |
+| **Battle-tested** | Medium | 242 tests in AllSource, Clean Architecture |
 
-### 7.2 Costs of Chronos Integration
+### 7.2 Costs of AllSource Integration
 
 | Cost | Impact | Mitigation |
 |------|--------|-----------|
@@ -796,26 +796,26 @@ async fn debit_account(saga: &TransferMoneySaga) -> Result<DebitEvent, Transacti
 | **New dependency** | Medium | Tight version pinning |
 | **Learning curve** | Low | Wrapper maintains AllFrame API |
 | **Complexity increase** | Low | Only when opting in |
-| **Version lock-in** | Medium | Wrap Chronos types, maintain abstraction |
+| **Version lock-in** | Medium | Wrap AllSource types, maintain abstraction |
 | **Development time** | Medium | 5 weeks for full integration |
 
 ### 7.3 Risk Assessment
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|-----------|
-| Chronos breaking changes | Medium | High | Version pinning, wrapper layer |
+| AllSource breaking changes | Medium | High | Version pinning, wrapper layer |
 | Performance regression | Low | Medium | Benchmarks for each phase |
 | API compatibility break | Low | High | Feature flags, deprecation period |
 | Test complexity explosion | Medium | Medium | Parameterized tests |
-| Chronos abandonment | Low | High | Fork readiness, abstraction layer |
+| AllSource abandonment | Low | High | Fork readiness, abstraction layer |
 
 ---
 
 ## 8. Decision Matrix
 
-### 8.1 When to Use Chronos
+### 8.1 When to Use AllSource
 
-**✅ USE CHRONOS IF**:
+**✅ USE ALLSOURCE IF**:
 - Production deployment needed (persistent storage)
 - 15+ commands (validation boilerplate significant)
 - 3+ projections (consistency becomes complex)
@@ -824,13 +824,13 @@ async fn debit_account(saga: &TransferMoneySaga) -> Result<DebitEvent, Transacti
 - High performance required (100K+ events/sec)
 - Distributed system (multi-node)
 
-**❌ DON'T USE CHRONOS IF**:
+**❌ DON'T USE ALLSOURCE IF**:
 - Prototype/MVP phase
 - Minimal binary size required (<5MB)
 - Single aggregate, simple commands only
 - No schema evolution planned
 - Custom storage backend essential
-- Rust-only requirement (Chronos uses Go, Elixir)
+- Rust-only requirement (AllSource uses Go, Elixir)
 
 ### 8.2 Recommended Approach
 
@@ -840,7 +840,7 @@ async fn debit_account(saga: &TransferMoneySaga) -> Result<DebitEvent, Transacti
 cargo build --no-default-features --features di,router,cqrs
 
 # Small apps - validation + simple storage
-cargo build --features cqrs-chronos,cqrs-sqlite
+cargo build --features cqrs-allsource,cqrs-sqlite
 
 # Production - full power
 cargo build --features cqrs-postgres,cqrs-validation,cqrs-sagas
@@ -850,8 +850,8 @@ cargo build --all-features
 ```
 
 This allows:
-- MVP users: Simple implementation, no Chronos
-- Production users: Opt-in to Chronos features
+- MVP users: Simple implementation, no AllSource
+- Production users: Opt-in to AllSource features
 - Enterprise users: Full power with all features
 
 ---
@@ -897,7 +897,7 @@ let cmd = CreateUserCommand {
 let events = handle_create_user(cmd).await?;
 ```
 
-**After** (with Chronos):
+**After** (with AllSource):
 ```rust
 #[command]
 struct CreateUserCommand {
@@ -978,7 +978,7 @@ for event in events {
 let user = projection.users.get("123");
 ```
 
-**After** (with Chronos):
+**After** (with AllSource):
 ```rust
 #[projection(indexed_by = "id")]
 #[derive(serde::Serialize)]
@@ -986,7 +986,7 @@ struct UserByIdProjection {
     users: HashMap<String, User>,
 }
 
-// Chronos auto-implements Projection trait
+// AllSource auto-implements Projection trait
 // Auto-generates apply() logic from event structure
 // Auto-creates indices
 // Auto-implements rebuild logic
@@ -1052,7 +1052,7 @@ for serialized in events {
 }
 ```
 
-**After** (with Chronos):
+**After** (with AllSource):
 ```rust
 #[event]
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -1066,7 +1066,7 @@ struct UserCreated {
 
 // During replay - automatic upcasting!
 for serialized in events {
-    let event: UserCreated = chronos::deserialize_with_upcast(serialized)?;
+    let event: UserCreated = allsource::deserialize_with_upcast(serialized)?;
     aggregate.apply_event(&event);
 }
 ```
@@ -1096,7 +1096,7 @@ for serialized in events {
 
 ---
 
-### 10.2 Option B: Full Chronos Integration (Mandatory)
+### 10.2 Option B: Full AllSource Integration (Mandatory)
 
 **Pros**:
 - Maximum feature richness
@@ -1117,7 +1117,7 @@ for serialized in events {
 
 **Pros**:
 - Simple for MVPs (cqrs flag only)
-- Opt-in to complexity (cqrs-chronos)
+- Opt-in to complexity (cqrs-allsource)
 - Gradual migration path
 - No breaking changes
 
@@ -1134,28 +1134,28 @@ for serialized in events {
 
 ### 11.1 Summary
 
-AllFrame's CQRS implementation is a solid MVP with excellent test coverage but intentional placeholders for production features. Chronos would eliminate 62% of application boilerplate and provide production-grade event sourcing.
+AllFrame's CQRS implementation is a solid MVP with excellent test coverage but intentional placeholders for production features. AllSource would eliminate 62% of application boilerplate and provide production-grade event sourcing.
 
 **Key Numbers**:
 - **Current CQRS code**: 398 lines (runtime + macros)
 - **Application boilerplate**: 1,220 lines (typical app)
-- **With Chronos**: 450 lines (63% reduction)
-- **Missing features**: 12 critical gaps that Chronos fills
+- **With AllSource**: 450 lines (63% reduction)
+- **Missing features**: 12 critical gaps that AllSource fills
 
 ### 11.2 Recommended Decision
 
-**✅ ADOPT CHRONOS with HYBRID APPROACH**
+**✅ ADOPT ALLSOURCE with HYBRID APPROACH**
 
 **Implementation**:
 1. Make CQRS a feature flag (already done)
-2. Add `cqrs-chronos` feature flag (optional)
+2. Add `cqrs-allsource` feature flag (optional)
 3. Add persistence feature flags (`cqrs-postgres`, `cqrs-sqlite`)
 4. Maintain current simple implementation for `cqrs` flag
-5. Use Chronos when `cqrs-chronos` is enabled
+5. Use AllSource when `cqrs-allsource` is enabled
 
 **Benefits**:
 - MVP users: Zero impact, keep simple implementation
-- Production users: Opt-in to Chronos power
+- Production users: Opt-in to AllSource power
 - Gradual migration: No breaking changes
 - Best of both worlds: Simplicity OR power
 
@@ -1164,7 +1164,7 @@ AllFrame's CQRS implementation is a solid MVP with excellent test coverage but i
 **Immediate**:
 1. ✅ Create CQRS feature flag (done)
 2. Add feature flag documentation
-3. Create Chronos integration spike (1 week)
+3. Create AllSource integration spike (1 week)
 
 **Short-term** (Phase 1-2, Weeks 1-2):
 1. EventStore backend abstraction
@@ -1184,9 +1184,9 @@ AllFrame's CQRS implementation is a solid MVP with excellent test coverage but i
 
 ---
 
-## Appendix A: Chronos Links
+## Appendix A: AllSource Links
 
-- **Repository**: https://github.com/all-source-os/chronos-monorepo
+- **Repository**: https://github.com/all-source-os/allsource-monorepo
 - **Rust Core**: Performance-critical event storage
 - **Go Control Plane**: Enterprise features (JWT, RBAC)
 - **Elixir Query Service**: Fault-tolerant queries (GenServer/OTP)
@@ -1207,7 +1207,7 @@ AllFrame's CQRS implementation is a solid MVP with excellent test coverage but i
 
 ---
 
-**Decision Required**: Should we proceed with Chronos integration using the hybrid approach?
+**Decision Required**: Should we proceed with AllSource integration using the hybrid approach?
 
 **Estimated ROI**:
 - Development time: 5 weeks

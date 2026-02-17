@@ -35,7 +35,10 @@
       "Bash(printf:*)",
       "Bash(jq:*)",
       "Bash(cargo doc:*)",
-      "Bash(./scripts/check_size.sh:*)"
+      "Bash(./scripts/check_size.sh:*)",
+      "Bash(gh release view:*)",
+      "Bash(gh api:*)",
+      "Bash(br:*)"
     ],
     "deny": [],
     "ask": []

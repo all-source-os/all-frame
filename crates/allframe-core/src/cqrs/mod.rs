@@ -133,3 +133,11 @@ pub use saga_orchestrator::{SagaDefinition, SagaMetadata, SagaOrchestrator, Saga
 pub use saga::{CompensationResult, MacroSagaOrchestrator, Saga, SagaStep as MacroSagaStep, SagaContext, SagaError, StepExecutionResult, StepOutput};
 pub use allsource_backend::*;
 pub use memory_backend::*;
+
+// Re-export AllSource v0.10.3 services behind the cqrs-allsource feature
+#[cfg(feature = "cqrs-allsource")]
+pub use allsource_core::ExactlyOnceRegistry;
+#[cfg(feature = "cqrs-allsource")]
+pub use allsource_core::SchemaRegistry;
+#[cfg(feature = "cqrs-allsource")]
+pub use allsource_core::PipelineManager;

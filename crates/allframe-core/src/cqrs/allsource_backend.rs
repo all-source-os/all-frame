@@ -62,6 +62,21 @@ impl<E: Event> AllSourceBackend<E> {
             wal_path: Some(format!("{}/wal", data_path)),
         })
     }
+
+    /// Access the ExactlyOnceRegistry for idempotency/dedup of event processing
+    pub fn exactly_once(&self) -> Arc<allsource_core::ExactlyOnceRegistry> {
+        self.store.exactly_once()
+    }
+
+    /// Access the SchemaRegistry for JSON Schema validation of events
+    pub fn schema_registry(&self) -> Arc<allsource_core::SchemaRegistry> {
+        self.store.schema_registry()
+    }
+
+    /// Access the PipelineManager for stream processing pipelines
+    pub fn pipeline_manager(&self) -> Arc<allsource_core::PipelineManager> {
+        self.store.pipeline_manager()
+    }
 }
 
 #[cfg(feature = "cqrs-allsource")]

@@ -38,7 +38,7 @@ otel-otlp = [
 ]
 
 # Router features
-router = ["toml"]
+router = []
 router-graphql = ["router", "async-graphql", "async-graphql-parser"]
 router-grpc = [
     "router",
@@ -167,7 +167,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-rustls = { version = "0.26", optional = true }
 tokio-stream = { version = "0.1", optional = true }
-toml = { version = "0.8", optional = true }
+toml = { version = "0.8" }
 
 # gRPC/Protobuf support (production-ready)
 tonic = { version = "0.14", optional = true, features = ["transport", "codegen"] }

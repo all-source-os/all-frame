@@ -38,7 +38,8 @@
       "Bash(./scripts/check_size.sh:*)",
       "Bash(gh release view:*)",
       "Bash(gh api:*)",
-      "Bash(br:*)"
+      "Bash(br:*)",
+      "Bash(cargo sort:*)"
     ],
     "deny": [],
     "ask": []

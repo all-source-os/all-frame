@@ -20,7 +20,8 @@
 //! - **Multi-Protocol Support** - REST, GraphQL, and gRPC from one codebase
 //! - **Compile-time DI** - Dependency injection resolved at compile time
 //! - **Auto OpenAPI 3.1** - API documentation generated automatically
-//! - **CQRS + Event Sourcing** - Production-ready infrastructure (85% less boilerplate)
+//! - **CQRS + Event Sourcing** - Production-ready infrastructure (85% less
+//!   boilerplate)
 //! - **Beautiful API Docs** - Scalar UI, GraphiQL, gRPC Explorer built-in
 //! - **Zero External Dependencies** - Only Tokio, Hyper, and std
 //!

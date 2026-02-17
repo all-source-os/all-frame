@@ -244,7 +244,7 @@ impl<E: Event, B: EventStoreBackend<E>> Clone for ProjectionRegistry<E, B> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cqrs::InMemoryBackend;
+    use crate::cqrs::{EventTypeName, InMemoryBackend};
 
     #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     enum TestEvent {

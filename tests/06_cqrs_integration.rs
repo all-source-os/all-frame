@@ -14,10 +14,10 @@ use std::collections::HashMap;
 
 #[allow(dead_code)]
 use allframe_core::cqrs::{
-    command, command_handler, query, query_handler, Aggregate, Event, EventStore, EventTypeName,
-    Projection,
-    SagaDefinition, SagaOrchestrator, SagaStep, Snapshot,
+    Aggregate, Event, EventStore, EventTypeName, OrchestratorSagaStep, Projection, SagaDefinition,
+    SagaOrchestrator, Snapshot,
 };
+use allframe_macros::{command, command_handler, query, query_handler};
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 enum UserEvent {
@@ -315,7 +315,7 @@ async fn test_saga_coordination() {
     }
 
     #[async_trait::async_trait]
-    impl SagaStep<UserEvent> for DebitStep {
+    impl OrchestratorSagaStep<UserEvent> for DebitStep {
         async fn execute(&self) -> Result<Vec<UserEvent>, String> {
             // Simulate debiting account
             Ok(vec![UserEvent::Created {
@@ -341,7 +341,7 @@ async fn test_saga_coordination() {
     }
 
     #[async_trait::async_trait]
-    impl SagaStep<UserEvent> for CreditStep {
+    impl OrchestratorSagaStep<UserEvent> for CreditStep {
         async fn execute(&self) -> Result<Vec<UserEvent>, String> {
             // Simulate crediting account
             Ok(vec![UserEvent::Created {

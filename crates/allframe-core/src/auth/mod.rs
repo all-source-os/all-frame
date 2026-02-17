@@ -70,7 +70,6 @@ pub use jwt::{JwtAlgorithm, JwtConfig, JwtValidator};
 
 #[cfg(feature = "auth-axum")]
 pub use self::axum::{AuthLayer, AuthenticatedUser};
-
 #[cfg(feature = "auth-tonic")]
 pub use self::tonic::AuthInterceptor;
 
@@ -288,10 +287,7 @@ mod tests {
             AuthError::MissingToken.to_string(),
             "missing authentication token"
         );
-        assert_eq!(
-            AuthError::TokenExpired.to_string(),
-            "token has expired"
-        );
+        assert_eq!(AuthError::TokenExpired.to_string(), "token has expired");
         assert_eq!(
             AuthError::InvalidToken("bad".into()).to_string(),
             "invalid token: bad"

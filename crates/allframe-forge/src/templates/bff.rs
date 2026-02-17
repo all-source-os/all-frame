@@ -285,7 +285,11 @@ impl Config {{
 "#,
         port = bff.server.http_port,
         health_port = bff.server.health_port,
-        default_backend_url = bff.backends.first().map(|b| b.base_url.as_str()).unwrap_or("http://localhost:8080"),
+        default_backend_url = bff
+            .backends
+            .first()
+            .map(|b| b.base_url.as_str())
+            .unwrap_or("http://localhost:8080"),
         default_timeout = bff.backends.first().map(|b| b.timeout_ms).unwrap_or(5000),
         cache_ttl = bff.cache.public_ttl_secs,
     )
@@ -1273,7 +1277,11 @@ MIT
         display_name = bff.display_name,
         name = name,
         frontend_type = bff.frontend_type,
-        graphql_feature = if bff.graphql_enabled { "\n- **GraphQL**: Full GraphQL API with GraphiQL playground" } else { "" },
+        graphql_feature = if bff.graphql_enabled {
+            "\n- **GraphQL**: Full GraphQL API with GraphiQL playground"
+        } else {
+            ""
+        },
         graphql_section = graphql_section,
     )
 }

@@ -27,8 +27,10 @@ use std::{fs, path::Path};
 
 use anyhow::Result;
 
-use crate::config::ProjectConfig;
-use crate::templates::{self, acl, bff, consumer, gateway, producer, saga, scheduled, websocket};
+use crate::{
+    config::ProjectConfig,
+    templates::{self, acl, bff, consumer, gateway, producer, saga, scheduled, websocket},
+};
 
 /// Create the Clean Architecture directory structure
 ///
@@ -226,10 +228,7 @@ pub fn create_gateway_structure(project_path: &Path) -> Result<()> {
 /// Returns an error if any file write operation fails
 pub fn generate_gateway_files(project_path: &Path, config: &ProjectConfig) -> Result<()> {
     // Root files
-    fs::write(
-        project_path.join("Cargo.toml"),
-        gateway::cargo_toml(config),
-    )?;
+    fs::write(project_path.join("Cargo.toml"), gateway::cargo_toml(config))?;
     fs::write(project_path.join("build.rs"), gateway::build_rs(config))?;
     fs::write(project_path.join("src/main.rs"), gateway::main_rs(config))?;
     fs::write(project_path.join(".gitignore"), templates::gitignore())?;
@@ -244,7 +243,10 @@ pub fn generate_gateway_files(project_path: &Path, config: &ProjectConfig) -> Re
     )?;
 
     // Configuration files
-    fs::write(project_path.join("src/config.rs"), gateway::config_rs(config))?;
+    fs::write(
+        project_path.join("src/config.rs"),
+        gateway::config_rs(config),
+    )?;
     fs::write(project_path.join("src/error.rs"), gateway::error_rs(config))?;
 
     // Domain layer
@@ -354,7 +356,8 @@ pub fn create_consumer_structure(project_path: &Path) -> Result<()> {
 ///
 /// ## Application Layer
 /// - `src/application/mod.rs` - Application module exports
-/// - `src/application/consumer.rs` - Consumer orchestration with retry/idempotency
+/// - `src/application/consumer.rs` - Consumer orchestration with
+///   retry/idempotency
 ///
 /// ## Infrastructure Layer
 /// - `src/infrastructure/mod.rs` - Infrastructure module exports
@@ -381,14 +384,20 @@ pub fn generate_consumer_files(project_path: &Path, config: &ProjectConfig) -> R
     fs::write(project_path.join("src/main.rs"), consumer::main_rs(config))?;
     fs::write(project_path.join(".gitignore"), templates::gitignore())?;
     fs::write(project_path.join("README.md"), consumer::readme(config))?;
-    fs::write(project_path.join("Dockerfile"), consumer::dockerfile(config))?;
+    fs::write(
+        project_path.join("Dockerfile"),
+        consumer::dockerfile(config),
+    )?;
 
     // Configuration files
     fs::write(
         project_path.join("src/config.rs"),
         consumer::config_rs(config),
     )?;
-    fs::write(project_path.join("src/error.rs"), consumer::error_rs(config))?;
+    fs::write(
+        project_path.join("src/error.rs"),
+        consumer::error_rs(config),
+    )?;
 
     // Domain layer
     fs::write(
@@ -441,7 +450,8 @@ pub fn generate_consumer_files(project_path: &Path, config: &ProjectConfig) -> R
 /// - `src/` - Source code root
 /// - `src/domain/` - Domain layer (entities, events, repository)
 /// - `src/application/` - Application layer (service, outbox)
-/// - `src/infrastructure/` - Infrastructure layer (repository, outbox, publisher)
+/// - `src/infrastructure/` - Infrastructure layer (repository, outbox,
+///   publisher)
 /// - `src/presentation/` - Presentation layer (HTTP handlers)
 /// - `tests/` - Integration tests
 ///
@@ -473,7 +483,8 @@ pub fn create_producer_structure(project_path: &Path) -> Result<()> {
 ///
 /// ## Root Files
 /// - `Cargo.toml` - Project manifest with producer dependencies
-/// - `src/main.rs` - Application entry point with API server and outbox processor
+/// - `src/main.rs` - Application entry point with API server and outbox
+///   processor
 /// - `README.md` - Project documentation
 /// - `Dockerfile` - Container build file
 /// - `.gitignore` - Git ignore rules
@@ -520,14 +531,20 @@ pub fn generate_producer_files(project_path: &Path, config: &ProjectConfig) -> R
     fs::write(project_path.join("src/main.rs"), producer::main_rs(config))?;
     fs::write(project_path.join(".gitignore"), templates::gitignore())?;
     fs::write(project_path.join("README.md"), producer::readme(config))?;
-    fs::write(project_path.join("Dockerfile"), producer::dockerfile(config))?;
+    fs::write(
+        project_path.join("Dockerfile"),
+        producer::dockerfile(config),
+    )?;
 
     // Configuration files
     fs::write(
         project_path.join("src/config.rs"),
         producer::config_rs(config),
     )?;
-    fs::write(project_path.join("src/error.rs"), producer::error_rs(config))?;
+    fs::write(
+        project_path.join("src/error.rs"),
+        producer::error_rs(config),
+    )?;
 
     // Domain layer
     fs::write(
@@ -822,14 +839,20 @@ pub fn generate_scheduled_files(project_path: &Path, config: &ProjectConfig) -> 
     fs::write(project_path.join("src/main.rs"), scheduled::main_rs(config))?;
     fs::write(project_path.join(".gitignore"), templates::gitignore())?;
     fs::write(project_path.join("README.md"), scheduled::readme(config))?;
-    fs::write(project_path.join("Dockerfile"), scheduled::dockerfile(config))?;
+    fs::write(
+        project_path.join("Dockerfile"),
+        scheduled::dockerfile(config),
+    )?;
 
     // Configuration files
     fs::write(
         project_path.join("src/config.rs"),
         scheduled::config_rs(config),
     )?;
-    fs::write(project_path.join("src/error.rs"), scheduled::error_rs(config))?;
+    fs::write(
+        project_path.join("src/error.rs"),
+        scheduled::error_rs(config),
+    )?;
 
     // Domain layer
     fs::write(
@@ -943,14 +966,20 @@ pub fn generate_websocket_files(project_path: &Path, config: &ProjectConfig) -> 
     fs::write(project_path.join("src/main.rs"), websocket::main_rs(config))?;
     fs::write(project_path.join(".gitignore"), templates::gitignore())?;
     fs::write(project_path.join("README.md"), websocket::readme(config))?;
-    fs::write(project_path.join("Dockerfile"), websocket::dockerfile(config))?;
+    fs::write(
+        project_path.join("Dockerfile"),
+        websocket::dockerfile(config),
+    )?;
 
     // Configuration files
     fs::write(
         project_path.join("src/config.rs"),
         websocket::config_rs(config),
     )?;
-    fs::write(project_path.join("src/error.rs"), websocket::error_rs(config))?;
+    fs::write(
+        project_path.join("src/error.rs"),
+        websocket::error_rs(config),
+    )?;
 
     // Domain layer
     fs::write(
@@ -1085,9 +1114,11 @@ pub fn generate_saga_files(project_path: &Path, config: &ProjectConfig) -> Resul
 ///
 /// Creates all necessary directories for an ACL service:
 /// - `src/` - Source code root
-/// - `src/domain/` - Domain layer (legacy models, modern models, transformer traits)
+/// - `src/domain/` - Domain layer (legacy models, modern models, transformer
+///   traits)
 /// - `src/application/` - Application layer (translator service)
-/// - `src/infrastructure/` - Infrastructure layer (legacy client, health checks)
+/// - `src/infrastructure/` - Infrastructure layer (legacy client, health
+///   checks)
 /// - `src/presentation/` - Presentation layer (HTTP handlers)
 /// - `tests/` - Integration tests
 ///
@@ -1128,7 +1159,8 @@ pub fn create_acl_structure(project_path: &Path) -> Result<()> {
 /// - `src/domain/mod.rs` - Domain module exports
 /// - `src/domain/legacy.rs` - Legacy system models
 /// - `src/domain/modern.rs` - Modern domain models
-/// - `src/domain/transformer.rs` - Transformer trait for bidirectional conversion
+/// - `src/domain/transformer.rs` - Transformer trait for bidirectional
+///   conversion
 ///
 /// ## Application Layer
 /// - `src/application/mod.rs` - Application module exports

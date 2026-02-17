@@ -1,8 +1,8 @@
 //! Saga pattern implementation with macro support
 //!
 //! This module provides the trait definitions and types used by the saga macros
-//! in allframe-macros. It provides a higher-level, macro-driven approach compared
-//! to the lower-level saga_orchestrator.
+//! in allframe-macros. It provides a higher-level, macro-driven approach
+//! compared to the lower-level saga_orchestrator.
 
 #![cfg(feature = "cqrs")]
 
@@ -97,12 +97,12 @@ pub enum StepExecutionResult {
     /// Step completed successfully
     Success {
         /// Optional output from the step
-        output: Option<serde_json::Value>
+        output: Option<serde_json::Value>,
     },
     /// Step failed
     Failure {
         /// Error message describing the failure
-        error: String
+        error: String,
     },
 }
 
@@ -114,7 +114,9 @@ impl StepExecutionResult {
 
     /// Create a success result with output
     pub fn success_with_output(output: serde_json::Value) -> Self {
-        Self::Success { output: Some(output) }
+        Self::Success {
+            output: Some(output),
+        }
     }
 
     /// Create a failure result
@@ -152,7 +154,7 @@ pub enum CompensationResult {
     /// Compensation failed
     Failure {
         /// Error message describing the failure
-        error: String
+        error: String,
     },
     /// No compensation needed
     NotNeeded,
@@ -197,40 +199,40 @@ pub enum SagaError {
     /// Step output not found
     StepOutputNotFound {
         /// Name of the step whose output was not found
-        step_name: String
+        step_name: String,
     },
     /// Failed to parse step output
     StepOutputParse {
         /// Name of the step whose output failed to parse
         step_name: String,
         /// Parse error message
-        error: String
+        error: String,
     },
     /// Step execution failed
     StepExecutionFailed {
         /// Name of the step that failed
         step_name: String,
         /// Execution error message
-        error: String
+        error: String,
     },
     /// Compensation failed
     CompensationFailed {
         /// Name of the step whose compensation failed
         step_name: String,
         /// Compensation error message
-        error: String
+        error: String,
     },
     /// Saga not found
     SagaNotFound {
         /// ID of the saga that was not found
-        saga_id: String
+        saga_id: String,
     },
     /// Invalid saga state
     InvalidState {
         /// ID of the saga with invalid state
         saga_id: String,
         /// Description of the invalid state
-        message: String
+        message: String,
     },
 }
 
@@ -241,7 +243,11 @@ impl std::fmt::Display for SagaError {
                 write!(f, "Step output not found for step: {}", step_name)
             }
             SagaError::StepOutputParse { step_name, error } => {
-                write!(f, "Failed to parse output for step {}: {}", step_name, error)
+                write!(
+                    f,
+                    "Failed to parse output for step {}: {}",
+                    step_name, error
+                )
             }
             SagaError::StepExecutionFailed { step_name, error } => {
                 write!(f, "Step {} execution failed: {}", step_name, error)
@@ -270,6 +276,12 @@ impl<E> From<SagaError> for Result<E, SagaError> {
 /// Saga orchestrator for executing macro-generated sagas
 pub struct MacroSagaOrchestrator {
     // Future: Add persistence, monitoring, etc.
+}
+
+impl Default for MacroSagaOrchestrator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MacroSagaOrchestrator {

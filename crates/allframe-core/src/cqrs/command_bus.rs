@@ -220,6 +220,7 @@ impl<E: Event> Clone for CommandBus<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cqrs::EventTypeName;
 
     #[derive(Clone, serde::Serialize, serde::Deserialize)]
     enum TestEvent {

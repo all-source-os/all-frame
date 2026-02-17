@@ -86,7 +86,8 @@
 //!
 //! ## Feature Flags
 //!
-//! AllFrame uses feature flags to minimize binary size. Only enable what you need:
+//! AllFrame uses feature flags to minimize binary size. Only enable what you
+//! need:
 //!
 //! | Feature | Description | Default |
 //! |---------|-------------|---------|
@@ -119,8 +120,10 @@
 //! - [`shutdown`] - Graceful shutdown utilities
 //! - [`cache`] - Caching infrastructure
 //! - `cqrs` - CQRS + Event Sourcing (requires `cqrs` feature)
-//! - `resilience` - Retry, Circuit Breaker, Rate Limiting (requires `resilience` feature)
-//! - `security` - Safe logging and credential obfuscation (requires `security` feature)
+//! - `resilience` - Retry, Circuit Breaker, Rate Limiting (requires
+//!   `resilience` feature)
+//! - `security` - Safe logging and credential obfuscation (requires `security`
+//!   feature)
 //! - `di` - Compile-time dependency injection (requires `di` feature)
 //! - `otel` - OpenTelemetry instrumentation (requires `otel` feature)
 //! - `health` - Health check infrastructure (requires `health` feature)
@@ -148,8 +151,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 /// Domain layer contracts and business logic primitives.
-/// This module provides the building blocks for Clean Architecture domain layers,
-/// including resilience contracts, business rules, and domain models.
+/// This module provides the building blocks for Clean Architecture domain
+/// layers, including resilience contracts, business rules, and domain models.
 pub mod domain;
 
 /// Application layer orchestration and use case implementations.
@@ -160,8 +163,9 @@ pub mod application;
 
 /// Clean Architecture enforcement with compile-time dependency injection.
 ///
-/// The `arch` module provides traits and utilities for enforcing Clean Architecture
-/// patterns in your application. Use the `#[inject]` macro to wire up dependencies.
+/// The `arch` module provides traits and utilities for enforcing Clean
+/// Architecture patterns in your application. Use the `#[inject]` macro to wire
+/// up dependencies.
 ///
 /// # Example
 ///
@@ -182,8 +186,10 @@ pub mod arch;
 /// This module provides production-ready CQRS primitives:
 /// - [`cqrs::CommandBus`] - Type-safe command dispatch (90% less code)
 /// - [`cqrs::EventStore`] - Event storage with replay capability
-/// - [`cqrs::ProjectionRegistry`] - Automatic projection updates (90% less code)
-/// - [`cqrs::SagaOrchestrator`] - Distributed transaction handling (75% less code)
+/// - [`cqrs::ProjectionRegistry`] - Automatic projection updates (90% less
+///   code)
+/// - [`cqrs::SagaOrchestrator`] - Distributed transaction handling (75% less
+///   code)
 ///
 /// # Example
 ///
@@ -223,7 +229,8 @@ pub mod cache;
 
 /// Compile-time dependency injection infrastructure.
 ///
-/// Build dependency graphs that are resolved at compile time for zero runtime overhead.
+/// Build dependency graphs that are resolved at compile time for zero runtime
+/// overhead.
 ///
 /// # Example
 ///

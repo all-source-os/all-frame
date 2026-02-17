@@ -1,12 +1,16 @@
 //! Forge MCP Server implementation
 
-use std::io::{stdin, stdout, BufRead, Write};
-use std::path::PathBuf;
+use std::{
+    io::{stdin, stdout, BufRead, Write},
+    path::PathBuf,
+};
 
 use serde_json::{json, Value};
 
-use super::analyzer::{ProjectAnalyzer, ProjectStructure};
-use super::generator::{CodeGenerator, EntityRequest, ServiceRequest, HandlerRequest};
+use super::{
+    analyzer::{ProjectAnalyzer, ProjectStructure},
+    generator::{CodeGenerator, EntityRequest, HandlerRequest, ServiceRequest},
+};
 use crate::McpTool;
 
 /// MCP Resource for project context
@@ -62,7 +66,8 @@ impl ForgeMcpServer {
         vec![
             McpTool::new(
                 "analyze_project",
-                "Analyze the project structure and return information about entities, services, and handlers",
+                "Analyze the project structure and return information about entities, services, \
+                 and handlers",
                 r#"{
                     "type": "object",
                     "properties": {},
@@ -322,12 +327,8 @@ impl ForgeMcpServer {
             "allframe://project/handlers" => {
                 Ok(serde_json::to_value(&structure.handlers).map_err(|e| e.to_string())?)
             }
-            "sagas://registry" => {
-                self.read_saga_registry()
-            }
-            uri if uri.starts_with("saga://") => {
-                self.read_saga_resource(uri)
-            }
+            "sagas://registry" => self.read_saga_registry(),
+            uri if uri.starts_with("saga://") => self.read_saga_resource(uri),
             _ => Err(format!("Unknown resource: {}", uri)),
         }
     }
@@ -381,7 +382,8 @@ impl ForgeMcpServer {
             }
 
             "read_file" => {
-                let path = args.get("path")
+                let path = args
+                    .get("path")
                     .and_then(|p| p.as_str())
                     .ok_or("Missing 'path' argument")?;
 
@@ -396,10 +398,12 @@ impl ForgeMcpServer {
             }
 
             "create_saga" => {
-                let saga_name = args.get("name")
+                let saga_name = args
+                    .get("name")
                     .and_then(|n| n.as_str())
                     .ok_or("Missing 'name' parameter")?;
-                let steps = args.get("steps")
+                let steps = args
+                    .get("steps")
                     .and_then(|s| s.as_array())
                     .ok_or("Missing or invalid 'steps' parameter")?
                     .iter()
@@ -411,27 +415,39 @@ impl ForgeMcpServer {
             }
 
             "add_saga_step" => {
-                let saga_name = args.get("saga_name")
+                let saga_name = args
+                    .get("saga_name")
                     .and_then(|n| n.as_str())
                     .ok_or("Missing 'saga_name' parameter")?;
-                let step_name = args.get("step_name")
+                let step_name = args
+                    .get("step_name")
                     .and_then(|n| n.as_str())
                     .ok_or("Missing 'step_name' parameter")?;
-                let position = args.get("position")
+                let position = args
+                    .get("position")
                     .and_then(|p| p.as_str())
                     .unwrap_or("last");
-                let timeout = args.get("timeout_seconds")
+                let timeout = args
+                    .get("timeout_seconds")
                     .and_then(|t| t.as_u64())
                     .unwrap_or(30);
-                let requires_compensation = args.get("requires_compensation")
+                let requires_compensation = args
+                    .get("requires_compensation")
                     .and_then(|c| c.as_bool())
                     .unwrap_or(true);
 
-                self.add_saga_step(saga_name, step_name, position, timeout, requires_compensation)
+                self.add_saga_step(
+                    saga_name,
+                    step_name,
+                    position,
+                    timeout,
+                    requires_compensation,
+                )
             }
 
             "analyze_saga" => {
-                let saga_name = args.get("saga_name")
+                let saga_name = args
+                    .get("saga_name")
                     .and_then(|n| n.as_str())
                     .ok_or("Missing 'saga_name' parameter")?;
 
@@ -447,7 +463,10 @@ impl ForgeMcpServer {
         let stdin = stdin();
         let mut stdout = stdout();
 
-        eprintln!("Forge MCP Server started for: {}", self.project_path.display());
+        eprintln!(
+            "Forge MCP Server started for: {}",
+            self.project_path.display()
+        );
         eprintln!("Tools: {}", self.list_tools().len());
         eprintln!("Resources: {}", self.list_resources().len());
         eprintln!("Listening on stdio...");
@@ -624,16 +643,21 @@ impl ForgeMcpServer {
 
         let steps_str = steps.join(",");
         let mut cmd = Command::new("allframe");
-        cmd.arg("saga").arg("new").arg(name)
-           .arg("--steps").arg(steps_str)
-           .current_dir(&self.project_path);
+        cmd.arg("saga")
+            .arg("new")
+            .arg(name)
+            .arg("--steps")
+            .arg(steps_str)
+            .current_dir(&self.project_path);
 
         // Add optional path parameter
         if let Some(path) = args.get("path").and_then(|p| p.as_str()) {
             cmd.arg("--path").arg(path);
         }
 
-        let output = cmd.output().map_err(|e| format!("Failed to run forge command: {}", e))?;
+        let output = cmd
+            .output()
+            .map_err(|e| format!("Failed to run forge command: {}", e))?;
 
         if output.status.success() {
             Ok(json!({
@@ -648,20 +672,34 @@ impl ForgeMcpServer {
     }
 
     /// Add a step to an existing saga
-    fn add_saga_step(&self, saga_name: &str, step_name: &str, position: &str, timeout: u64, requires_compensation: bool) -> Result<Value, String> {
+    fn add_saga_step(
+        &self,
+        saga_name: &str,
+        step_name: &str,
+        position: &str,
+        timeout: u64,
+        requires_compensation: bool,
+    ) -> Result<Value, String> {
         use std::process::Command;
 
         let mut cmd = Command::new("allframe");
-        cmd.arg("saga").arg("add-step").arg(saga_name).arg(step_name)
-           .arg("--position").arg(position)
-           .arg("--timeout").arg(timeout.to_string())
-           .current_dir(&self.project_path);
+        cmd.arg("saga")
+            .arg("add-step")
+            .arg(saga_name)
+            .arg(step_name)
+            .arg("--position")
+            .arg(position)
+            .arg("--timeout")
+            .arg(timeout.to_string())
+            .current_dir(&self.project_path);
 
         if !requires_compensation {
             cmd.arg("--requires-compensation").arg("false");
         }
 
-        let output = cmd.output().map_err(|e| format!("Failed to run forge command: {}", e))?;
+        let output = cmd
+            .output()
+            .map_err(|e| format!("Failed to run forge command: {}", e))?;
 
         if output.status.success() {
             Ok(json!({
@@ -685,10 +723,14 @@ impl ForgeMcpServer {
         use std::process::Command;
 
         let mut cmd = Command::new("allframe");
-        cmd.arg("saga").arg("validate").arg(saga_name)
-           .current_dir(&self.project_path);
+        cmd.arg("saga")
+            .arg("validate")
+            .arg(saga_name)
+            .current_dir(&self.project_path);
 
-        let output = cmd.output().map_err(|e| format!("Failed to run forge command: {}", e))?;
+        let output = cmd
+            .output()
+            .map_err(|e| format!("Failed to run forge command: {}", e))?;
 
         let success = output.status.success();
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -740,13 +782,17 @@ impl ForgeMcpServer {
     fn read_saga_resource(&self, uri: &str) -> Result<Value, String> {
         use std::fs;
 
-        // Parse URI like "saga://SagaName" or "saga://SagaName/steps" or "saga://SagaName/step/StepName"
+        // Parse URI like "saga://SagaName" or "saga://SagaName/steps" or
+        // "saga://SagaName/step/StepName"
         let path = uri.strip_prefix("saga://").ok_or("Invalid saga URI")?;
 
         let parts: Vec<&str> = path.split('/').collect();
         let saga_name = parts.get(0).ok_or("Missing saga name")?;
 
-        let saga_path = self.project_path.join("src/application/cqrs/sagas").join(saga_name);
+        let saga_path = self
+            .project_path
+            .join("src/application/cqrs/sagas")
+            .join(saga_name);
 
         match parts.len() {
             1 => {
@@ -776,7 +822,10 @@ impl ForgeMcpServer {
                 let step_file = saga_path.join(format!("{}.rs", step_name.to_lowercase()));
 
                 if !step_file.exists() {
-                    return Err(format!("Step '{}' not found in saga '{}'", step_name, saga_name));
+                    return Err(format!(
+                        "Step '{}' not found in saga '{}'",
+                        step_name, saga_name
+                    ));
                 }
 
                 let content = fs::read_to_string(&step_file)
@@ -789,7 +838,7 @@ impl ForgeMcpServer {
                     "content": content
                 }))
             }
-            _ => Err(format!("Invalid saga resource URI: {}", uri))
+            _ => Err(format!("Invalid saga resource URI: {}", uri)),
         }
     }
 

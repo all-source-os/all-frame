@@ -3,8 +3,9 @@
 //! This module defines the configuration structures used by AllFrame Ignite
 //! to generate different types of projects and archetypes.
 
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
+
+use serde::{Deserialize, Serialize};
 
 /// Project archetype - defines the type of service to generate
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -1080,9 +1081,18 @@ mod tests {
             "event-sourced".parse::<Archetype>().unwrap(),
             Archetype::EventSourced
         );
-        assert_eq!("cqrs".parse::<Archetype>().unwrap(), Archetype::EventSourced);
-        assert_eq!("consumer".parse::<Archetype>().unwrap(), Archetype::Consumer);
-        assert_eq!("producer".parse::<Archetype>().unwrap(), Archetype::Producer);
+        assert_eq!(
+            "cqrs".parse::<Archetype>().unwrap(),
+            Archetype::EventSourced
+        );
+        assert_eq!(
+            "consumer".parse::<Archetype>().unwrap(),
+            Archetype::Consumer
+        );
+        assert_eq!(
+            "producer".parse::<Archetype>().unwrap(),
+            Archetype::Producer
+        );
     }
 
     #[test]

@@ -1,25 +1,42 @@
 //! Observability for resilience operations.
 //!
-//! This module provides metrics collection, tracing instrumentation, and monitoring
-//! capabilities for resilience operations, enabling visibility into system reliability.
+//! This module provides metrics collection, tracing instrumentation, and
+//! monitoring capabilities for resilience operations, enabling visibility into
+//! system reliability.
 //!
 //! # Features
 //!
-//! - **Metrics Collection**: Counters, histograms, and gauges for resilience operations
-//! - **Tracing Instrumentation**: Detailed traces for policy execution and failures
+//! - **Metrics Collection**: Counters, histograms, and gauges for resilience
+//!   operations
+//! - **Tracing Instrumentation**: Detailed traces for policy execution and
+//!   failures
 //! - **Health Checks**: Circuit breaker and service health monitoring
 //! - **Alerting Integration**: Threshold-based alerting for resilience events
 
-use crate::application::resilience::{ResilienceOrchestrator, ResilienceOrchestrationError, ResilienceMetrics};
-use crate::domain::resilience::{ResiliencePolicy, ResilienceDomainError};
-use std::time::{Duration, Instant};
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
+use crate::{
+    application::resilience::{
+        CircuitBreaker, RateLimiter, ResilienceMetrics, ResilienceOrchestrationError,
+        ResilienceOrchestrator,
+    },
+    domain::resilience::{ResilienceDomainError, ResiliencePolicy},
+};
 
 /// Observability service for resilience operations
 #[derive(Clone)]
 pub struct ResilienceObservability {
     metrics_collector: Arc<dyn MetricsCollector>,
     tracer: Arc<dyn ResilienceTracer>,
+}
+
+impl Default for ResilienceObservability {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ResilienceObservability {
@@ -44,11 +61,17 @@ impl ResilienceObservability {
 
     /// Record the start of a resilience operation
     pub fn record_operation_start(&self, operation_id: &str, policy: &ResiliencePolicy) {
-        self.metrics_collector.increment_counter("resilience_operations_total", &[("operation", operation_id)]);
-        self.tracer.start_span("resilience_operation", &[
-            ("operation_id", operation_id),
-            ("policy_type", &policy_type_name(policy)),
-        ]);
+        self.metrics_collector.increment_counter(
+            "resilience_operations_total",
+            &[("operation", operation_id)],
+        );
+        self.tracer.start_span(
+            "resilience_operation",
+            &[
+                ("operation_id", operation_id),
+                ("policy_type", &policy_type_name(policy)),
+            ],
+        );
     }
 
     /// Record the completion of a resilience operation
@@ -65,13 +88,16 @@ impl ResilienceObservability {
         // Record metrics
         self.metrics_collector.increment_counter(
             "resilience_operations_completed_total",
-            &[("operation", operation_id), ("status", status)]
+            &[("operation", operation_id), ("status", status)],
         );
 
         self.metrics_collector.record_histogram(
             "resilience_operation_duration_ms",
             duration_ms,
-            &[("operation", operation_id), ("policy_type", &policy_type_name(policy))]
+            &[
+                ("operation", operation_id),
+                ("policy_type", &policy_type_name(policy)),
+            ],
         );
 
         // Record policy-specific metrics
@@ -80,21 +106,26 @@ impl ResilienceObservability {
                 self.metrics_collector.record_histogram(
                     "resilience_retry_max_attempts",
                     *max_attempts as f64,
-                    &[("operation", operation_id)]
+                    &[("operation", operation_id)],
                 );
             }
-            ResiliencePolicy::CircuitBreaker { failure_threshold, .. } => {
+            ResiliencePolicy::CircuitBreaker {
+                failure_threshold, ..
+            } => {
                 self.metrics_collector.record_gauge(
                     "resilience_circuit_breaker_failure_threshold",
                     *failure_threshold as f64,
-                    &[("operation", operation_id)]
+                    &[("operation", operation_id)],
                 );
             }
-            ResiliencePolicy::RateLimit { requests_per_second, .. } => {
+            ResiliencePolicy::RateLimit {
+                requests_per_second,
+                ..
+            } => {
                 self.metrics_collector.record_gauge(
                     "resilience_rate_limit_rps",
                     *requests_per_second as f64,
-                    &[("operation", operation_id)]
+                    &[("operation", operation_id)],
                 );
             }
             _ => {}
@@ -106,7 +137,10 @@ impl ResilienceObservability {
         }
 
         // End tracing span
-        self.tracer.end_span(&[("duration_ms", &duration_ms.to_string()), ("status", status)]);
+        self.tracer.end_span(&[
+            ("duration_ms", &duration_ms.to_string()),
+            ("status", status),
+        ]);
     }
 
     /// Record resilience-specific errors
@@ -127,13 +161,13 @@ impl ResilienceObservability {
 
         self.metrics_collector.increment_counter(
             "resilience_operation_errors_total",
-            &[("operation", operation_id), ("error_type", error_type)]
+            &[("operation", operation_id), ("error_type", error_type)],
         );
 
-        self.tracer.add_event("resilience_error", &[
-            ("operation_id", operation_id),
-            ("error_type", error_type),
-        ]);
+        self.tracer.add_event(
+            "resilience_error",
+            &[("operation_id", operation_id), ("error_type", error_type)],
+        );
     }
 
     /// Record circuit breaker state changes
@@ -147,16 +181,19 @@ impl ResilienceObservability {
             "resilience_circuit_breaker_state_changes_total",
             &[
                 ("circuit_breaker", circuit_breaker_id),
-                ("old_state", &old_state.as_str()),
-                ("new_state", &new_state.as_str()),
-            ]
+                ("old_state", old_state.as_str()),
+                ("new_state", new_state.as_str()),
+            ],
         );
 
-        self.tracer.add_event("circuit_breaker_state_change", &[
-            ("circuit_breaker_id", circuit_breaker_id),
-            ("old_state", &old_state.as_str()),
-            ("new_state", &new_state.as_str()),
-        ]);
+        self.tracer.add_event(
+            "circuit_breaker_state_change",
+            &[
+                ("circuit_breaker_id", circuit_breaker_id),
+                ("old_state", old_state.as_str()),
+                ("new_state", new_state.as_str()),
+            ],
+        );
     }
 
     /// Get current health status
@@ -173,7 +210,8 @@ impl ResilienceObservability {
     /// Export metrics in Prometheus format
     pub fn export_prometheus_metrics(&self) -> String {
         // This would collect all metrics and format them for Prometheus
-        "# AllFrame Resilience Metrics\n# (Implementation would export actual metrics)\n".to_string()
+        "# AllFrame Resilience Metrics\n# (Implementation would export actual metrics)\n"
+            .to_string()
     }
 }
 
@@ -261,8 +299,9 @@ impl ResilienceTracer for NoOpTracer {
 /// Prometheus metrics collector implementation
 #[cfg(feature = "prometheus")]
 pub mod prometheus {
+    use prometheus::{CounterVec, Encoder, GaugeVec, HistogramVec, TextEncoder};
+
     use super::*;
-    use prometheus::{CounterVec, HistogramVec, GaugeVec, Encoder, TextEncoder};
 
     pub struct PrometheusMetricsCollector {
         counters: HashMap<String, CounterVec>,
@@ -283,8 +322,9 @@ pub mod prometheus {
             self.counters.entry(name.to_string()).or_insert_with(|| {
                 CounterVec::new(
                     prometheus::Opts::new(name, help),
-                    &["operation", "status", "error_type"]
-                ).expect("Failed to create counter")
+                    &["operation", "status", "error_type"],
+                )
+                .expect("Failed to create counter")
             })
         }
 
@@ -292,17 +332,16 @@ pub mod prometheus {
             self.histograms.entry(name.to_string()).or_insert_with(|| {
                 HistogramVec::new(
                     prometheus::HistogramOpts::new(name, help),
-                    &["operation", "policy_type"]
-                ).expect("Failed to create histogram")
+                    &["operation", "policy_type"],
+                )
+                .expect("Failed to create histogram")
             })
         }
 
         fn get_or_create_gauge(&mut self, name: &str, help: &str) -> &GaugeVec {
             self.gauges.entry(name.to_string()).or_insert_with(|| {
-                GaugeVec::new(
-                    prometheus::Opts::new(name, help),
-                    &["operation"]
-                ).expect("Failed to create gauge")
+                GaugeVec::new(prometheus::Opts::new(name, help), &["operation"])
+                    .expect("Failed to create gauge")
             })
         }
     }
@@ -343,42 +382,66 @@ pub struct InstrumentedResilienceOrchestrator<T: ResilienceOrchestrator> {
 
 impl<T: ResilienceOrchestrator> InstrumentedResilienceOrchestrator<T> {
     pub fn new(inner: T, observability: ResilienceObservability) -> Self {
-        Self { inner, observability }
+        Self {
+            inner,
+            observability,
+        }
     }
 }
 
 #[async_trait::async_trait]
 impl<T: ResilienceOrchestrator> ResilienceOrchestrator for InstrumentedResilienceOrchestrator<T> {
-    async fn execute_with_policy<F, Fut, E>(
+    async fn execute_with_policy<V, F, Fut, E>(
         &self,
         policy: ResiliencePolicy,
         operation: F,
-    ) -> Result<(), ResilienceOrchestrationError>
+    ) -> Result<V, ResilienceOrchestrationError>
     where
         F: FnOnce() -> Fut + Send,
-        Fut: std::future::Future<Output = Result<(), E>> + Send,
+        Fut: std::future::Future<Output = Result<V, E>> + Send,
         E: Into<ResilienceOrchestrationError> + Send,
     {
         let operation_id = "anonymous_operation"; // In a real implementation, this would be configurable
         let start_time = Instant::now();
 
-        self.observability.record_operation_start(operation_id, &policy);
+        let policy_clone = policy.clone();
+
+        self.observability
+            .record_operation_start(operation_id, &policy_clone);
 
         let result = self.inner.execute_with_policy(policy, operation).await;
 
         let duration = start_time.elapsed();
-        self.observability.record_operation_complete(operation_id, &policy, duration, &result);
+        match &result {
+            Ok(_) => {
+                self.observability.record_operation_complete(
+                    operation_id,
+                    &policy_clone,
+                    duration,
+                    &Ok(()),
+                );
+            }
+            Err(err) => {
+                let err_ref: Result<(), ResilienceOrchestrationError> = Err(
+                    ResilienceOrchestrationError::Infrastructure(format!("{}", err)),
+                );
+                self.observability.record_operation_complete(
+                    operation_id,
+                    &policy_clone,
+                    duration,
+                    &err_ref,
+                );
+            }
+        }
 
         result
     }
 
-    #[cfg(feature = "resilience")]
-    fn get_circuit_breaker(&self, name: &str) -> Option<&crate::resilience::CircuitBreaker> {
+    fn get_circuit_breaker(&self, name: &str) -> Option<&CircuitBreaker> {
         self.inner.get_circuit_breaker(name)
     }
 
-    #[cfg(feature = "resilience")]
-    fn get_rate_limiter(&self, name: &str) -> Option<&crate::resilience::RateLimiter> {
+    fn get_rate_limiter(&self, name: &str) -> Option<&RateLimiter> {
         self.inner.get_rate_limiter(name)
     }
 
@@ -415,15 +478,21 @@ mod tests {
     #[test]
     fn test_policy_type_name() {
         assert_eq!(policy_type_name(&ResiliencePolicy::None), "none");
-        assert_eq!(policy_type_name(&ResiliencePolicy::Retry {
-            max_attempts: 3,
-            backoff: crate::domain::resilience::BackoffStrategy::default(),
-        }), "retry");
-        assert_eq!(policy_type_name(&ResiliencePolicy::CircuitBreaker {
-            failure_threshold: 5,
-            recovery_timeout: Duration::from_secs(30),
-            success_threshold: 3,
-        }), "circuit_breaker");
+        assert_eq!(
+            policy_type_name(&ResiliencePolicy::Retry {
+                max_attempts: 3,
+                backoff: crate::domain::resilience::BackoffStrategy::default(),
+            }),
+            "retry"
+        );
+        assert_eq!(
+            policy_type_name(&ResiliencePolicy::CircuitBreaker {
+                failure_threshold: 5,
+                recovery_timeout: Duration::from_secs(30),
+                success_threshold: 3,
+            }),
+            "circuit_breaker"
+        );
     }
 
     #[test]

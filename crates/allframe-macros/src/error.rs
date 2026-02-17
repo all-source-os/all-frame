@@ -22,7 +22,8 @@
 //!
 //! ## Custom Crate Path
 //!
-//! If you're using `allframe-core` directly instead of `allframe`, specify the crate path:
+//! If you're using `allframe-core` directly instead of `allframe`, specify the
+//! crate path:
 //!
 //! ```rust,ignore
 //! #[derive(GrpcError)]

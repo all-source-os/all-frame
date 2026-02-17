@@ -52,8 +52,7 @@
 //! - `saga://{name}/steps` - List of steps with their status
 //! - `saga://{name}/step/{step_name}` - Step implementation details
 
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use allframe_mcp::forge::ForgeMcpServer;
 

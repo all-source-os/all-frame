@@ -1,6 +1,7 @@
 //! Anti-Corruption Layer archetype templates
 //!
-//! Templates for generating services that translate between legacy and modern systems.
+//! Templates for generating services that translate between legacy and modern
+//! systems.
 
 use crate::config::ProjectConfig;
 
@@ -287,7 +288,12 @@ pub use transformer::*;
 /// Generate domain/legacy.rs
 pub fn domain_legacy(config: &ProjectConfig) -> String {
     let acl = config.acl.as_ref().unwrap();
-    let source = acl.transformations.first().map(|t| &t.source).cloned().unwrap_or_else(|| "LegacyEntity".to_string());
+    let source = acl
+        .transformations
+        .first()
+        .map(|t| &t.source)
+        .cloned()
+        .unwrap_or_else(|| "LegacyEntity".to_string());
 
     format!(
         r#"//! Legacy system domain models
@@ -339,7 +345,12 @@ pub struct LegacyListResponse<T> {{
 /// Generate domain/modern.rs
 pub fn domain_modern(config: &ProjectConfig) -> String {
     let acl = config.acl.as_ref().unwrap();
-    let target = acl.transformations.first().map(|t| &t.target).cloned().unwrap_or_else(|| "ModernEntity".to_string());
+    let target = acl
+        .transformations
+        .first()
+        .map(|t| &t.target)
+        .cloned()
+        .unwrap_or_else(|| "ModernEntity".to_string());
 
     format!(
         r#"//! Modern domain models
@@ -425,8 +436,18 @@ pub fn domain_transformer(config: &ProjectConfig) -> String {
     let acl = config.acl.as_ref().unwrap();
     let pascal_name = to_pascal_case(&acl.service_name);
     // Source and target entity names (available for future customization)
-    let _source = acl.transformations.first().map(|t| &t.source).cloned().unwrap_or_else(|| "LegacyEntity".to_string());
-    let _target = acl.transformations.first().map(|t| &t.target).cloned().unwrap_or_else(|| "ModernEntity".to_string());
+    let _source = acl
+        .transformations
+        .first()
+        .map(|t| &t.source)
+        .cloned()
+        .unwrap_or_else(|| "LegacyEntity".to_string());
+    let _target = acl
+        .transformations
+        .first()
+        .map(|t| &t.target)
+        .cloned()
+        .unwrap_or_else(|| "ModernEntity".to_string());
 
     format!(
         r#"//! Transformation traits
@@ -467,8 +488,18 @@ pub use translator::*;
 pub fn application_translator(config: &ProjectConfig) -> String {
     let acl = config.acl.as_ref().unwrap();
     let pascal_name = to_pascal_case(&acl.service_name);
-    let source = acl.transformations.first().map(|t| &t.source).cloned().unwrap_or_else(|| "LegacyEntity".to_string());
-    let target = acl.transformations.first().map(|t| &t.target).cloned().unwrap_or_else(|| "ModernEntity".to_string());
+    let source = acl
+        .transformations
+        .first()
+        .map(|t| &t.source)
+        .cloned()
+        .unwrap_or_else(|| "LegacyEntity".to_string());
+    let target = acl
+        .transformations
+        .first()
+        .map(|t| &t.target)
+        .cloned()
+        .unwrap_or_else(|| "ModernEntity".to_string());
 
     format!(
         r#"//! Entity translator
@@ -614,7 +645,12 @@ pub use health::*;
 pub fn infrastructure_legacy_client(config: &ProjectConfig) -> String {
     let acl = config.acl.as_ref().unwrap();
     let pascal_name = to_pascal_case(&acl.service_name);
-    let source = acl.transformations.first().map(|t| &t.source).cloned().unwrap_or_else(|| "LegacyEntity".to_string());
+    let source = acl
+        .transformations
+        .first()
+        .map(|t| &t.source)
+        .cloned()
+        .unwrap_or_else(|| "LegacyEntity".to_string());
 
     format!(
         r#"//! Legacy system client
@@ -791,7 +827,12 @@ pub use handlers::*;
 pub fn presentation_handlers(config: &ProjectConfig) -> String {
     let acl = config.acl.as_ref().unwrap();
     let pascal_name = to_pascal_case(&acl.service_name);
-    let target = acl.transformations.first().map(|t| &t.target).cloned().unwrap_or_else(|| "ModernEntity".to_string());
+    let target = acl
+        .transformations
+        .first()
+        .map(|t| &t.target)
+        .cloned()
+        .unwrap_or_else(|| "ModernEntity".to_string());
 
     format!(
         r#"//! API handlers
@@ -1081,7 +1122,10 @@ mod tests {
     #[test]
     fn test_to_pascal_case() {
         assert_eq!(to_pascal_case("acl"), "Acl");
-        assert_eq!(to_pascal_case("anti_corruption_layer"), "AntiCorruptionLayer");
+        assert_eq!(
+            to_pascal_case("anti_corruption_layer"),
+            "AntiCorruptionLayer"
+        );
         assert_eq!(to_pascal_case("simple"), "Simple");
     }
 }

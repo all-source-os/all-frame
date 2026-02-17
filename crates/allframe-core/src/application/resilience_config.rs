@@ -39,10 +39,11 @@
 //!     email_service: external_api
 //! ```
 
-use crate::domain::resilience::{ResiliencePolicy, BackoffStrategy};
-use std::collections::HashMap;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
+
 use serde::{Deserialize, Serialize};
+
+use crate::domain::resilience::{BackoffStrategy, ResiliencePolicy};
 
 /// Top-level resilience configuration
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -213,28 +214,24 @@ impl ResilienceConfig {
     }
 
     /// Load configuration from a YAML string
-    pub fn from_yaml(content: &str) -> Result<Self, ResilienceConfigError> {
-        // YAML support is optional - if serde_yaml is not available, this will fail to compile
-        #[cfg(feature = "serde_yaml")]
-        {
-            serde_yaml::from_str(content).map_err(|e| ResilienceConfigError::Yaml(e.to_string()))
-        }
-        #[cfg(not(feature = "serde_yaml"))]
-        {
-            Err(ResilienceConfigError::Yaml("YAML support not available - enable serde_yaml feature".to_string()))
-        }
+    pub fn from_yaml(_content: &str) -> Result<Self, ResilienceConfigError> {
+        // YAML support is not currently available - serde_yaml is not a dependency
+        Err(ResilienceConfigError::Yaml(
+            "YAML support not available".to_string(),
+        ))
     }
 
-    /// Load configuration from a file (auto-detects TOML vs YAML based on extension)
+    /// Load configuration from a file (auto-detects TOML vs YAML based on
+    /// extension)
     pub fn from_file(path: &std::path::Path) -> Result<Self, ResilienceConfigError> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| ResilienceConfigError::Io(e.to_string()))?;
+        let content =
+            std::fs::read_to_string(path).map_err(|e| ResilienceConfigError::Io(e.to_string()))?;
 
         match path.extension().and_then(|s| s.to_str()) {
             Some("toml") => Self::from_toml(&content),
             Some("yaml") | Some("yml") => Self::from_yaml(&content),
             _ => Err(ResilienceConfigError::UnsupportedFormat(
-                path.display().to_string()
+                path.display().to_string(),
             )),
         }
     }
@@ -260,7 +257,9 @@ impl ResilienceConfig {
             return Some(ResiliencePolicy::None);
         }
 
-        self.policies.get(policy_name).map(|config| config.to_policy())
+        self.policies
+            .get(policy_name)
+            .map(|config| config.to_policy())
     }
 
     /// Get the default policy (or None if no policies configured)
@@ -300,7 +299,12 @@ impl PolicyConfig {
                 },
             },
 
-            PolicyConfig::Combined { retry, circuit_breaker, rate_limit, timeout } => {
+            PolicyConfig::Combined {
+                retry,
+                circuit_breaker,
+                rate_limit,
+                timeout,
+            } => {
                 let mut policies = Vec::new();
 
                 if let Some(config) = retry {
@@ -349,22 +353,27 @@ impl BackoffConfig {
                 delay: Duration::from_millis(*delay_ms),
             },
 
-            BackoffConfig::Exponential { initial_delay_ms, multiplier, max_delay_ms, jitter } => {
-                BackoffStrategy::Exponential {
-                    initial_delay: Duration::from_millis(*initial_delay_ms),
-                    multiplier: *multiplier,
-                    max_delay: max_delay_ms.map(|ms| Duration::from_millis(ms)),
-                    jitter: *jitter,
-                }
-            }
+            BackoffConfig::Exponential {
+                initial_delay_ms,
+                multiplier,
+                max_delay_ms,
+                jitter,
+            } => BackoffStrategy::Exponential {
+                initial_delay: Duration::from_millis(*initial_delay_ms),
+                multiplier: *multiplier,
+                max_delay: max_delay_ms.map(Duration::from_millis),
+                jitter: *jitter,
+            },
 
-            BackoffConfig::Linear { initial_delay_ms, increment_ms, max_delay_ms } => {
-                BackoffStrategy::Linear {
-                    initial_delay: Duration::from_millis(*initial_delay_ms),
-                    increment: Duration::from_millis(*increment_ms),
-                    max_delay: max_delay_ms.map(|ms| Duration::from_millis(ms)),
-                }
-            }
+            BackoffConfig::Linear {
+                initial_delay_ms,
+                increment_ms,
+                max_delay_ms,
+            } => BackoffStrategy::Linear {
+                initial_delay: Duration::from_millis(*initial_delay_ms),
+                increment: Duration::from_millis(*increment_ms),
+                max_delay: max_delay_ms.map(Duration::from_millis),
+            },
         }
     }
 }
@@ -403,7 +412,10 @@ mod tests {
 
         let policy = config.to_policy();
         match policy {
-            ResiliencePolicy::Retry { max_attempts, backoff: BackoffStrategy::Exponential { .. } } => {
+            ResiliencePolicy::Retry {
+                max_attempts,
+                backoff: BackoffStrategy::Exponential { .. },
+            } => {
                 assert_eq!(max_attempts, 3);
             }
             _ => panic!("Expected retry policy"),
@@ -423,7 +435,9 @@ mod tests {
                 success_threshold: 2,
             }),
             rate_limit: None,
-            timeout: Some(TimeoutConfig { duration_seconds: 60 }),
+            timeout: Some(TimeoutConfig {
+                duration_seconds: 60,
+            }),
         };
 
         let policy = config.to_policy();
@@ -486,7 +500,12 @@ mod tests {
         };
         let exp_strategy = exp_config.to_backoff_strategy();
         match exp_strategy {
-            BackoffStrategy::Exponential { initial_delay, multiplier, max_delay, jitter } => {
+            BackoffStrategy::Exponential {
+                initial_delay,
+                multiplier,
+                max_delay,
+                jitter,
+            } => {
                 assert_eq!(initial_delay, Duration::from_millis(100));
                 assert_eq!(multiplier, 2.0);
                 assert_eq!(max_delay, Some(Duration::from_millis(5000)));
@@ -498,12 +517,15 @@ mod tests {
 
     #[test]
     fn test_config_disabled_behavior() {
-        let mut config = ResilienceConfig::from_toml("enabled = false").unwrap();
+        let config = ResilienceConfig::from_toml("enabled = false").unwrap();
         assert!(!config.enabled);
 
         // All policies should return None when disabled
         assert_eq!(config.get_default_policy(), ResiliencePolicy::None);
-        assert_eq!(config.get_policy("any"), None);
-        assert_eq!(config.get_policy_for_service("any"), Some(ResiliencePolicy::None));
+        assert_eq!(config.get_policy("any"), Some(ResiliencePolicy::None));
+        assert_eq!(
+            config.get_policy_for_service("any"),
+            Some(ResiliencePolicy::None)
+        );
     }
 }

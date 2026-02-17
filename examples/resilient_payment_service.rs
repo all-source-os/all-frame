@@ -7,11 +7,18 @@
 //! - Observability and metrics
 //! - Error handling and recovery
 
-use allframe_core::domain::resilience::{ResilientOperation, ResiliencePolicy, ResilienceDomainError};
-use allframe_core::application::resilience::{ResilienceOrchestrator, DefaultResilienceOrchestrator};
-use allframe_core::application::resilience_config::{ResilienceConfig, PolicyConfig, SimplePolicyConfig, RetryConfig, BackoffConfig};
-use allframe_core::application::resilience_observability::{ResilienceObservability, InstrumentedResilienceOrchestrator};
 use std::sync::Arc;
+
+use allframe_core::{
+    application::{
+        resilience::{DefaultResilienceOrchestrator, ResilienceOrchestrator},
+        resilience_config::{
+            BackoffConfig, PolicyConfig, ResilienceConfig, RetryConfig, SimplePolicyConfig,
+        },
+        resilience_observability::{InstrumentedResilienceOrchestrator, ResilienceObservability},
+    },
+    domain::resilience::{ResilienceDomainError, ResiliencePolicy, ResilientOperation},
+};
 use tokio::sync::Mutex;
 
 // ===== DOMAIN LAYER =====
@@ -72,7 +79,10 @@ pub enum PaymentStatus {
 /// Domain service for payment processing
 #[async_trait::async_trait]
 pub trait PaymentService: Send + Sync {
-    async fn process_payment(&self, request: PaymentRequest) -> Result<PaymentResponse, PaymentError>;
+    async fn process_payment(
+        &self,
+        request: PaymentRequest,
+    ) -> Result<PaymentResponse, PaymentError>;
 }
 
 /// Domain entity that declares resilience requirements
@@ -133,31 +143,34 @@ impl ResilientOperation<PaymentResponse, PaymentError> for PaymentProcessor {
             },
 
             // Card payments are fast but may fail
-            (PaymentMethod::CreditCard | PaymentMethod::DebitCard, _) => ResiliencePolicy::Combined {
-                policies: vec![
-                    ResiliencePolicy::Retry {
-                        max_attempts: 3,
-                        backoff: allframe_core::domain::resilience::BackoffStrategy::Exponential {
-                            initial_delay: std::time::Duration::from_millis(200),
-                            multiplier: 1.5,
-                            max_delay: Some(std::time::Duration::from_secs(10)),
-                            jitter: true,
+            (PaymentMethod::CreditCard | PaymentMethod::DebitCard, _) => {
+                ResiliencePolicy::Combined {
+                    policies: vec![
+                        ResiliencePolicy::Retry {
+                            max_attempts: 3,
+                            backoff:
+                                allframe_core::domain::resilience::BackoffStrategy::Exponential {
+                                    initial_delay: std::time::Duration::from_millis(200),
+                                    multiplier: 1.5,
+                                    max_delay: Some(std::time::Duration::from_secs(10)),
+                                    jitter: true,
+                                },
                         },
-                    },
-                    ResiliencePolicy::CircuitBreaker {
-                        failure_threshold: 10,
-                        recovery_timeout: std::time::Duration::from_secs(30),
-                        success_threshold: 5,
-                    },
-                    ResiliencePolicy::RateLimit {
-                        requests_per_second: 100,
-                        burst_capacity: 20,
-                    },
-                    ResiliencePolicy::Timeout {
-                        duration: std::time::Duration::from_secs(30),
-                    },
-                ],
-            },
+                        ResiliencePolicy::CircuitBreaker {
+                            failure_threshold: 10,
+                            recovery_timeout: std::time::Duration::from_secs(30),
+                            success_threshold: 5,
+                        },
+                        ResiliencePolicy::RateLimit {
+                            requests_per_second: 100,
+                            burst_capacity: 20,
+                        },
+                        ResiliencePolicy::Timeout {
+                            duration: std::time::Duration::from_secs(30),
+                        },
+                    ],
+                }
+            }
 
             // Digital wallets are fast and usually reliable
             (PaymentMethod::DigitalWallet, _) => ResiliencePolicy::Combined {
@@ -185,7 +198,9 @@ impl ResilientOperation<PaymentResponse, PaymentError> for PaymentProcessor {
         self.validate_payment()?;
 
         // Delegate to infrastructure service
-        self.payment_service.process_payment(self.request.clone()).await
+        self.payment_service
+            .process_payment(self.request.clone())
+            .await
     }
 
     fn operation_id(&self) -> &str {
@@ -229,16 +244,13 @@ impl PaymentProcessor {
 // ===== APPLICATION LAYER =====
 
 /// Application service for payment processing
-pub struct PaymentApplicationService {
+pub struct PaymentApplicationService<O: ResilienceOrchestrator> {
     payment_service: Arc<dyn PaymentService>,
-    orchestrator: Arc<dyn ResilienceOrchestrator>,
+    orchestrator: Arc<O>,
 }
 
-impl PaymentApplicationService {
-    pub fn new(
-        payment_service: Arc<dyn PaymentService>,
-        orchestrator: Arc<dyn ResilienceOrchestrator>,
-    ) -> Self {
+impl<O: ResilienceOrchestrator> PaymentApplicationService<O> {
+    pub fn new(payment_service: Arc<dyn PaymentService>, orchestrator: Arc<O>) -> Self {
         Self {
             payment_service,
             orchestrator,
@@ -257,9 +269,9 @@ impl PaymentApplicationService {
             .execute_operation(processor)
             .await
             .map_err(|e| match e {
-                allframe_core::application::resilience::ResilienceOrchestrationError::Domain(domain_error) => {
-                    PaymentError::Infrastructure(domain_error)
-                }
+                allframe_core::application::resilience::ResilienceOrchestrationError::Domain(
+                    domain_error,
+                ) => PaymentError::Infrastructure(domain_error),
                 _ => PaymentError::ProcessingFailed {
                     message: "Orchestration failed".to_string(),
                 },
@@ -267,7 +279,9 @@ impl PaymentApplicationService {
     }
 
     /// Get resilience metrics for monitoring
-    pub fn get_resilience_metrics(&self) -> allframe_core::application::resilience::ResilienceMetrics {
+    pub fn get_resilience_metrics(
+        &self,
+    ) -> allframe_core::application::resilience::ResilienceMetrics {
         self.orchestrator.metrics()
     }
 }
@@ -291,7 +305,10 @@ impl MockPaymentService {
 
 #[async_trait::async_trait]
 impl PaymentService for MockPaymentService {
-    async fn process_payment(&self, request: PaymentRequest) -> Result<PaymentResponse, PaymentError> {
+    async fn process_payment(
+        &self,
+        request: PaymentRequest,
+    ) -> Result<PaymentResponse, PaymentError> {
         // Simulate processing delay
         tokio::time::sleep(std::time::Duration::from_millis(self.delay_ms)).await;
 
@@ -341,15 +358,19 @@ pub fn load_resilience_config() -> Result<ResilienceConfig, Box<dyn std::error::
                     jitter: true,
                 },
             }),
-            circuit_breaker: Some(allframe_core::application::resilience_config::CircuitBreakerConfig {
-                failure_threshold: 5,
-                recovery_timeout_seconds: 60,
-                success_threshold: 3,
-            }),
+            circuit_breaker: Some(
+                allframe_core::application::resilience_config::CircuitBreakerConfig {
+                    failure_threshold: 5,
+                    recovery_timeout_seconds: 60,
+                    success_threshold: 3,
+                },
+            ),
             rate_limit: None,
-            timeout: Some(allframe_core::application::resilience_config::TimeoutConfig {
-                duration_seconds: 120,
-            }),
+            timeout: Some(
+                allframe_core::application::resilience_config::TimeoutConfig {
+                    duration_seconds: 120,
+                },
+            ),
         },
     );
 
@@ -365,23 +386,31 @@ pub fn load_resilience_config() -> Result<ResilienceConfig, Box<dyn std::error::
                     jitter: true,
                 },
             }),
-            circuit_breaker: Some(allframe_core::application::resilience_config::CircuitBreakerConfig {
-                failure_threshold: 10,
-                recovery_timeout_seconds: 30,
-                success_threshold: 5,
-            }),
-            rate_limit: Some(allframe_core::application::resilience_config::RateLimitConfig {
-                requests_per_second: 100,
-                burst_capacity: 20,
-            }),
-            timeout: Some(allframe_core::application::resilience_config::TimeoutConfig {
-                duration_seconds: 30,
-            }),
+            circuit_breaker: Some(
+                allframe_core::application::resilience_config::CircuitBreakerConfig {
+                    failure_threshold: 10,
+                    recovery_timeout_seconds: 30,
+                    success_threshold: 5,
+                },
+            ),
+            rate_limit: Some(
+                allframe_core::application::resilience_config::RateLimitConfig {
+                    requests_per_second: 100,
+                    burst_capacity: 20,
+                },
+            ),
+            timeout: Some(
+                allframe_core::application::resilience_config::TimeoutConfig {
+                    duration_seconds: 30,
+                },
+            ),
         },
     );
 
     // Map services to policies
-    config.services.insert("payment_processor".to_string(), "card_payments".to_string());
+    config
+        .services
+        .insert("payment_processor".to_string(), "card_payments".to_string());
 
     Ok(config)
 }
@@ -408,10 +437,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     // Create application service
-    let payment_app = PaymentApplicationService::new(
-        payment_service,
-        orchestrator.clone(),
-    );
+    let payment_app = PaymentApplicationService::new(payment_service, orchestrator.clone());
 
     println!("🎯 Processing payments with resilience...");
 
@@ -438,7 +464,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (i, request) in payment_requests.into_iter().enumerate() {
-        println!("\n💳 Processing payment {}: ${} via {:?}", i + 1, request.amount, request.method);
+        println!(
+            "\n💳 Processing payment {}: ${} via {:?}",
+            i + 1,
+            request.amount,
+            request.method
+        );
 
         match payment_app.process_payment(request).await {
             Ok(response) => {
@@ -451,8 +482,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Show resilience metrics
         let metrics = payment_app.get_resilience_metrics();
-        println!("📊 Resilience metrics: {} total, {} successful, {} failed",
-                 metrics.total_operations, metrics.successful_operations, metrics.failed_operations);
+        println!(
+            "📊 Resilience metrics: {} total, {} successful, {} failed",
+            metrics.total_operations, metrics.successful_operations, metrics.failed_operations
+        );
     }
 
     // Show final observability data
@@ -461,10 +494,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let final_metrics = payment_app.get_resilience_metrics();
     println!("Total operations: {}", final_metrics.total_operations);
-    println!("Successful operations: {}", final_metrics.successful_operations);
+    println!(
+        "Successful operations: {}",
+        final_metrics.successful_operations
+    );
     println!("Failed operations: {}", final_metrics.failed_operations);
     println!("Retry attempts: {}", final_metrics.retry_attempts);
-    println!("Circuit breaker trips: {}", final_metrics.circuit_breaker_trips);
+    println!(
+        "Circuit breaker trips: {}",
+        final_metrics.circuit_breaker_trips
+    );
     println!("Rate limit hits: {}", final_metrics.rate_limit_hits);
     println!("Timeouts: {}", final_metrics.timeout_count);
 

@@ -1,28 +1,32 @@
 //! Architectural compliance tests for the domain layer.
 //!
-//! These tests ensure that the domain layer maintains Clean Architecture principles:
+//! These tests ensure that the domain layer maintains Clean Architecture
+//! principles:
 //! - No dependencies on infrastructure layer types
 //! - Pure business logic without external concerns
 //! - Clear separation of concerns
 
 #[cfg(test)]
 mod architectural_compliance {
-    use super::super::*;
     use std::any::TypeId;
 
-    /// Test that domain resilience contracts don't depend on infrastructure types
+    use super::super::*;
+
+    /// Test that domain resilience contracts don't depend on infrastructure
+    /// types
     #[test]
     fn domain_resilience_contracts_no_infrastructure_dependencies() {
         // This test ensures that domain layer resilience types don't accidentally
         // import infrastructure types. We do this by checking that the types
         // don't contain references to known infrastructure modules.
 
-        let resilience_policy_type = TypeId::of::<ResiliencePolicy>();
-        let backoff_strategy_type = TypeId::of::<BackoffStrategy>();
-        let domain_error_type = TypeId::of::<ResilienceDomainError>();
+        let _resilience_policy_type = TypeId::of::<ResiliencePolicy>();
+        let _backoff_strategy_type = TypeId::of::<BackoffStrategy>();
+        let _domain_error_type = TypeId::of::<ResilienceDomainError>();
 
         // These types should be pure domain concepts
-        // If this test fails, it means infrastructure types have leaked into domain layer
+        // If this test fails, it means infrastructure types have leaked into domain
+        // layer
 
         // The types should exist and be constructible without infrastructure
         let policy = ResiliencePolicy::None;
@@ -70,7 +74,10 @@ mod architectural_compliance {
 
         // Verify the policy is well-formed
         match policy {
-            ResiliencePolicy::Retry { max_attempts, backoff: BackoffStrategy::Exponential { .. } } => {
+            ResiliencePolicy::Retry {
+                max_attempts,
+                backoff: BackoffStrategy::Exponential { .. },
+            } => {
                 assert_eq!(max_attempts, 3);
             }
             _ => panic!("Expected retry policy"),
@@ -110,13 +117,15 @@ mod architectural_compliance {
     /// Test that ResilientOperation trait maintains domain purity
     #[test]
     fn resilient_operation_domain_purity() {
-        // Domain operations should be able to declare resilience without infrastructure knowledge
+        // Domain operations should be able to declare resilience without infrastructure
+        // knowledge
 
         struct DomainOperation {
             operation_id: String,
             critical: bool,
         }
 
+        #[async_trait::async_trait]
         impl ResilientOperation<String, ResilienceDomainError> for DomainOperation {
             fn resilience_policy(&self) -> ResiliencePolicy {
                 ResiliencePolicy::CircuitBreaker {
@@ -158,7 +167,9 @@ mod architectural_compliance {
         // Policy should be declarable without infrastructure knowledge
         let policy = op.resilience_policy();
         match policy {
-            ResiliencePolicy::CircuitBreaker { failure_threshold, .. } => {
+            ResiliencePolicy::CircuitBreaker {
+                failure_threshold, ..
+            } => {
                 assert_eq!(failure_threshold, 5);
             }
             _ => panic!("Expected circuit breaker policy"),
@@ -175,10 +186,7 @@ mod architectural_compliance {
         let circuit_policy = policies::circuit_breaker(10, 60);
         let rate_limit_policy = policies::rate_limit(100);
         let timeout_policy = policies::timeout(30);
-        let combined_policy = policies::combine(vec![
-            retry_policy.clone(),
-            timeout_policy.clone(),
-        ]);
+        let combined_policy = policies::combine(vec![retry_policy.clone(), timeout_policy.clone()]);
 
         // Verify policies are constructed correctly
         match retry_policy {
@@ -187,7 +195,11 @@ mod architectural_compliance {
         }
 
         match circuit_policy {
-            ResiliencePolicy::CircuitBreaker { failure_threshold, recovery_timeout, .. } => {
+            ResiliencePolicy::CircuitBreaker {
+                failure_threshold,
+                recovery_timeout,
+                ..
+            } => {
                 assert_eq!(failure_threshold, 10);
                 assert_eq!(recovery_timeout, std::time::Duration::from_secs(60));
             }
@@ -195,7 +207,10 @@ mod architectural_compliance {
         }
 
         match rate_limit_policy {
-            ResiliencePolicy::RateLimit { requests_per_second, .. } => {
+            ResiliencePolicy::RateLimit {
+                requests_per_second,
+                ..
+            } => {
                 assert_eq!(requests_per_second, 100);
             }
             _ => panic!("Expected rate limit policy"),
@@ -217,17 +232,19 @@ mod architectural_compliance {
     }
 }
 
-/// Integration tests to ensure domain and application layers work together cleanly
-#[cfg(test)]
+/// Integration tests to ensure domain and application layers work together
+/// cleanly
+#[cfg(all(test, feature = "resilience"))]
 mod domain_application_integration {
     use super::super::*;
-    use crate::application::resilience::{ResilienceOrchestrator, DefaultResilienceOrchestrator};
+    use crate::application::resilience::{DefaultResilienceOrchestrator, ResilienceOrchestrator};
 
     #[tokio::test]
     async fn domain_application_layer_integration() {
         // Domain layer defines operation
         struct TestOperation;
 
+        #[async_trait::async_trait]
         impl ResilientOperation<i32, ResilienceDomainError> for TestOperation {
             fn resilience_policy(&self) -> ResiliencePolicy {
                 ResiliencePolicy::Retry {
@@ -239,7 +256,8 @@ mod domain_application_integration {
             }
 
             async fn execute(&self) -> Result<i32, ResilienceDomainError> {
-                static CALL_COUNT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+                static CALL_COUNT: std::sync::atomic::AtomicU32 =
+                    std::sync::atomic::AtomicU32::new(0);
                 let count = CALL_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
                 if count < 1 {
@@ -288,16 +306,16 @@ mod domain_application_integration {
                     Result::<i32, ResilienceDomainError>::Err(
                         ResilienceDomainError::Infrastructure {
                             message: "Database connection failed".to_string(),
-                        }
+                        },
                     )
-                }
+                },
             )
             .await;
 
         // Should fail with retry exhausted
         match result {
             Err(crate::application::resilience::ResilienceOrchestrationError::Domain(
-                ResilienceDomainError::RetryExhausted { attempts, .. }
+                ResilienceDomainError::RetryExhausted { attempts, .. },
             )) => {
                 assert_eq!(attempts, 1);
             }

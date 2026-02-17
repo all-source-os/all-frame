@@ -541,16 +541,19 @@ pub fn rate_limited(attr: TokenStream, item: TokenStream) -> TokenStream {
         .into()
 }
 
-/// Marks a struct as a saga step with automatic Debug and SagaStep trait implementation
+/// Marks a struct as a saga step with automatic Debug and SagaStep trait
+/// implementation
 ///
 /// Reduces boilerplate by generating:
 /// - Debug impl (skipping #[inject] fields)
 /// - SagaStep trait impl with metadata methods
-/// - Placeholder execute/compensate methods (user implements in separate impl block)
+/// - Placeholder execute/compensate methods (user implements in separate impl
+///   block)
 ///
 /// # Attributes
 ///
-/// - `#[inject]` - Mark fields that should be dependency injected (skipped in Debug)
+/// - `#[inject]` - Mark fields that should be dependency injected (skipped in
+///   Debug)
 ///
 /// # Example
 /// ```ignore
@@ -616,7 +619,8 @@ pub fn saga(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// Defines the workflow for a saga using an enum
 ///
 /// Generates step vector construction from enum variants.
-/// Each enum variant corresponds to a step struct (e.g., `ValidateIndex` -> `ValidateIndexStep`).
+/// Each enum variant corresponds to a step struct (e.g., `ValidateIndex` ->
+/// `ValidateIndexStep`).
 ///
 /// # Example
 /// ```ignore
@@ -675,8 +679,8 @@ pub fn derive_step_output(input: TokenStream) -> TokenStream {
 
 /// Extract step output with type safety and error handling
 ///
-/// Note: This proc-macro provides guidance but doesn't implement a declarative macro.
-/// Use the StepOutput trait for type-safe extraction instead.
+/// Note: This proc-macro provides guidance but doesn't implement a declarative
+/// macro. Use the StepOutput trait for type-safe extraction instead.
 ///
 /// # Example
 /// ```ignore

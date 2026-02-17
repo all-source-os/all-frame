@@ -17,13 +17,15 @@ struct RetryConfig {
 
 /// Implementation of the `#[retry]` attribute macro.
 ///
-/// **⚠️ DEPRECATED**: This macro uses the old architecture that violates Clean Architecture principles.
-/// Consider migrating to the new resilience system for better testability and maintainability.
+/// **⚠️ DEPRECATED**: This macro uses the old architecture that violates Clean
+/// Architecture principles. Consider migrating to the new resilience system for
+/// better testability and maintainability.
 ///
 /// For migration guidance, see: https://docs.allframe.rs/guides/MIGRATION_GUIDE.html
 ///
-/// Wraps an async function with retry logic using the new Clean Architecture approach.
-/// The macro now uses ResilienceOrchestrator internally while maintaining backward compatibility.
+/// Wraps an async function with retry logic using the new Clean Architecture
+/// approach. The macro now uses ResilienceOrchestrator internally while
+/// maintaining backward compatibility.
 pub fn retry_impl(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     let config = parse_retry_attr(attr)?;
     let func: ItemFn = parse2(item)?;

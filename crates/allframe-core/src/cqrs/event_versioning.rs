@@ -221,6 +221,7 @@ impl<E: Event> Clone for VersionRegistry<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cqrs::EventTypeName;
 
     #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     struct UserCreatedV1 {

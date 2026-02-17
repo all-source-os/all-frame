@@ -615,12 +615,7 @@ pub fn readme(config: &ProjectConfig) -> String {
     let job_table: Vec<String> = scheduled
         .jobs
         .iter()
-        .map(|job| {
-            format!(
-                "| {} | `{}` | {} |",
-                job.name, job.cron, job.description
-            )
-        })
+        .map(|job| format!("| {} | `{}` | {} |", job.name, job.cron, job.description))
         .collect();
 
     format!(

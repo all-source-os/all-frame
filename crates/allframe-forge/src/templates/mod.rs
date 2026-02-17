@@ -7,7 +7,8 @@
 //! - `basic`: Simple Clean Architecture project (default)
 //! - `gateway`: API Gateway service with gRPC, resilience, and caching
 //! - `consumer`: Event consumer service with Kafka, idempotency, and DLQ
-//! - `producer`: Event producer service with outbox pattern and transactional messaging
+//! - `producer`: Event producer service with outbox pattern and transactional
+//!   messaging
 //! - `bff`: Backend for Frontend API aggregation service
 //! - `scheduled`: Scheduled jobs service with cron-based task execution
 //! - `websocket`: WebSocket gateway for real-time bidirectional communication

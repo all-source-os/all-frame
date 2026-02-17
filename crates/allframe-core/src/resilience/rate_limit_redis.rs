@@ -151,8 +151,8 @@ impl RedisRateLimiter {
 
     /// Check if a request for the given key is allowed.
     ///
-    /// Returns `Ok(remaining)` with the number of remaining requests if allowed,
-    /// or `Err(RateLimitError)` if rate limited.
+    /// Returns `Ok(remaining)` with the number of remaining requests if
+    /// allowed, or `Err(RateLimitError)` if rate limited.
     pub async fn check(&self, key: &str) -> Result<u32, RateLimitError> {
         let redis_key = format!("{}:{}", self.config.key_prefix, key);
         let now = std::time::SystemTime::now()
@@ -232,9 +232,7 @@ impl RedisRateLimiter {
         let mut conn = self.conn.clone();
 
         // Remove old entries first
-        let _: () = conn
-            .zrembyscore(&redis_key, "-inf", window_start)
-            .await?;
+        let _: () = conn.zrembyscore(&redis_key, "-inf", window_start).await?;
 
         // Count current entries
         let count: u32 = conn.zcard(&redis_key).await?;

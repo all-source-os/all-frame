@@ -26,7 +26,9 @@ pub fn cargo_toml(config: &ProjectConfig) -> String {
     let broker_deps = match consumer.broker {
         MessageBroker::Kafka => r#"rdkafka = { version = "0.36", features = ["cmake-build"] }"#,
         MessageBroker::RabbitMq => r#"lapin = "2.3""#,
-        MessageBroker::Redis => r#"redis = { version = "0.25", features = ["tokio-comp", "streams"] }"#,
+        MessageBroker::Redis => {
+            r#"redis = { version = "0.25", features = ["tokio-comp", "streams"] }"#
+        }
         MessageBroker::Sqs => r#"aws-sdk-sqs = "1.0""#,
         MessageBroker::PubSub => r#"google-cloud-pubsub = "0.25""#,
     };

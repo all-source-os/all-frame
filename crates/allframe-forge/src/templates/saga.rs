@@ -1026,7 +1026,12 @@ pub fn readme(config: &ProjectConfig) -> String {
         .sagas
         .iter()
         .map(|s| {
-            format!("| {} | {} | {} |", s.name, s.description, s.steps.join(" -> "))
+            format!(
+                "| {} | {} | {} |",
+                s.name,
+                s.description,
+                s.steps.join(" -> ")
+            )
         })
         .collect();
 

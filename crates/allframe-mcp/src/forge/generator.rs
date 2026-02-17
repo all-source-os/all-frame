@@ -1,7 +1,6 @@
 //! Code generator for AllFrame projects
 
-use std::fs;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -132,7 +131,8 @@ impl CodeGenerator {
 
         // Generate entity file
         let entity_content = self.generate_entity_content(request);
-        let entity_path = self.project_path
+        let entity_path = self
+            .project_path
             .join("src/domain")
             .join(format!("{}.rs", snake_name));
 
@@ -144,7 +144,8 @@ impl CodeGenerator {
         // Generate repository trait if requested
         if request.with_repository {
             let repo_content = self.generate_repository_content(entity_name);
-            let repo_path = self.project_path
+            let repo_path = self
+                .project_path
                 .join("src/domain")
                 .join(format!("{}_repository.rs", snake_name));
 
@@ -217,11 +218,23 @@ impl {entity_name} {{
             entity_name = entity_name,
             imports = imports,
             fields = fields.trim_end(),
-            params = request.fields.iter()
-                .map(|f| format!("{}: {}", f.name, if f.optional { format!("Option<{}>", f.field_type) } else { f.field_type.clone() }))
+            params = request
+                .fields
+                .iter()
+                .map(|f| format!(
+                    "{}: {}",
+                    f.name,
+                    if f.optional {
+                        format!("Option<{}>", f.field_type)
+                    } else {
+                        f.field_type.clone()
+                    }
+                ))
                 .collect::<Vec<_>>()
                 .join(", "),
-            field_assignments = request.fields.iter()
+            field_assignments = request
+                .fields
+                .iter()
                 .map(|f| format!("            {},\n", f.name))
                 .collect::<String>()
         )
@@ -277,7 +290,8 @@ pub trait {entity_name}Repository: Send + Sync {{
         let snake_name = to_snake_case(&request.name);
 
         let content = self.generate_service_content(request);
-        let service_path = self.project_path
+        let service_path = self
+            .project_path
             .join("src/application")
             .join(format!("{}_service.rs", snake_name));
 
@@ -316,7 +330,9 @@ pub trait {entity_name}Repository: Send + Sync {{
         let mut methods = String::new();
         for method in &request.methods {
             let async_kw = if method.is_async { "async " } else { "" };
-            let params: String = method.params.iter()
+            let params: String = method
+                .params
+                .iter()
                 .map(|(name, ty)| format!("{}: {}", name, ty))
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -381,7 +397,8 @@ impl {service_name} {{
         let mut files_created = Vec::new();
         let mut files_modified = Vec::new();
 
-        let handler_path = self.project_path
+        let handler_path = self
+            .project_path
             .join("src/presentation")
             .join("handlers.rs");
 
@@ -453,8 +470,14 @@ use uuid::Uuid;
     }
 
     /// Update domain mod.rs with new entity
-    fn update_mod_file(&self, layer: Layer, module_name: &str, with_repository: bool) -> Result<(), String> {
-        let mod_path = self.project_path
+    fn update_mod_file(
+        &self,
+        layer: Layer,
+        module_name: &str,
+        with_repository: bool,
+    ) -> Result<(), String> {
+        let mod_path = self
+            .project_path
             .join("src")
             .join(layer.dir_name())
             .join("mod.rs");
@@ -471,7 +494,8 @@ use uuid::Uuid;
 
         // Add re-export if not present
         let re_export = format!("pub use {}::*;", module_name);
-        if !content.contains(&re_export) && !content.contains(&format!("pub use {}::", module_name)) {
+        if !content.contains(&re_export) && !content.contains(&format!("pub use {}::", module_name))
+        {
             content.push_str(&format!("\n{}", re_export));
         }
 
@@ -487,14 +511,12 @@ use uuid::Uuid;
             }
         }
 
-        fs::write(&mod_path, content)
-            .map_err(|e| format!("Failed to write mod.rs: {}", e))
+        fs::write(&mod_path, content).map_err(|e| format!("Failed to write mod.rs: {}", e))
     }
 
     /// Update application mod.rs with new service
     fn update_service_mod_file(&self, service_name: &str) -> Result<(), String> {
-        let mod_path = self.project_path
-            .join("src/application/mod.rs");
+        let mod_path = self.project_path.join("src/application/mod.rs");
 
         let existing = fs::read_to_string(&mod_path).unwrap_or_default();
         let mut content = existing.clone();
@@ -509,8 +531,7 @@ use uuid::Uuid;
             content.push_str(&format!("\n{}", re_export));
         }
 
-        fs::write(&mod_path, content)
-            .map_err(|e| format!("Failed to write mod.rs: {}", e))
+        fs::write(&mod_path, content).map_err(|e| format!("Failed to write mod.rs: {}", e))
     }
 }
 

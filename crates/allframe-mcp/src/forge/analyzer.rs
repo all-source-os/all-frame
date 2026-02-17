@@ -1,8 +1,10 @@
 //! Project analyzer for understanding AllFrame project structure
 
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -272,7 +274,12 @@ impl ProjectAnalyzer {
         let mut files_by_layer = HashMap::new();
         let src = self.project_path.join("src");
 
-        for layer in [Layer::Domain, Layer::Application, Layer::Infrastructure, Layer::Presentation] {
+        for layer in [
+            Layer::Domain,
+            Layer::Application,
+            Layer::Infrastructure,
+            Layer::Presentation,
+        ] {
             let layer_path = src.join(layer.dir_name());
             let mut files = Vec::new();
 
@@ -312,7 +319,10 @@ impl ProjectAnalyzer {
     }
 
     /// Find entities in domain layer by parsing struct definitions
-    fn find_entities(&self, files_by_layer: &HashMap<String, Vec<String>>) -> Result<Vec<Entity>, String> {
+    fn find_entities(
+        &self,
+        files_by_layer: &HashMap<String, Vec<String>>,
+    ) -> Result<Vec<Entity>, String> {
         let mut entities = Vec::new();
 
         let domain_files = files_by_layer.get("domain").cloned().unwrap_or_default();
@@ -364,7 +374,8 @@ impl ProjectAnalyzer {
                                     .collect();
                                 if parts.len() == 2 {
                                     let field_name = parts[0].trim().to_string();
-                                    let field_type = parts[1].trim().trim_end_matches(',').to_string();
+                                    let field_type =
+                                        parts[1].trim().trim_end_matches(',').to_string();
                                     fields.insert(field_name, field_type);
                                 }
                             }
@@ -384,7 +395,10 @@ impl ProjectAnalyzer {
     }
 
     /// Find repository traits in domain layer
-    fn find_repositories(&self, files_by_layer: &HashMap<String, Vec<String>>) -> Result<Vec<Repository>, String> {
+    fn find_repositories(
+        &self,
+        files_by_layer: &HashMap<String, Vec<String>>,
+    ) -> Result<Vec<Repository>, String> {
         let mut repositories = Vec::new();
 
         let domain_files = files_by_layer.get("domain").cloned().unwrap_or_default();
@@ -409,14 +423,16 @@ impl ProjectAnalyzer {
 
                     if !name.is_empty() {
                         // Try to guess associated entity
-                        let entity = name
-                            .trim_end_matches("Repository")
-                            .to_string();
+                        let entity = name.trim_end_matches("Repository").to_string();
 
                         repositories.push(Repository {
                             name,
                             file_path: file_path.clone(),
-                            entity: if entity.is_empty() { None } else { Some(entity) },
+                            entity: if entity.is_empty() {
+                                None
+                            } else {
+                                Some(entity)
+                            },
                         });
                     }
                 }
@@ -427,10 +443,16 @@ impl ProjectAnalyzer {
     }
 
     /// Find services in application layer
-    fn find_services(&self, files_by_layer: &HashMap<String, Vec<String>>) -> Result<Vec<Service>, String> {
+    fn find_services(
+        &self,
+        files_by_layer: &HashMap<String, Vec<String>>,
+    ) -> Result<Vec<Service>, String> {
         let mut services = Vec::new();
 
-        let app_files = files_by_layer.get("application").cloned().unwrap_or_default();
+        let app_files = files_by_layer
+            .get("application")
+            .cloned()
+            .unwrap_or_default();
 
         for file_path in app_files {
             if file_path.ends_with("mod.rs") {
@@ -447,8 +469,11 @@ impl ProjectAnalyzer {
             let mut lines = content.lines().peekable();
             while let Some(line) = lines.next() {
                 let line = line.trim();
-                if line.starts_with("pub struct ") &&
-                   (line.contains("Service") || line.contains("Orchestrator") || line.contains("Handler")) {
+                if line.starts_with("pub struct ")
+                    && (line.contains("Service")
+                        || line.contains("Orchestrator")
+                        || line.contains("Handler"))
+                {
                     let name = line
                         .trim_start_matches("pub struct ")
                         .split([' ', '{', '<'])
@@ -494,10 +519,16 @@ impl ProjectAnalyzer {
     }
 
     /// Find handlers in presentation layer
-    fn find_handlers(&self, files_by_layer: &HashMap<String, Vec<String>>) -> Result<Vec<Handler>, String> {
+    fn find_handlers(
+        &self,
+        files_by_layer: &HashMap<String, Vec<String>>,
+    ) -> Result<Vec<Handler>, String> {
         let mut handlers = Vec::new();
 
-        let pres_files = files_by_layer.get("presentation").cloned().unwrap_or_default();
+        let pres_files = files_by_layer
+            .get("presentation")
+            .cloned()
+            .unwrap_or_default();
 
         for file_path in pres_files {
             if file_path.ends_with("mod.rs") {
@@ -527,7 +558,10 @@ impl ProjectAnalyzer {
                     }
 
                     // Try to detect HTTP method from name
-                    let method = if name.starts_with("get_") || name.starts_with("list_") || name.starts_with("fetch_") {
+                    let method = if name.starts_with("get_")
+                        || name.starts_with("list_")
+                        || name.starts_with("fetch_")
+                    {
                         Some("GET".to_string())
                     } else if name.starts_with("create_") || name.starts_with("add_") {
                         Some("POST".to_string())

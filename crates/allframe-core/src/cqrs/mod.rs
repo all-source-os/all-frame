@@ -3,23 +3,23 @@
 //! This module provides the core CQRS (Command Query Responsibility
 //! Segregation) and Event Sourcing infrastructure for AllFrame.
 
-
 // Declare submodules
+pub mod allsource_backend;
 pub mod backend;
 pub mod command_bus;
 pub mod event_versioning;
+pub mod memory_backend;
 pub mod projection_registry;
 pub mod saga;
 pub mod saga_orchestrator;
-pub mod allsource_backend;
-pub mod memory_backend;
 
 /// Trait for resolving the event type name used in AllSource storage.
 ///
 /// The default implementation extracts the last segment from
-/// `std::any::type_name` (e.g. `my_crate::events::UserCreated` → `UserCreated`).
-/// Override this to provide a stable, user-controlled name.
+/// `std::any::type_name` (e.g. `my_crate::events::UserCreated` →
+/// `UserCreated`). Override this to provide a stable, user-controlled name.
 pub trait EventTypeName {
+    /// Returns the event type name for this type.
     fn event_type_name() -> &'static str {
         std::any::type_name::<Self>()
             .split("::")
@@ -64,6 +64,12 @@ pub struct EventStore<E: Event, B: EventStoreBackend<E> = InMemoryBackend<E>> {
     _phantom: std::marker::PhantomData<E>,
 }
 
+impl<E: Event> Default for EventStore<E, InMemoryBackend<E>> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<E: Event> EventStore<E, InMemoryBackend<E>> {
     /// Create a new event store with in-memory backend
     pub fn new() -> Self {
@@ -105,6 +111,15 @@ impl<E: Event, B: EventStoreBackend<E>> EventStore<E, B> {
         self.backend.get_events(aggregate_id).await
     }
 
+    /// Get events after a specific version for an aggregate
+    pub async fn get_events_after(
+        &self,
+        aggregate_id: &str,
+        version: u64,
+    ) -> Result<Vec<E>, String> {
+        self.backend.get_events_after(aggregate_id, version).await
+    }
+
     /// Get all events from all aggregates (for projection rebuild)
     pub async fn get_all_events(&self) -> Result<Vec<E>, String> {
         self.backend.get_all_events().await
@@ -138,20 +153,25 @@ impl<A: Aggregate> Snapshot<A> {
 }
 
 // Re-export all CQRS types for convenience
-pub use backend::*;
-pub use command_bus::*;
-pub use event_versioning::*;
-pub use projection_registry::*;
-// Resolve SagaError conflict - prefer saga_orchestrator version
-pub use saga_orchestrator::{SagaDefinition, SagaMetadata, SagaOrchestrator, SagaResult, SagaStatus, SagaStep as OrchestratorSagaStep};
-pub use saga::{CompensationResult, MacroSagaOrchestrator, Saga, SagaStep as MacroSagaStep, SagaContext, SagaError, StepExecutionResult, StepOutput};
 pub use allsource_backend::*;
-pub use memory_backend::*;
-
 // Re-export AllSource v0.10.3 services behind the cqrs-allsource feature
 #[cfg(feature = "cqrs-allsource")]
 pub use allsource_core::ExactlyOnceRegistry;
 #[cfg(feature = "cqrs-allsource")]
-pub use allsource_core::SchemaRegistry;
-#[cfg(feature = "cqrs-allsource")]
 pub use allsource_core::PipelineManager;
+#[cfg(feature = "cqrs-allsource")]
+pub use allsource_core::SchemaRegistry;
+pub use backend::*;
+pub use command_bus::*;
+pub use event_versioning::*;
+pub use memory_backend::*;
+pub use projection_registry::*;
+pub use saga::{
+    CompensationResult, MacroSagaOrchestrator, Saga, SagaContext, SagaError,
+    SagaStep as MacroSagaStep, StepExecutionResult, StepOutput,
+};
+// Resolve SagaError conflict - prefer saga_orchestrator version
+pub use saga_orchestrator::{
+    SagaDefinition, SagaMetadata, SagaOrchestrator, SagaResult, SagaStatus,
+    SagaStep as OrchestratorSagaStep,
+};

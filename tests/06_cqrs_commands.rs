@@ -21,7 +21,8 @@
 // These fixtures illustrate command handler architecture even when not every
 // test exercises them.
 #[allow(dead_code)]
-use allframe_core::cqrs::{command, command_handler, Event, EventTypeName};
+use allframe_core::cqrs::{Event, EventTypeName};
+use allframe_macros::{command, command_handler};
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 enum UserEvent {

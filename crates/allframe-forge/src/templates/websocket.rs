@@ -1,6 +1,7 @@
 //! WebSocket Gateway archetype templates
 //!
-//! Templates for generating real-time WebSocket services with channel-based messaging.
+//! Templates for generating real-time WebSocket services with channel-based
+//! messaging.
 
 use crate::config::ProjectConfig;
 

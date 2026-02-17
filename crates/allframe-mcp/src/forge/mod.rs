@@ -26,6 +26,6 @@ mod analyzer;
 mod generator;
 mod server;
 
-pub use analyzer::{ProjectAnalyzer, ProjectStructure, Layer, Entity, Service, Handler};
+pub use analyzer::{Entity, Handler, Layer, ProjectAnalyzer, ProjectStructure, Service};
 pub use generator::CodeGenerator;
 pub use server::ForgeMcpServer;

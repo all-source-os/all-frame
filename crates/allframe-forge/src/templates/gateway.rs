@@ -1231,7 +1231,8 @@ pub fn generate_nonce() -> String {{
     )
 }
 
-/// Generate infrastructure/{service}_repository.rs (not used directly, kept for reference)
+/// Generate infrastructure/{service}_repository.rs (not used directly, kept for
+/// reference)
 fn _infrastructure_repository(config: &ProjectConfig) -> String {
     let gateway = config.gateway.as_ref().unwrap();
     let pascal_name = to_pascal_case(&gateway.service_name);

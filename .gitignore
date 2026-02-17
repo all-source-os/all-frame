@@ -196,3 +196,12 @@ result-*
 
 # asdf
 .tool-versions
+
+# ralph-tui session/state files
+.ralph-tui/
+
+# beads task artifacts
+.beads/
+
+# tasks directory
+tasks/

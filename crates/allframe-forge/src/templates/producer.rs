@@ -26,7 +26,9 @@ pub fn cargo_toml(config: &ProjectConfig) -> String {
     let broker_deps = match producer.broker {
         MessageBroker::Kafka => r#"rdkafka = { version = "0.36", features = ["cmake-build"] }"#,
         MessageBroker::RabbitMq => r#"lapin = "2.3""#,
-        MessageBroker::Redis => r#"redis = { version = "0.25", features = ["tokio-comp", "streams"] }"#,
+        MessageBroker::Redis => {
+            r#"redis = { version = "0.25", features = ["tokio-comp", "streams"] }"#
+        }
         MessageBroker::Sqs => r#"aws-sdk-sqs = "1.0""#,
         MessageBroker::PubSub => r#"google-cloud-pubsub = "0.25""#,
     };
@@ -292,7 +294,11 @@ impl Config {{
         port = producer.server.http_port,
         health_port = producer.server.health_port,
         db_name = config.name.replace('-', "_"),
-        topic = producer.topics.first().map(|t| t.name.as_str()).unwrap_or("events"),
+        topic = producer
+            .topics
+            .first()
+            .map(|t| t.name.as_str())
+            .unwrap_or("events"),
         poll_interval = producer.outbox.polling_interval_ms,
         batch_size = producer.outbox.batch_size,
         max_retries = producer.outbox.max_retries,

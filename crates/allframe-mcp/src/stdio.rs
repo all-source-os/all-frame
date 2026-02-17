@@ -26,9 +26,11 @@
 //! }
 //! ```
 
-use std::io::{stdin, stdout, BufRead, Write};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Instant;
+use std::{
+    io::{stdin, stdout, BufRead, Write},
+    sync::atomic::{AtomicU64, Ordering},
+    time::Instant,
+};
 
 use serde_json::{json, Value};
 
@@ -243,14 +245,20 @@ impl StdioTransport {
 
             // List available tools
             "tools/list" => {
-                let mut tools: Vec<Value> = self.mcp.list_tools().await.iter().map(|t| {
-                    json!({
-                        "name": t.name,
-                        "description": t.description,
-                        "inputSchema": serde_json::from_str::<Value>(&t.input_schema)
-                            .unwrap_or_else(|_| json!({"type": "object"}))
+                let mut tools: Vec<Value> = self
+                    .mcp
+                    .list_tools()
+                    .await
+                    .iter()
+                    .map(|t| {
+                        json!({
+                            "name": t.name,
+                            "description": t.description,
+                            "inputSchema": serde_json::from_str::<Value>(&t.input_schema)
+                                .unwrap_or_else(|_| json!({"type": "object"}))
+                        })
                     })
-                }).collect();
+                    .collect();
 
                 // Add debug tool if enabled
                 if self.config.include_debug_tool {
@@ -455,13 +463,11 @@ impl StdioTransport {
 pub fn init_tracing() {
     use tracing_subscriber::EnvFilter;
 
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     if let Ok(log_file) = std::env::var("ALLFRAME_MCP_LOG_FILE") {
         // Log to file
-        let file = std::fs::File::create(&log_file)
-            .expect("Failed to create log file");
+        let file = std::fs::File::create(&log_file).expect("Failed to create log file");
 
         tracing_subscriber::fmt()
             .with_env_filter(filter)

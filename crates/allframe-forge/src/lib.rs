@@ -9,11 +9,14 @@
 //! - `basic` (default): Simple Clean Architecture project with greeter example
 //! - `gateway`: API Gateway service with gRPC, resilience, and caching
 //! - `consumer`: Event consumer service with Kafka, idempotency, and DLQ
-//! - `producer`: Event producer service with outbox pattern and transactional messaging
+//! - `producer`: Event producer service with outbox pattern and transactional
+//!   messaging
 //! - `bff`: Backend for Frontend API aggregation service
 //! - `scheduled`: Scheduled jobs service with cron-based task execution
-//! - `websocket-gateway`: WebSocket gateway for real-time bidirectional communication
-//! - `saga-orchestrator`: Saga orchestrator for distributed transaction coordination
+//! - `websocket-gateway`: WebSocket gateway for real-time bidirectional
+//!   communication
+//! - `saga-orchestrator`: Saga orchestrator for distributed transaction
+//!   coordination
 //! - `legacy-adapter`: Legacy system adapter (anti-corruption layer)
 //!
 //! # Usage
@@ -54,11 +57,10 @@ pub mod scaffolding;
 pub mod templates;
 pub mod validation;
 
-pub use config::{Archetype, ProjectConfig};
-
 use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand, ValueEnum};
+pub use config::{Archetype, ProjectConfig};
 
 /// CLI archetype selection (maps to config::Archetype)
 #[derive(Debug, Clone, Copy, Default, ValueEnum)]
@@ -123,7 +125,8 @@ enum SagaCommands {
         /// Name of the step to add
         name: String,
 
-        /// Position to insert the step (first, last, after:<step>, before:<step>)
+        /// Position to insert the step (first, last, after:<step>,
+        /// before:<step>)
         #[arg(short, long, default_value = "last")]
         position: String,
 
@@ -170,7 +173,8 @@ enum Commands {
         #[arg(short, long, value_enum, default_value_t = CliArchetype::Basic)]
         archetype: CliArchetype,
 
-        /// Service name (e.g., "kraken" for gateway, "order-processor" for consumer)
+        /// Service name (e.g., "kraken" for gateway, "order-processor" for
+        /// consumer)
         #[arg(long)]
         service_name: Option<String>,
 
@@ -558,7 +562,14 @@ fn handle_saga_command(command: SagaCommands) -> anyhow::Result<()> {
             requires_compensation,
             path,
         } => {
-            saga_add_step(&saga, &name, &position, timeout, requires_compensation, &path)?;
+            saga_add_step(
+                &saga,
+                &name,
+                &position,
+                timeout,
+                requires_compensation,
+                &path,
+            )?;
         }
         SagaCommands::Validate { name, path } => {
             saga_validate(&name, &path)?;
@@ -595,8 +606,14 @@ fn saga_add_step(
     requires_compensation: bool,
     base_path: &Path,
 ) -> anyhow::Result<()> {
-    println!("Adding step '{}' to saga '{}' at position '{}'", step_name, saga, position);
-    println!("Timeout: {}s, Requires compensation: {}", timeout, requires_compensation);
+    println!(
+        "Adding step '{}' to saga '{}' at position '{}'",
+        step_name, saga, position
+    );
+    println!(
+        "Timeout: {}s, Requires compensation: {}",
+        timeout, requires_compensation
+    );
 
     let saga_path = base_path.join(saga.to_lowercase());
     if !saga_path.exists() {
@@ -606,7 +623,10 @@ fn saga_add_step(
     // Generate step file
     generate_step_file(&saga_path, step_name, timeout, requires_compensation)?;
 
-    println!("Step '{}' added to saga '{}' successfully!", step_name, saga);
+    println!(
+        "Step '{}' added to saga '{}' successfully!",
+        step_name, saga
+    );
     Ok(())
 }
 
@@ -642,9 +662,11 @@ fn saga_validate(name: &str, base_path: &Path) -> anyhow::Result<()> {
 /// Generate saga files
 fn generate_saga_files(saga_path: &Path, name: &str, steps: &[&str]) -> anyhow::Result<()> {
     // Generate mod.rs
-    let step_mods = steps.iter().map(|step| {
-        format!("pub mod {};", step.to_lowercase())
-    }).collect::<Vec<_>>().join("\n");
+    let step_mods = steps
+        .iter()
+        .map(|step| format!("pub mod {};", step.to_lowercase()))
+        .collect::<Vec<_>>()
+        .join("\n");
 
     let mod_content = format!(
         "//! {} saga implementation
@@ -653,7 +675,10 @@ fn generate_saga_files(saga_path: &Path, name: &str, steps: &[&str]) -> anyhow::
 
 pub mod {};
 {}",
-        name, name, name.to_lowercase(), step_mods
+        name,
+        name,
+        name.to_lowercase(),
+        step_mods
     );
     std::fs::write(saga_path.join("mod.rs"), mod_content)?;
 
@@ -675,13 +700,18 @@ fn generate_saga_content(name: &str, steps: &[&str]) -> String {
     let data_struct_name = format!("{}Data", name);
     let _workflow_enum_name = format!("{}Workflow", name);
 
-    let step_imports = steps.iter().map(|step| {
-        format!("use super::{};", step.to_lowercase())
-    }).collect::<Vec<_>>().join("\n");
+    let step_imports = steps
+        .iter()
+        .map(|step| format!("use super::{};", step.to_lowercase()))
+        .collect::<Vec<_>>()
+        .join("\n");
 
-    let workflow_variants = steps.iter().enumerate().map(|(i, step)| {
-        format!("    /// Step {}: {}\n    {},", i + 1, step, step)
-    }).collect::<Vec<_>>().join("\n");
+    let workflow_variants = steps
+        .iter()
+        .enumerate()
+        .map(|(i, step)| format!("    /// Step {}: {}\n    {},", i + 1, step, step))
+        .collect::<Vec<_>>()
+        .join("\n");
 
     format!(
         "//! {} Saga Implementation
@@ -722,23 +752,45 @@ impl {} {{
 {}
 }}
 ",
-        name, name, step_imports, data_struct_name, name, name, data_struct_name, name, name, workflow_variants, name,
-        steps.iter().map(|step| {
-            let step_struct = format!("{}Step", step);
-            let constructor = format!("create_{}_step", step.to_lowercase());
-            format!("    pub fn {}(&self) -> Arc<dyn MacroSagaStep> {{
+        name,
+        name,
+        step_imports,
+        data_struct_name,
+        name,
+        name,
+        data_struct_name,
+        name,
+        name,
+        workflow_variants,
+        name,
+        steps
+            .iter()
+            .map(|step| {
+                let step_struct = format!("{}Step", step);
+                let constructor = format!("create_{}_step", step.to_lowercase());
+                format!(
+                    "    pub fn {}(&self) -> Arc<dyn MacroSagaStep> {{
         Arc::new({} {{
             // TODO: Initialize step with saga dependencies
             user_id: self.data.user_id.clone(),
             // Add other dependencies from saga fields
         }})
-    }}", constructor, step_struct)
-        }).collect::<Vec<_>>().join("\n\n")
+    }}",
+                    constructor, step_struct
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n")
     )
 }
 
 /// Generate step file content
-fn generate_step_file(saga_path: &Path, step_name: &str, _timeout: u64, requires_compensation: bool) -> anyhow::Result<()> {
+fn generate_step_file(
+    saga_path: &Path,
+    step_name: &str,
+    _timeout: u64,
+    requires_compensation: bool,
+) -> anyhow::Result<()> {
     let file_name = format!("{}.rs", step_name.to_lowercase());
     let struct_name = format!("{}Step", step_name);
 
@@ -784,7 +836,14 @@ impl {} {{
     }}
 }}
 ",
-        step_name, step_name, step_name, compensation_attr, struct_name, struct_name, step_name, step_name
+        step_name,
+        step_name,
+        step_name,
+        compensation_attr,
+        struct_name,
+        struct_name,
+        step_name,
+        step_name
     );
 
     std::fs::write(saga_path.join(file_name), content)?;

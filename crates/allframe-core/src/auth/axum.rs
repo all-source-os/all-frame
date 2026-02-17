@@ -341,9 +341,7 @@ mod tests {
             sub: String,
         }
 
-        let mut req = hyper::Request::builder()
-            .body(())
-            .unwrap();
+        let mut req = hyper::Request::builder().body(()).unwrap();
 
         // No auth context initially
         assert!(req.auth_context::<Claims>().is_none());

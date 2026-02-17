@@ -1,7 +1,7 @@
 //! Tests for saga macros
 
-use allframe_core::cqrs::{StepExecutionResult, StepOutput, Saga};
-use allframe_macros::{StepOutput as StepOutputDerive, saga, saga_data};
+use allframe_core::cqrs::{Saga, StepExecutionResult, StepOutput};
+use allframe_macros::{saga, saga_data, StepOutput as StepOutputDerive};
 use serde::{Deserialize, Serialize};
 
 // Test data structures
@@ -48,7 +48,10 @@ fn test_step_output_derive() {
 
     // Test From conversion
     let result: StepExecutionResult = output.into();
-    assert!(matches!(result, StepExecutionResult::Success { output: Some(_) }));
+    assert!(matches!(
+        result,
+        StepExecutionResult::Success { output: Some(_) }
+    ));
 }
 
 // #[test]

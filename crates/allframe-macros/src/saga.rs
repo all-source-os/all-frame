@@ -1,7 +1,8 @@
 //! Saga procedural macros for AllFrame
 //!
-//! This module provides macros for reducing boilerplate in saga implementations,
-//! including step definitions, output extraction, and saga containers.
+//! This module provides macros for reducing boilerplate in saga
+//! implementations, including step definitions, output extraction, and saga
+//! containers.
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -9,8 +10,8 @@ use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     token::Comma,
-    Data, DataStruct, DeriveInput, Expr, ExprLit, Field, Fields, FieldsNamed,
-    Ident, Lit, Meta, MetaNameValue, Result as SynResult,
+    Data, DataStruct, DeriveInput, Expr, ExprLit, Field, Fields, FieldsNamed, Ident, Lit, Meta,
+    MetaNameValue, Result as SynResult,
 };
 
 /// Arguments for the `#[saga_step]` attribute
@@ -30,62 +31,71 @@ impl Parse for SagaStepArgs {
         let parsed = Punctuated::<Meta, Comma>::parse_terminated(input)?;
         for meta in parsed {
             match meta {
-                Meta::NameValue(MetaNameValue { path, eq_token: _, value }) => {
-                    let ident = path.get_ident().ok_or_else(|| {
-                        syn::Error::new_spanned(&path, "Expected identifier")
-                    })?;
+                Meta::NameValue(MetaNameValue {
+                    path,
+                    eq_token: _,
+                    value,
+                }) => {
+                    let ident = path
+                        .get_ident()
+                        .ok_or_else(|| syn::Error::new_spanned(&path, "Expected identifier"))?;
 
                     match ident.to_string().as_str() {
                         "name" => {
-                            if let Expr::Lit(ExprLit { lit: Lit::Str(lit_str), .. }) = value {
+                            if let Expr::Lit(ExprLit {
+                                lit: Lit::Str(lit_str),
+                                ..
+                            }) = value
+                            {
                                 name = Some(lit_str.value());
                             } else {
                                 return Err(syn::Error::new_spanned(
                                     &value,
-                                    "Expected string literal for name"
+                                    "Expected string literal for name",
                                 ));
                             }
                         }
                         "timeout_seconds" => {
-                            if let Expr::Lit(ExprLit { lit: Lit::Int(lit_int), .. }) = value {
+                            if let Expr::Lit(ExprLit {
+                                lit: Lit::Int(lit_int),
+                                ..
+                            }) = value
+                            {
                                 timeout_seconds = Some(lit_int.base10_parse()?);
                             } else {
                                 return Err(syn::Error::new_spanned(
                                     &value,
-                                    "Expected integer literal for timeout_seconds"
+                                    "Expected integer literal for timeout_seconds",
                                 ));
                             }
                         }
                         "requires_compensation" => {
-                            if let Expr::Lit(ExprLit { lit: Lit::Bool(lit_bool), .. }) = value {
+                            if let Expr::Lit(ExprLit {
+                                lit: Lit::Bool(lit_bool),
+                                ..
+                            }) = value
+                            {
                                 requires_compensation = lit_bool.value();
                             } else {
                                 return Err(syn::Error::new_spanned(
                                     &value,
-                                    "Expected boolean literal for requires_compensation"
+                                    "Expected boolean literal for requires_compensation",
                                 ));
                             }
                         }
                         _ => {
-                            return Err(syn::Error::new_spanned(
-                                ident,
-                                "Unknown attribute key"
-                            ));
+                            return Err(syn::Error::new_spanned(ident, "Unknown attribute key"));
                         }
                     }
                 }
                 _ => {
-                    return Err(syn::Error::new_spanned(
-                        &meta,
-                        "Expected name=value pairs"
-                    ));
+                    return Err(syn::Error::new_spanned(&meta, "Expected name=value pairs"));
                 }
             }
         }
 
-        let name = name.ok_or_else(|| {
-            syn::Error::new(input.span(), "Missing required 'name' attribute")
-        })?;
+        let name =
+            name.ok_or_else(|| syn::Error::new(input.span(), "Missing required 'name' attribute"))?;
 
         Ok(SagaStepArgs {
             name,
@@ -116,45 +126,51 @@ impl Parse for SagaArgs {
         let parsed = Punctuated::<Meta, Comma>::parse_terminated(input)?;
         for meta in parsed {
             match meta {
-                Meta::NameValue(MetaNameValue { path, eq_token: _, value }) => {
-                    let ident = path.get_ident().ok_or_else(|| {
-                        syn::Error::new_spanned(&path, "Expected identifier")
-                    })?;
+                Meta::NameValue(MetaNameValue {
+                    path,
+                    eq_token: _,
+                    value,
+                }) => {
+                    let ident = path
+                        .get_ident()
+                        .ok_or_else(|| syn::Error::new_spanned(&path, "Expected identifier"))?;
 
                     match ident.to_string().as_str() {
                         "name" => {
-                            if let Expr::Lit(ExprLit { lit: Lit::Str(lit_str), .. }) = value {
+                            if let Expr::Lit(ExprLit {
+                                lit: Lit::Str(lit_str),
+                                ..
+                            }) = value
+                            {
                                 name = Some(lit_str.value());
                             } else {
                                 return Err(syn::Error::new_spanned(
                                     &value,
-                                    "Expected string literal for name"
+                                    "Expected string literal for name",
                                 ));
                             }
                         }
                         "data_field" => {
-                            if let Expr::Lit(ExprLit { lit: Lit::Str(lit_str), .. }) = value {
+                            if let Expr::Lit(ExprLit {
+                                lit: Lit::Str(lit_str),
+                                ..
+                            }) = value
+                            {
                                 data_field = Some(lit_str.value());
                             } else {
                                 return Err(syn::Error::new_spanned(
                                     &value,
-                                    "Expected string literal for data_field"
+                                    "Expected string literal for data_field",
                                 ));
                             }
                         }
                         _ => {
-                            return Err(syn::Error::new_spanned(
-                                ident,
-                                "Unknown attribute key"
-                            ));
+                            return Err(syn::Error::new_spanned(ident, "Unknown attribute key"));
                         }
                     }
                 }
                 _ => {
-                    return Err(syn::Error::new_spanned(
-                        &meta,
-                        "Expected name=value pairs"
-                    ));
+                    return Err(syn::Error::new_spanned(&meta, "Expected name=value pairs"));
                 }
             }
         }
@@ -176,9 +192,10 @@ impl Parse for SagaWorkflowArgs {
 fn generate_debug_impl(struct_name: &Ident, fields: &FieldsNamed) -> TokenStream {
     let debug_fields = fields.named.iter().filter_map(|field| {
         // Check if field has #[inject] attribute
-        let has_inject = field.attrs.iter().any(|attr| {
-            attr.path().is_ident("inject")
-        });
+        let has_inject = field
+            .attrs
+            .iter()
+            .any(|attr| attr.path().is_ident("inject"));
 
         if has_inject {
             // Skip inject fields in debug output
@@ -203,10 +220,7 @@ fn generate_debug_impl(struct_name: &Ident, fields: &FieldsNamed) -> TokenStream
 }
 
 /// Generate SagaStep trait implementation
-fn generate_saga_step_impl(
-    struct_name: &Ident,
-    args: &SagaStepArgs,
-) -> TokenStream {
+fn generate_saga_step_impl(struct_name: &Ident, args: &SagaStepArgs) -> TokenStream {
     let step_name = &args.name;
     let timeout_seconds = args.timeout_seconds.unwrap_or(30);
     let requires_compensation = args.requires_compensation;
@@ -244,7 +258,10 @@ fn generate_saga_step_impl(
 }
 
 /// Extract #[inject] fields and saga_data field from struct
-fn extract_special_fields<'a>(args: &SagaArgs, fields: &'a FieldsNamed) -> (Vec<&'a Field>, Option<&'a Field>) {
+fn extract_special_fields<'a>(
+    args: &SagaArgs,
+    fields: &'a FieldsNamed,
+) -> (Vec<&'a Field>, Option<&'a Field>) {
     let mut inject_fields = Vec::new();
     let mut saga_data_field = None;
 
@@ -254,10 +271,15 @@ fn extract_special_fields<'a>(args: &SagaArgs, fields: &'a FieldsNamed) -> (Vec<
             attr.path().segments.len() == 1 && attr.path().segments[0].ident == "inject"
         });
 
-        // Check if this field is the saga data field (either by attribute or by parameter)
+        // Check if this field is the saga data field (either by attribute or by
+        // parameter)
         let is_saga_data = field.attrs.iter().any(|attr| {
             attr.path().segments.len() == 1 && attr.path().segments[0].ident == "saga_data"
-        }) || args.data_field.as_ref().map(|df| df == &field_name).unwrap_or(false);
+        }) || args
+            .data_field
+            .as_ref()
+            .map(|df| df == &field_name)
+            .unwrap_or(false);
 
         if has_inject {
             inject_fields.push(field);
@@ -270,7 +292,8 @@ fn extract_special_fields<'a>(args: &SagaArgs, fields: &'a FieldsNamed) -> (Vec<
         }
     }
 
-    // If no saga data field specified, assume the first non-inject field is saga data
+    // If no saga data field specified, assume the first non-inject field is saga
+    // data
     if saga_data_field.is_none() && !fields.named.is_empty() {
         for field in &fields.named {
             let has_inject = field.attrs.iter().any(|attr| {
@@ -293,7 +316,9 @@ fn generate_saga_impl(
     _inject_fields: &[&Field],
     saga_data_field: Option<&Field>,
 ) -> TokenStream {
-    let saga_name = args.name.as_ref()
+    let saga_name = args
+        .name
+        .as_ref()
         .cloned()
         .unwrap_or_else(|| struct_name.to_string());
 
@@ -410,7 +435,7 @@ pub fn saga_step_impl(attr: TokenStream, item: TokenStream) -> SynResult<TokenSt
         _ => {
             return Err(syn::Error::new_spanned(
                 &input.fields,
-                "SagaStep structs must have named fields"
+                "SagaStep structs must have named fields",
             ));
         }
     };
@@ -438,7 +463,7 @@ pub fn saga_impl(attr: TokenStream, item: TokenStream) -> SynResult<TokenStream>
         _ => {
             return Err(syn::Error::new_spanned(
                 &input.fields,
-                "Saga structs must have named fields"
+                "Saga structs must have named fields",
             ));
         }
     };
@@ -461,18 +486,23 @@ pub fn derive_step_output(input: TokenStream) -> SynResult<TokenStream> {
     let struct_name = &input.ident;
 
     let fields = match &input.data {
-        Data::Struct(DataStruct { fields: Fields::Named(fields), .. }) => fields,
+        Data::Struct(DataStruct {
+            fields: Fields::Named(fields),
+            ..
+        }) => fields,
         _ => {
             return Err(syn::Error::new_spanned(
                 &input,
-                "StepOutput can only be derived for structs with named fields"
+                "StepOutput can only be derived for structs with named fields",
             ));
         }
     };
 
-    let field_names: Vec<_> = fields.named.iter().map(|field| {
-        field.ident.as_ref().unwrap()
-    }).collect();
+    let field_names: Vec<_> = fields
+        .named
+        .iter()
+        .map(|field| field.ident.as_ref().unwrap())
+        .collect();
 
     Ok(quote! {
         impl allframe_core::cqrs::StepOutput for #struct_name {
@@ -577,7 +607,8 @@ fn to_snake_case(s: &str) -> String {
 /// Implementation of `extract_output!` macro
 ///
 /// NOTE: This is a proc-macro crate, so we can't define declarative macros.
-/// Instead, this provides a compile error directing users to use the StepOutput trait.
+/// Instead, this provides a compile error directing users to use the StepOutput
+/// trait.
 ///
 /// For ergonomic output extraction, use:
 /// - `MyOutputType::from_context(ctx, "StepName")?)` for typed extraction
@@ -587,4 +618,3 @@ pub fn extract_output_impl(_input: TokenStream) -> SynResult<TokenStream> {
         compile_error!("extract_output! is not available in proc-macro context. Use StepOutput::from_context() for type-safe extraction or ctx.get_step_output() for raw access");
     })
 }
-

@@ -344,6 +344,7 @@ impl<E: Event> Clone for SagaOrchestrator<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cqrs::EventTypeName;
 
     #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     enum TestEvent {

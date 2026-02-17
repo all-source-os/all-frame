@@ -5,12 +5,14 @@
 //! domain logic to specify resilience requirements while maintaining Clean
 //! Architecture principles.
 //!
-//! The domain layer defines WHAT resilience is needed, not HOW it's implemented.
+//! The domain layer defines WHAT resilience is needed, not HOW it's
+//! implemented.
 
 use std::time::Duration;
 
 /// Resilience policies that domain entities can declare.
-/// These represent business requirements for reliability, not implementation details.
+/// These represent business requirements for reliability, not implementation
+/// details.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ResiliencePolicy {
     /// No resilience - execute once
@@ -36,23 +38,17 @@ pub enum ResiliencePolicy {
     },
 
     /// Timeout protection
-    Timeout {
-        duration: Duration,
-    },
+    Timeout { duration: Duration },
 
     /// Combination of multiple policies
-    Combined {
-        policies: Vec<ResiliencePolicy>,
-    },
+    Combined { policies: Vec<ResiliencePolicy> },
 }
 
 /// Backoff strategies for retry operations
 #[derive(Clone, Debug, PartialEq)]
 pub enum BackoffStrategy {
     /// Fixed delay between attempts
-    Fixed {
-        delay: Duration,
-    },
+    Fixed { delay: Duration },
 
     /// Exponential backoff with optional jitter
     Exponential {
@@ -111,10 +107,10 @@ impl ResilienceDomainError {
         match self {
             Self::Timeout { .. } => true,
             Self::RetryExhausted { .. } => false, // Already exhausted retries
-            Self::CircuitOpen => false, // Circuit breaker protects from further calls
-            Self::RateLimited { .. } => true, // Can retry after backoff
-            Self::Cancelled => false, // Operation was intentionally cancelled
-            Self::Infrastructure { .. } => true, // Infrastructure issues might be transient
+            Self::CircuitOpen => false,           // Circuit breaker protects from further calls
+            Self::RateLimited { .. } => true,     // Can retry after backoff
+            Self::Cancelled => false,             // Operation was intentionally cancelled
+            Self::Infrastructure { .. } => true,  // Infrastructure issues might be transient
         }
     }
 
@@ -133,7 +129,8 @@ impl ResilienceDomainError {
 }
 
 /// Trait for domain operations that declare resilience requirements.
-/// Domain entities implement this to specify how they should be executed reliably.
+/// Domain entities implement this to specify how they should be executed
+/// reliably.
 #[async_trait::async_trait]
 pub trait ResilientOperation<T, E> {
     /// Declare the resilience policy required for this operation
@@ -142,7 +139,8 @@ pub trait ResilientOperation<T, E> {
     /// Execute the core business logic
     async fn execute(&self) -> Result<T, E>;
 
-    /// Get a unique identifier for this operation (for circuit breakers, metrics, etc.)
+    /// Get a unique identifier for this operation (for circuit breakers,
+    /// metrics, etc.)
     fn operation_id(&self) -> &str {
         std::any::type_name::<Self>()
     }
@@ -154,7 +152,8 @@ pub trait ResilientOperation<T, E> {
 }
 
 /// Trait for domain services that need resilience.
-/// Services implement this to declare their resilience requirements at the service level.
+/// Services implement this to declare their resilience requirements at the
+/// service level.
 #[async_trait::async_trait]
 pub trait ResilientService {
     /// Get the default resilience policy for this service
@@ -174,7 +173,8 @@ pub trait ResilientService {
 }
 
 /// Configuration for resilience behavior.
-/// Domain layer can provide hints about expected behavior without knowing implementation.
+/// Domain layer can provide hints about expected behavior without knowing
+/// implementation.
 #[derive(Clone, Debug)]
 pub struct ResilienceConfig {
     /// Whether to enable resilience globally
@@ -199,8 +199,9 @@ impl Default for ResilienceConfig {
 
 /// Helper for creating common resilience policies
 pub mod policies {
-    use super::*;
     use std::time::Duration;
+
+    use super::*;
 
     /// Create a simple retry policy
     pub fn retry(max_attempts: u32) -> ResiliencePolicy {
@@ -247,14 +248,21 @@ mod tests {
     #[test]
     fn test_resilience_policy_creation() {
         let retry_policy = policies::retry(3);
-        assert_eq!(retry_policy, ResiliencePolicy::Retry {
-            max_attempts: 3,
-            backoff: BackoffStrategy::default(),
-        });
+        assert_eq!(
+            retry_policy,
+            ResiliencePolicy::Retry {
+                max_attempts: 3,
+                backoff: BackoffStrategy::default(),
+            }
+        );
 
         let circuit_policy = policies::circuit_breaker(5, 30);
         match circuit_policy {
-            ResiliencePolicy::CircuitBreaker { failure_threshold, recovery_timeout, .. } => {
+            ResiliencePolicy::CircuitBreaker {
+                failure_threshold,
+                recovery_timeout,
+                ..
+            } => {
                 assert_eq!(failure_threshold, 5);
                 assert_eq!(recovery_timeout, Duration::from_secs(30));
             }
@@ -264,7 +272,10 @@ mod tests {
 
     #[test]
     fn test_domain_error_retryable() {
-        assert!(ResilienceDomainError::Timeout { duration: Duration::from_secs(1) }.is_retryable());
+        assert!(ResilienceDomainError::Timeout {
+            duration: Duration::from_secs(1)
+        }
+        .is_retryable());
         assert!(ResilienceDomainError::RateLimited { retry_after: None }.is_retryable());
         assert!(!ResilienceDomainError::CircuitOpen.is_retryable());
         assert!(!ResilienceDomainError::Cancelled.is_retryable());
@@ -274,7 +285,12 @@ mod tests {
     fn test_backoff_strategy_default() {
         let strategy = BackoffStrategy::default();
         match strategy {
-            BackoffStrategy::Exponential { initial_delay, multiplier, max_delay, jitter } => {
+            BackoffStrategy::Exponential {
+                initial_delay,
+                multiplier,
+                max_delay,
+                jitter,
+            } => {
                 assert_eq!(initial_delay, Duration::from_millis(100));
                 assert_eq!(multiplier, 2.0);
                 assert_eq!(max_delay, Some(Duration::from_secs(30)));

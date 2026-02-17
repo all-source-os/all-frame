@@ -512,7 +512,8 @@ impl<K: std::hash::Hash + Eq + Clone + Send + Sync + 'static> KeyedCircuitBreake
 
     /// Check if a request for the given key is allowed.
     ///
-    /// Returns `Ok(())` if allowed, `Err(CircuitOpenError)` if the circuit is open.
+    /// Returns `Ok(())` if allowed, `Err(CircuitOpenError)` if the circuit is
+    /// open.
     pub fn check(&self, key: &K) -> Result<(), CircuitOpenError> {
         self.get_or_create(key).check()
     }
@@ -527,7 +528,8 @@ impl<K: std::hash::Hash + Eq + Clone + Send + Sync + 'static> KeyedCircuitBreake
         self.get_or_create(key).record_failure()
     }
 
-    /// Execute an async operation through the circuit breaker for the given key.
+    /// Execute an async operation through the circuit breaker for the given
+    /// key.
     pub async fn call<F, Fut, T, E>(&self, key: &K, f: F) -> Result<T, CircuitBreakerError<E>>
     where
         F: FnOnce() -> Fut,
@@ -910,7 +912,9 @@ mod tests {
         let cb = KeyedCircuitBreaker::<String>::new(CircuitBreakerConfig::default());
 
         let result = cb
-            .call(&"test".to_string(), || async { Ok::<_, std::io::Error>("success") })
+            .call(&"test".to_string(), || async {
+                Ok::<_, std::io::Error>("success")
+            })
             .await;
 
         assert!(result.is_ok());

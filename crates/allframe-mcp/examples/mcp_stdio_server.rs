@@ -68,7 +68,7 @@ async fn main() {
 
     // Configure the stdio transport
     let config = StdioConfig::default()
-        .with_debug_tool(true)  // Enable allframe/debug tool
+        .with_debug_tool(true) // Enable allframe/debug tool
         .with_server_name("allframe-example");
 
     // Run the server

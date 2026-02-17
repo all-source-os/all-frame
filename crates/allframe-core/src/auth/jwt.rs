@@ -72,10 +72,10 @@ impl JwtAlgorithm {
             JwtAlgorithm::HS256(secret)
             | JwtAlgorithm::HS384(secret)
             | JwtAlgorithm::HS512(secret) => Ok(DecodingKey::from_secret(secret.as_bytes())),
-            JwtAlgorithm::RS256(pem)
-            | JwtAlgorithm::RS384(pem)
-            | JwtAlgorithm::RS512(pem) => DecodingKey::from_rsa_pem(pem.as_bytes())
-                .map_err(|e| AuthError::Internal(format!("Invalid RSA key: {}", e))),
+            JwtAlgorithm::RS256(pem) | JwtAlgorithm::RS384(pem) | JwtAlgorithm::RS512(pem) => {
+                DecodingKey::from_rsa_pem(pem.as_bytes())
+                    .map_err(|e| AuthError::Internal(format!("Invalid RSA key: {}", e)))
+            }
             JwtAlgorithm::EdDSA(pem) => DecodingKey::from_ed_pem(pem.as_bytes())
                 .map_err(|e| AuthError::Internal(format!("Invalid EdDSA key: {}", e))),
         }
@@ -349,8 +349,8 @@ impl<C> JwtValidator<C> {
 impl<C: Clone + Send + Sync + DeserializeOwned + 'static> JwtValidator<C> {
     /// Validate a token and return the claims.
     pub fn validate(&self, token: &str) -> Result<C, AuthError> {
-        let token_data: TokenData<C> =
-            decode(token, &self.decoding_key, &self.validation).map_err(|e| {
+        let token_data: TokenData<C> = decode(token, &self.decoding_key, &self.validation)
+            .map_err(|e| {
                 use jsonwebtoken::errors::ErrorKind;
                 match e.kind() {
                     ErrorKind::ExpiredSignature => AuthError::TokenExpired,
@@ -419,7 +419,8 @@ impl super::HasExpiration for StandardClaims {
 mod tests {
     use super::*;
 
-    // Test token created with secret "test-secret", sub "user123", exp far in future
+    // Test token created with secret "test-secret", sub "user123", exp far in
+    // future
     const TEST_SECRET: &str = "test-secret-that-is-long-enough-for-hs256";
 
     fn create_test_token(claims: &impl serde::Serialize) -> String {

@@ -183,8 +183,33 @@ impl<E: Event> EventStoreBackend<E> for AllSourceBackend<E> {
     }
 
     async fn get_events_after(&self, aggregate_id: &str, version: u64) -> Result<Vec<E>, String> {
-        let all_events = self.get_events(aggregate_id).await?;
-        Ok(all_events.into_iter().skip(version as usize).collect())
+        let request = allsource_core::QueryEventsRequest {
+            entity_id: Some(aggregate_id.to_string()),
+            event_type: None,
+            tenant_id: None,
+            as_of: None,
+            since: None,
+            until: None,
+            limit: None,
+        };
+
+        let allsource_events = self
+            .store
+            .query(request)
+            .map_err(|e| format!("Failed to query events: {:?}", e))?;
+
+        // Skip the first `version` events and only deserialize the rest.
+        // AllSource's QueryEventsRequest does not support version-based offset,
+        // so we skip at the allsource Event level to avoid deserializing events
+        // we will discard.
+        let mut events = Vec::new();
+        for allsource_event in allsource_events.into_iter().skip(version as usize) {
+            let event: E = serde_json::from_value(allsource_event.payload.clone())
+                .map_err(|e| format!("Failed to deserialize event: {}", e))?;
+            events.push(event);
+        }
+
+        Ok(events)
     }
 
     async fn save_snapshot(

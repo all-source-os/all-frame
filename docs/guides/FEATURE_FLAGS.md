@@ -322,6 +322,46 @@ store.append("aggregate-123", events).await?;
 
 ---
 
+### `vector-search` - Vector Similarity Search
+
+**Enables**: Vector similarity search via AllSource's fastembed + HNSW index
+
+**Dependencies**: `allsource-core/vector-search` (fastembed, instant-distance)
+
+**Example**:
+```rust
+use allframe_core::cqrs::AllSourceEventStore;
+
+// With vector-search enabled, AllSource provides HNSW-based similarity search
+// for embeddings generated via fastembed
+let store = AllSourceEventStore::new("store.db").await?;
+// Use AllSource's vector search APIs for semantic queries
+```
+
+**Binary Impact**: +5MB (fastembed model + HNSW index)
+
+---
+
+### `keyword-search` - Full-Text Keyword Search
+
+**Enables**: BM25 full-text keyword search via AllSource's tantivy integration
+
+**Dependencies**: `allsource-core/keyword-search` (tantivy)
+
+**Example**:
+```rust
+use allframe_core::cqrs::AllSourceEventStore;
+
+// With keyword-search enabled, AllSource provides BM25 full-text search
+// via tantivy for keyword-based queries
+let store = AllSourceEventStore::new("store.db").await?;
+// Use AllSource's keyword search APIs for text queries
+```
+
+**Binary Impact**: +2MB (tantivy)
+
+---
+
 ### `mcp` - Model Context Protocol
 
 **Status**: 🚧 **Placeholder** - Not yet implemented
@@ -949,6 +989,14 @@ cqrs-postgres
 cqrs-rocksdb
   ├─ cqrs-allsource
   └─ allsource-core/rocksdb-storage
+
+vector-search
+  ├─ cqrs-allsource
+  └─ allsource-core/vector-search (fastembed, instant-distance)
+
+keyword-search
+  ├─ cqrs-allsource
+  └─ allsource-core/keyword-search (tantivy)
 ```
 
 ---

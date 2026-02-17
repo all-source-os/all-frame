@@ -57,6 +57,10 @@ cqrs-allsource = ["allframe-core/cqrs-allsource"]
 cqrs-postgres = ["allframe-core/cqrs-postgres"]
 cqrs-rocksdb = ["allframe-core/cqrs-rocksdb"]
 
+# AllSource search features
+vector-search = ["allframe-core/vector-search"]
+keyword-search = ["allframe-core/keyword-search"]
+
 # New modular features
 resilience = ["allframe-core/resilience"]
 security = ["allframe-core/security"]

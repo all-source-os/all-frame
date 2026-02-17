@@ -97,6 +97,10 @@ cqrs-allsource = ["cqrs", "allsource-core", "chrono"]
 cqrs-postgres = ["cqrs-allsource", "allsource-core/postgres"]
 cqrs-rocksdb = ["cqrs-allsource", "allsource-core/rocksdb-storage"]
 
+# AllSource search features (optional, requires cqrs-allsource)
+vector-search = ["cqrs-allsource", "allsource-core/vector-search"]
+keyword-search = ["cqrs-allsource", "allsource-core/keyword-search"]
+
 # Legacy alias (deprecated, use router-grpc-tls)
 grpc-tls = ["router-grpc-tls"]
 

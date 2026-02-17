@@ -673,6 +673,8 @@ allframe = { version = "0.1.12", features = ["di", "openapi"] }
 | `cqrs-allsource` | AllSource backend (embedded DB) | - | ❌ |
 | `cqrs-postgres` | ⚠️ **DEPRECATED** - Use `cqrs-allsource` | - | ❌ |
 | `cqrs-rocksdb` | RocksDB backend (planned) | - | ❌ |
+| `vector-search` | Vector similarity search (fastembed + HNSW) | +5MB | ❌ |
+| `keyword-search` | Full-text keyword search (tantivy BM25) | +2MB | ❌ |
 
 **What you get**:
 - CommandBus with automatic validation (90% reduction)

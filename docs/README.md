@@ -1,6 +1,6 @@
 # AllFrame Documentation Index
 
-**Last Updated**: 2025-12-15
+**Last Updated**: 2026-02-17
 **Repository**: all-frame
 **Project**: AllFrame - The Composable Rust API Framework
 

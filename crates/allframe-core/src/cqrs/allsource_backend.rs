@@ -215,28 +215,37 @@ impl<E: Event> EventStoreBackend<E> for AllSourceBackend<E> {
     async fn save_snapshot(
         &self,
         aggregate_id: &str,
-        _snapshot_data: Vec<u8>,
-        _version: u64,
+        snapshot_data: Vec<u8>,
+        version: u64,
     ) -> Result<(), String> {
-        // AllSource 0.7.0 handles snapshots internally
+        let state: serde_json::Value = serde_json::from_slice(&snapshot_data)
+            .map_err(|e| format!("Failed to deserialize snapshot data: {}", e))?;
+
         self.store
-            .create_snapshot(aggregate_id)
+            .snapshot_manager()
+            .create_snapshot(
+                aggregate_id.to_string(),
+                state,
+                chrono::Utc::now(),
+                version as usize,
+                allsource_core::infrastructure::persistence::SnapshotType::Manual,
+            )
             .map_err(|e| format!("Failed to create snapshot: {:?}", e))?;
 
         Ok(())
     }
 
     async fn get_latest_snapshot(&self, aggregate_id: &str) -> Result<(Vec<u8>, u64), String> {
-        let snapshot_json = self
+        let snapshot = self
             .store
-            .get_snapshot(aggregate_id)
-            .map_err(|e| format!("Failed to get snapshot: {:?}", e))?;
+            .snapshot_manager()
+            .get_latest_snapshot(aggregate_id)
+            .ok_or_else(|| format!("No snapshot found for aggregate: {}", aggregate_id))?;
 
-        // Convert snapshot JSON to bytes
-        let snapshot_bytes = serde_json::to_vec(&snapshot_json)
+        let snapshot_bytes = serde_json::to_vec(&snapshot.state)
             .map_err(|e| format!("Failed to serialize snapshot: {}", e))?;
 
-        Ok((snapshot_bytes, 0))
+        Ok((snapshot_bytes, snapshot.event_count as u64))
     }
 
     async fn flush(&self) -> Result<(), String> {
@@ -264,10 +273,12 @@ impl<E: Event> EventStoreBackend<E> for AllSourceBackend<E> {
             allsource_stats.total_event_types.to_string(),
         );
 
+        let snapshot_stats = self.store.snapshot_manager().stats();
+
         BackendStats {
             total_events: allsource_stats.total_ingested,
             total_aggregates: allsource_stats.total_entities as u64,
-            total_snapshots: 0,
+            total_snapshots: snapshot_stats.total_snapshots as u64,
             backend_specific,
         }
     }

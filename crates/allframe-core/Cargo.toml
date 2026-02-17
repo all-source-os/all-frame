@@ -90,7 +90,7 @@ utils = ["chrono", "url", "parking_lot", "rand"]
 cqrs = ["allframe-macros"]
 
 # AllSource Core integration (production event store)
-cqrs-allsource = ["cqrs", "allsource-core"]
+cqrs-allsource = ["cqrs", "allsource-core", "chrono"]
 cqrs-postgres = ["cqrs-allsource", "allsource-core/postgres"]
 cqrs-rocksdb = ["cqrs-allsource", "allsource-core/rocksdb-storage"]
 

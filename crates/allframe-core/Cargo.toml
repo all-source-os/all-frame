@@ -91,6 +91,9 @@ cqrs = ["allframe-macros"]
 
 # AllSource Core integration (production event store)
 cqrs-allsource = ["cqrs", "allsource-core", "chrono"]
+# DEPRECATED: AllSource v0.10.3 deprecated the postgres feature in favor of
+# WAL-backed event-sourced repositories. Use cqrs-allsource instead.
+# This feature flag will be removed in a future release.
 cqrs-postgres = ["cqrs-allsource", "allsource-core/postgres"]
 cqrs-rocksdb = ["cqrs-allsource", "allsource-core/rocksdb-storage"]
 

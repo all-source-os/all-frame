@@ -259,7 +259,7 @@ store.append("user-123", vec![
 
 **Backend Options**:
 - `cqrs-allsource` - AllSource embedded database (recommended for production)
-- `cqrs-postgres` - PostgreSQL database backend
+- `cqrs-postgres` - ⚠️ **DEPRECATED** - Use `cqrs-allsource` instead
 - `cqrs-rocksdb` - RocksDB embedded database backend
 
 ---
@@ -283,6 +283,10 @@ store.append("aggregate-123", events).await?;
 ---
 
 ### `cqrs-postgres` - PostgreSQL Event Store
+
+> ⚠️ **DEPRECATED**: AllSource v0.10.3 deprecated the `postgres` feature in favor of
+> WAL-backed event-sourced repositories. Use `cqrs-allsource` instead.
+> This feature flag will be removed in a future release.
 
 **Enables**: PostgreSQL database as the CQRS event store backend
 

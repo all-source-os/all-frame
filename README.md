@@ -671,7 +671,7 @@ allframe = { version = "0.1.12", features = ["di", "openapi"] }
 |---------|-------------|-----------|---------|
 | `cqrs` | CQRS + Event Sourcing infrastructure | 85% avg | ✅ |
 | `cqrs-allsource` | AllSource backend (embedded DB) | - | ❌ |
-| `cqrs-postgres` | PostgreSQL backend (planned) | - | ❌ |
+| `cqrs-postgres` | ⚠️ **DEPRECATED** - Use `cqrs-allsource` | - | ❌ |
 | `cqrs-rocksdb` | RocksDB backend (planned) | - | ❌ |
 
 **What you get**:

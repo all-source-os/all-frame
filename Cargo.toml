@@ -53,6 +53,7 @@ router-grpc-tls = ["allframe-core/router-grpc-tls"]
 router-full = ["allframe-core/router-full"]
 cqrs = ["allframe-core/cqrs"]
 cqrs-allsource = ["allframe-core/cqrs-allsource"]
+# DEPRECATED: Use cqrs-allsource instead. Will be removed in a future release.
 cqrs-postgres = ["allframe-core/cqrs-postgres"]
 cqrs-rocksdb = ["allframe-core/cqrs-rocksdb"]
 

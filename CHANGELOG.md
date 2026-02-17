@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Troubleshooting guide for connection issues
   - Manual testing commands for debugging
 
+### Deprecated
+- **`cqrs-postgres` feature flag** - AllSource v0.10.3 deprecated the upstream `postgres` feature
+  in favor of WAL-backed event-sourced repositories. Use `cqrs-allsource` instead.
+  This feature flag will be removed in a future release.
+
 ### Fixed
 - **AllSource Core Re-enabled** - `cqrs-allsource` features now work
   - Upstream fix in allsource-core 0.7.2 resolved `http ^1.2.0` dependency conflict

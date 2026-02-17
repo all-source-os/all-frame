@@ -14,9 +14,23 @@ pub mod saga_orchestrator;
 pub mod allsource_backend;
 pub mod memory_backend;
 
+/// Trait for resolving the event type name used in AllSource storage.
+///
+/// The default implementation extracts the last segment from
+/// `std::any::type_name` (e.g. `my_crate::events::UserCreated` → `UserCreated`).
+/// Override this to provide a stable, user-controlled name.
+pub trait EventTypeName {
+    fn event_type_name() -> &'static str {
+        std::any::type_name::<Self>()
+            .split("::")
+            .last()
+            .unwrap_or("event")
+    }
+}
+
 /// Trait for Events - immutable facts that represent state changes
 pub trait Event:
-    Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned + 'static
+    Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned + EventTypeName + 'static
 {
 }
 

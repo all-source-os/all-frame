@@ -14,7 +14,8 @@ use std::collections::HashMap;
 
 #[allow(dead_code)]
 use allframe_core::cqrs::{
-    command, command_handler, query, query_handler, Aggregate, Event, EventStore, Projection,
+    command, command_handler, query, query_handler, Aggregate, Event, EventStore, EventTypeName,
+    Projection,
     SagaDefinition, SagaOrchestrator, SagaStep, Snapshot,
 };
 
@@ -26,6 +27,7 @@ enum UserEvent {
     Incremented { amount: i32 },
 }
 
+impl EventTypeName for UserEvent {}
 impl Event for UserEvent {}
 
 #[derive(Clone, Debug)]
@@ -153,6 +155,7 @@ async fn test_cqrs_with_clean_architecture() {
         Created { user_id: String, email: String },
     }
 
+    impl EventTypeName for ArchUserEvent {}
     impl Event for ArchUserEvent {}
 
     // Commands are use case layer

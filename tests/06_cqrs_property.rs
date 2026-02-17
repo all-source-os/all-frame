@@ -7,7 +7,7 @@
 
 use std::collections::HashMap;
 
-use allframe_core::cqrs::{Aggregate, Event, EventStore, Projection};
+use allframe_core::cqrs::{Aggregate, Event, EventStore, EventTypeName, Projection};
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 enum UserEvent {
@@ -16,6 +16,7 @@ enum UserEvent {
     Incremented { amount: i32 },
 }
 
+impl EventTypeName for UserEvent {}
 impl Event for UserEvent {}
 
 /// Test that commands always produce valid events (property-based)

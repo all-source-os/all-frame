@@ -252,6 +252,7 @@ mod tests {
         Updated { id: String, value: i32 },
     }
 
+    impl EventTypeName for TestEvent {}
     impl Event for TestEvent {}
 
     struct TestProjection {

@@ -228,6 +228,7 @@ mod tests {
         email: String,
     }
 
+    impl EventTypeName for UserCreatedV1 {}
     impl Event for UserCreatedV1 {}
 
     #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -237,6 +238,7 @@ mod tests {
         name: String,
     }
 
+    impl EventTypeName for UserCreatedV2 {}
     impl Event for UserCreatedV2 {}
 
     impl From<UserCreatedV1> for UserCreatedV2 {
@@ -256,6 +258,7 @@ mod tests {
         V2(UserCreatedV2),
     }
 
+    impl EventTypeName for TestEvent {}
     impl Event for TestEvent {}
 
     impl From<UserCreatedV2> for TestEvent {

@@ -21,7 +21,7 @@
 // These fixtures illustrate command handler architecture even when not every
 // test exercises them.
 #[allow(dead_code)]
-use allframe_core::cqrs::{command, command_handler, Event};
+use allframe_core::cqrs::{command, command_handler, Event, EventTypeName};
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 enum UserEvent {
@@ -32,6 +32,7 @@ enum UserEvent {
     },
 }
 
+impl EventTypeName for UserEvent {}
 impl Event for UserEvent {}
 
 /// Test command handler execution produces events

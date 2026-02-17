@@ -87,13 +87,14 @@ async fn test_otel_with_clean_arch() {
 /// Test OTEL with CQRS
 #[tokio::test]
 async fn test_otel_with_cqrs() {
-    use allframe_core::cqrs::{command, command_handler, Event, EventStore};
+    use allframe_core::cqrs::{command, command_handler, Event, EventStore, EventTypeName};
 
     #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
     enum UserEvent {
         Created { user_id: String },
     }
 
+    impl EventTypeName for UserEvent {}
     impl Event for UserEvent {}
 
     #[command]

@@ -226,6 +226,7 @@ mod tests {
         UserCreated { _id: String },
     }
 
+    impl EventTypeName for TestEvent {}
     impl Event for TestEvent {}
 
     struct CreateUserCommand {

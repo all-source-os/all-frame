@@ -13,7 +13,7 @@
 
 use std::collections::HashMap;
 
-use allframe_core::cqrs::{query, query_handler, Event, EventStore, Projection};
+use allframe_core::cqrs::{query, query_handler, Event, EventStore, EventTypeName, Projection};
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 enum UserEvent {
@@ -28,6 +28,7 @@ enum UserEvent {
     },
 }
 
+impl EventTypeName for UserEvent {}
 impl Event for UserEvent {}
 
 #[derive(Clone, Debug)]

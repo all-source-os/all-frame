@@ -351,6 +351,7 @@ mod tests {
         Credited { account: String, amount: f64 },
     }
 
+    impl EventTypeName for TestEvent {}
     impl Event for TestEvent {}
 
     struct DebitStep {

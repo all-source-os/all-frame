@@ -3,10 +3,10 @@
   "sessionId": "90d7ea25-8408-43a4-83bc-41a35ab25730",
   "status": "running",
   "startedAt": "2026-02-17T01:11:51.185Z",
-  "updatedAt": "2026-02-17T01:30:37.203Z",
-  "currentIteration": 5,
+  "updatedAt": "2026-02-17T01:33:48.701Z",
+  "currentIteration": 6,
   "maxIterations": 0,
-  "tasksCompleted": 5,
+  "tasksCompleted": 6,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -53,8 +53,8 @@
       {
         "id": "bd-3tx.6",
         "title": "US-006: Add vector-search and keyword-search feature flags",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       }
     ]
   },
@@ -108,6 +108,16 @@
       "durationMs": 162650,
       "startedAt": "2026-02-17T01:25:50.826Z",
       "endedAt": "2026-02-17T01:28:33.476Z"
+    },
+    {
+      "iteration": 6,
+      "status": "completed",
+      "taskId": "bd-3tx.6",
+      "taskTitle": "US-006: Add vector-search and keyword-search feature flags",
+      "taskCompleted": true,
+      "durationMs": 122550,
+      "startedAt": "2026-02-17T01:28:34.629Z",
+      "endedAt": "2026-02-17T01:30:37.179Z"
     }
   ],
   "skippedTaskIds": [],

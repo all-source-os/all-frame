@@ -20,7 +20,7 @@
 // These fixtures document event sourcing patterns even when not every field is
 // validated.
 #[allow(dead_code)]
-use allframe_core::cqrs::{Event, EventStore};
+use allframe_core::cqrs::{Event, EventStore, EventTypeName};
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 enum UserEvent {
@@ -29,6 +29,7 @@ enum UserEvent {
     Deleted { user_id: String },
 }
 
+impl EventTypeName for UserEvent {}
 impl Event for UserEvent {}
 
 /// Test event store append - storing events
@@ -165,6 +166,7 @@ async fn test_event_serialization() {
         Created { user_id: String, email: String },
     }
 
+    impl EventTypeName for SerializableUserEvent {}
     impl Event for SerializableUserEvent {}
 
     let event = SerializableUserEvent::Created {
@@ -191,6 +193,7 @@ async fn test_event_stream_subscribe() {
         Created { user_id: String },
     }
 
+    impl EventTypeName for StreamUserEvent {}
     impl Event for StreamUserEvent {}
 
     let store = EventStore::new();

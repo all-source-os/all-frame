@@ -122,13 +122,7 @@ impl<E: Event> EventStoreBackend<E> for AllSourceBackend<E> {
 
             // Use from_strings which validates and creates proper value objects
             let allsource_event = allsource_core::Event::from_strings(
-                format!(
-                    "allframe.{}",
-                    std::any::type_name::<E>()
-                        .split("::")
-                        .last()
-                        .unwrap_or("event")
-                ),
+                format!("allframe.{}", E::event_type_name()),
                 aggregate_id.to_string(),
                 "default".to_string(),
                 payload,

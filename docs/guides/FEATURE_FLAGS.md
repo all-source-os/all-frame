@@ -258,6 +258,7 @@ store.append("user-123", vec![
 **Binary Impact**: +150KB (event store + CQRS runtime)
 
 **Backend Options**:
+- `cqrs-sqlite` - SQLite with WAL mode (recommended for offline/desktop)
 - `cqrs-allsource` - AllSource embedded database (recommended for production)
 - `cqrs-postgres` - ⚠️ **DEPRECATED** - Use `cqrs-allsource` instead
 - `cqrs-rocksdb` - RocksDB embedded database backend
@@ -319,6 +320,52 @@ store.append("aggregate-123", events).await?;
 ```
 
 **Binary Impact**: +200KB (RocksDB)
+
+---
+
+### `cqrs-sqlite` - SQLite Event Store (NEW in v0.1.15)
+
+**Enables**: SQLite database as the CQRS event store backend with WAL mode
+
+**Dependencies**: `rusqlite` (bundled - statically links SQLite)
+
+**Example**:
+```rust
+use allframe_core::cqrs::{EventStore, SqliteEventStoreBackend};
+
+let backend = SqliteEventStoreBackend::new("events.db")?;
+let store = EventStore::new(backend);
+store.append("aggregate-123", events).await?;
+```
+
+**Binary Impact**: +1MB (bundled SQLite)
+
+**Key Features**:
+- WAL mode for concurrent reads during writes
+- Zero network dependencies
+- Atomic appends via transactions
+- `flush()` for WAL checkpointing
+
+---
+
+### `offline` - Full Offline Bundle (NEW in v0.1.15)
+
+**Enables**: Complete offline-first stack (implies `cqrs` + `cqrs-sqlite` + `di` + `security`)
+
+**Example**:
+```toml
+allframe-core = { version = "0.1", features = ["offline"] }
+```
+
+**What you get**:
+- SQLite event store backend
+- Compile-time DI with lazy initialization
+- Security utilities for credential handling
+- CQRS + Event Sourcing
+
+**Binary Impact**: +1.5MB
+
+**Verified**: Zero network dependencies (`reqwest`, `redis`, `tonic`, `hyper` are all excluded). Enforced by CI.
 
 ---
 

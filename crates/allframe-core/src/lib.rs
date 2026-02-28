@@ -8,7 +8,7 @@
 //! resilience patterns, and beautiful API documentation.
 //!
 //! AllFrame is the first Rust web framework designed, built, and evolved
-//! exclusively through **Test-Driven Development (TDD)** with 450+ tests.
+//! exclusively through **Test-Driven Development (TDD)** with 500+ tests.
 //!
 //! ## Features at a Glance
 //!
@@ -21,6 +21,7 @@
 //! | 🔒 **Security Utilities** | Safe logging, credential obfuscation |
 //! | 💉 **Compile-time DI** | Dependency injection resolved at compile time |
 //! | 📊 **OpenTelemetry** | Automatic tracing and metrics |
+//! | 📱 **Offline-First** | SQLite event store, sync engine, zero network deps |
 //!
 //! ## Quick Start
 //!
@@ -100,6 +101,8 @@
 //! | `health` | Health check endpoints | ✅ |
 //! | `resilience` | Retry, Circuit Breaker, Rate Limiting | ❌ |
 //! | `security` | Safe logging, credential obfuscation | ❌ |
+//! | `cqrs-sqlite` | SQLite event store (WAL mode) | ❌ |
+//! | `offline` | Full offline bundle (cqrs + sqlite + di + security) | ❌ |
 //!
 //! ### Feature Examples
 //!
@@ -112,6 +115,9 @@
 //!
 //! # Multi-protocol gateway
 //! allframe = { version = "0.1", features = ["router-graphql", "router-grpc"] }
+//!
+//! # Offline desktop app (zero network deps)
+//! allframe = { version = "0.1", features = ["offline"] }
 //! ```
 //!
 //! ## Module Overview

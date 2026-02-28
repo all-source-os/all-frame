@@ -88,9 +88,19 @@ allframe-core = { version = "0.1", features = [
 ```toml
 allframe-core = { version = "0.1", features = [
     "cqrs",            # Core CQRS infrastructure
+    "cqrs-sqlite",     # SQLite event store (WAL mode, zero network deps)
     "cqrs-allsource",  # AllSource Core event store
 ] }
 ```
+
+### Offline-First Features (NEW in v0.1.15)
+```toml
+allframe-core = { version = "0.1", features = [
+    "offline",         # Full offline bundle (cqrs + sqlite + di + security)
+] }
+```
+
+The `offline` feature enables SQLite-backed event sourcing, lazy DI initialization, and security utilities with **zero network dependencies**. Ideal for desktop apps, embedded systems, and LLM wrappers that need to work without internet.
 
 ## CQRS Example
 
@@ -145,6 +155,7 @@ cargo run --example multi_protocol
 | Protocol-Agnostic | ✅ | ❌ | ❌ | ❌ |
 | Built-in CQRS | ✅ | ❌ | ❌ | ❌ |
 | Compile-time DI | ✅ | ❌ | ❌ | ❌ |
+| Offline-First | ✅ | ❌ | ❌ | ❌ |
 | Zero Runtime Deps | ✅ | ❌ | ✅ | ❌ |
 
 ## Contributing

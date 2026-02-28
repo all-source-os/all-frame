@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.15] - 2026-02-28
+
+### Added
+- **Offline-First Support** (UC-036) - Complete offline-first architecture for desktop and embedded deployments
+  - **SQLite Event Store Backend** (`cqrs-sqlite` feature) - WAL-mode SQLite backend for CQRS event sourcing
+    - `SqliteEventStoreBackend<E>` implementing `EventStoreBackend<E>` trait
+    - Atomic appends via transactions, WAL checkpointing via `flush()`
+    - Zero network dependencies - fully embedded via `rusqlite` with bundled SQLite
+    - 7 tests covering persistence, WAL mode, stats, and flush
+  - **Offline Resilience Patterns** (`resilience` feature) - Fault tolerance for intermittent connectivity
+    - `ConnectivityProbe` trait with `ConnectivityStatus` (Online/Offline/Degraded)
+    - `OfflineCircuitBreaker` - queues operations when offline, drains on reconnect
+    - `StoreAndForward` - persists operations for later replay with `ReplayReport`
+    - `CallResult<T, E>` enum distinguishing executed vs queued operations
+    - 5 tests for connectivity detection, queuing, and replay
+  - **Projection Sync Engine** (`cqrs` feature) - Bidirectional event sync with conflict resolution
+    - `SyncEngine` with pluggable `ConflictResolver` trait
+    - Built-in resolvers: `LastWriteWins`, `AppendOnly`, `Manual` (user callback)
+    - `SyncCursor` tracking for idempotent sync operations
+    - 3 tests for bidirectional sync, idempotency, and conflict resolution
+  - **Lazy DI Initialization** (`di` feature) - Deferred dependency initialization
+    - `LazyProvider<T>` using `tokio::sync::OnceCell` for thread-safe single-init
+    - `LazyContainer` with concurrent warm-up via `tokio::spawn`
+    - 3 tests for lazy init, concurrent safety, and bulk warm-up
+  - **Saga Compensation Primitives** (`cqrs` feature) - Local rollback for offline sagas
+    - `FileSnapshot` with `capture()` and `restore()` for file-level rollback
+    - `WriteFileStep` implementing `SagaStep<E>` with automatic snapshot management
+    - `CompensationStrategy::LocalRollback` for saga definitions
+    - `SqliteSavepoint` for database-level rollback (requires `cqrs-sqlite`)
+    - 4 tests for file snapshots, compensation cleanup, and savepoint creation
+  - **Embedded MCP Server** - Local-only MCP without network binding
+    - `McpServer::new()` creates a server with no router (local-only mode)
+    - `register_tool()` and `call_tool_local()` for in-process tool dispatch
+    - `is_listening()` to check network binding status
+    - 3 tests for local registration, shared registry, and no-network verification
+  - **Feature Flags** - Zero-bloat offline compilation
+    - `cqrs-sqlite` - SQLite event store (implies `cqrs` + `rusqlite`)
+    - `offline` - Full offline bundle (implies `cqrs` + `cqrs-sqlite` + `di` + `security`)
+    - Verified: zero network dependencies (`reqwest`, `redis`, `tonic`, `hyper`) in offline builds
+    - 2 tests for feature flag verification
+
+- **New Crate: `allframe-tauri`** - Tauri 2.x plugin for offline-first desktop apps
+  - IPC handler dispatch for Tauri commands
+  - `TauriServer` for in-process handler execution
+  - Serializable request/response types for Tauri IPC
+  - Full integration with AllFrame's router and CQRS systems
+
+- **Offline Quality Gates** - CI enforcement for offline guarantees
+  - New `offline-quality-gates.yml` GitHub Actions workflow
+  - Dependency tree validation (bans network crates in offline builds)
+  - 19 quality gate tests (+ 2 CI-enforced)
+  - Binary size check (<5MB for offline builds)
+
+### Changed
+- **`McpServer::new(router)`** renamed to **`McpServer::with_router(router)`**
+  - `McpServer::new()` now creates a local-only server with no router
+  - `list_tools()` changed from async to sync
+- **Resilience orchestrator** updated with `FnMut` support and `DashMap`-based state management
+- **Total test count** now 500+ (was 455+)
+
+### Dependencies
+- Added `rusqlite` 0.31 (bundled, optional via `cqrs-sqlite` feature)
+
+---
+
 ## [0.1.12] - 2025-12-15
 
 ### Added
@@ -345,14 +410,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Statistics
 
 ### Test Coverage
-- **Total Tests**: 455+ passing
+- **Total Tests**: 500+ passing
 - **CQRS Tests**: 72
 - **Router/Protocol Tests**: 78
 - **Scalar/OpenAPI Tests**: 42
-- **MCP Tests**: 37
+- **MCP Tests**: 41
 - **Resilience/Security Tests**: 55
+- **Offline-First Tests**: 28
+- **Offline Quality Gates**: 19
 - **Graceful Shutdown Tests**: 17
-- **Other Tests**: 154
+- **Other Tests**: 148+
 - **Coverage**: 100% (TDD-enforced)
 
 ### Binary Sizes (Release builds)

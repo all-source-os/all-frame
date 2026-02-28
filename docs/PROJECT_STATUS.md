@@ -1,7 +1,7 @@
 # AllFrame Project Status
 
-**Last Updated**: 2026-02-17
-**Version**: 0.1.14
+**Last Updated**: 2026-02-28
+**Version**: 0.1.15
 **Status**: Active Development
 
 > **Vision**: AllFrame is evolving from a composable Rust API framework into a **cloud-native microservice architecture generator**. See [ROADMAP.md](./current/ROADMAP.md) and [IGNITE_VISION.md](./current/IGNITE_VISION.md) for the full vision.
@@ -12,6 +12,7 @@
 
 | Category | Status | Progress |
 |----------|--------|----------|
+| **Offline-First** | ✅ Complete | SQLite, offline resilience, sync, Tauri (100%) |
 | **Authentication** | ✅ Complete | Layered auth (JWT, Axum, gRPC) (100%) |
 | **Graceful Shutdown** | ✅ Complete | ShutdownAwareTaskSpawner, GracefulShutdownExt (100%) |
 | **Resilience Patterns** | ✅ Complete | Retry, CircuitBreaker, RateLimiter, Redis (100%) |

@@ -419,6 +419,7 @@ sed -i '' "/^\[package\]/,/^\[/{s/^version = \"[0-9]*\.[0-9]*\.[0-9]*\"/version 
 sed -i '' "s/allframe-core = { version = \"${CURRENT}\"/allframe-core = { version = \"${NEW_VERSION}\"/" "$CARGO_TOML"
 sed -i '' "s/allframe-macros = { version = \"${CURRENT}\"/allframe-macros = { version = \"${NEW_VERSION}\"/" "$CARGO_TOML"
 sed -i '' "s/allframe-forge = { version = \"${CURRENT}\"/allframe-forge = { version = \"${NEW_VERSION}\"/" "$CARGO_TOML"
+sed -i '' "s/allframe-tauri = { version = \"${CURRENT}\"/allframe-tauri = { version = \"${NEW_VERSION}\"/" "$CARGO_TOML"
 
 echo "  ✅ workspace.package.version = ${NEW_VERSION}"
 echo "  ✅ [package] version = ${NEW_VERSION} (root allframe crate)"
@@ -682,21 +683,36 @@ else
     echo "  ⏭️  allframe-core - already published"
 fi
 
-# Wave 3: Depends on core
+# Wave 3: Depends on core (mcp + tauri in parallel)
 echo ""
-echo "━━━ Wave 3: allframe-mcp ━━━"
+echo "━━━ Wave 3: allframe-mcp + allframe-tauri ━━━"
+if [ "$PUBLISHED_SOMETHING" = true ]; then
+    echo "  ⏳ Waiting 15s for crates.io indexing..."
+    sleep 15
+fi
+
 if ! is_published "allframe-mcp" "$LOCAL_VERSION"; then
-    if [ "$PUBLISHED_SOMETHING" = true ]; then
-        echo "  ⏳ Waiting 15s for crates.io indexing..."
-        sleep 15
-    fi
     echo "  📦 Publishing allframe-mcp..."
     cd crates/allframe-mcp && cargo publish --allow-dirty && cd - > /dev/null
     echo "  ✅ allframe-mcp published"
     PUBLISHED_SOMETHING=true
 else
     echo "  ⏭️  allframe-mcp - already published"
-fi
+fi &
+PID_MCP=$!
+
+if ! is_published "allframe-tauri" "$LOCAL_VERSION"; then
+    echo "  📦 Publishing allframe-tauri..."
+    cd crates/allframe-tauri && cargo publish --allow-dirty && cd - > /dev/null
+    echo "  ✅ allframe-tauri published"
+    PUBLISHED_SOMETHING=true
+else
+    echo "  ⏭️  allframe-tauri - already published"
+fi &
+PID_TAURI=$!
+
+wait $PID_MCP || true
+wait $PID_TAURI || true
 
 # Wave 4: Root allframe crate (depends on forge)
 echo ""
@@ -721,6 +737,7 @@ echo "  allframe         @ ${LOCAL_VERSION}  (root - what users import)"
 echo "  allframe-macros  @ ${LOCAL_VERSION}"
 echo "  allframe-core    @ ${LOCAL_VERSION}"
 echo "  allframe-mcp     @ ${LOCAL_VERSION}"
+echo "  allframe-tauri   @ ${LOCAL_VERSION}"
 echo "  allframe-forge   @ ${LOCAL_VERSION}"
 echo ""
 echo "View at: https://crates.io/crates/allframe"
@@ -744,10 +761,13 @@ cd crates/allframe-forge && cargo publish --dry-run && cd ../..
 echo "📦 [3/5] Checking allframe-core..."
 cd crates/allframe-core && cargo publish --dry-run && cd ../..
 
-echo "📦 [4/5] Checking allframe-mcp..."
+echo "📦 [4/6] Checking allframe-mcp..."
 cd crates/allframe-mcp && cargo publish --dry-run && cd ../..
 
-echo "📦 [5/5] Checking allframe (root)..."
+echo "📦 [5/6] Checking allframe-tauri..."
+cd crates/allframe-tauri && cargo publish --dry-run && cd ../..
+
+echo "📦 [6/6] Checking allframe (root)..."
 cargo publish --dry-run
 
 echo ""

@@ -80,7 +80,7 @@ async fn main() {
     });
 
     // Create MCP server
-    let mcp = McpServer::new(router);
+    let mcp = McpServer::with_router(router);
 
     // Configure and run the stdio transport
     let config = StdioConfig::default()
@@ -347,10 +347,10 @@ async fn main() {
     });
 
     // Create MCP server from router
-    let mcp = McpServer::new(router);
+    let mcp = McpServer::with_router(router);
 
     // List available tools
-    let tools = mcp.list_tools().await;
+    let tools = mcp.list_tools();
     println!("Available tools: {}", tools.len());
 
     // Call a tool
@@ -383,7 +383,7 @@ async fn main() {
     router.register("create_order", create_order_handler);
 
     // Create MCP server
-    let mcp = McpServer::new(router);
+    let mcp = McpServer::with_router(router);
 
     // Implement stdio transport for Claude Desktop
     serve_stdio(mcp).await;
@@ -399,7 +399,7 @@ async fn serve_stdio(mcp: McpServer) {
 
         let response = match request["method"].as_str() {
             Some("tools/list") => {
-                let tools = mcp.list_tools().await;
+                let tools = mcp.list_tools();
                 serde_json::json!({"tools": tools})
             }
             Some("tools/call") => {
@@ -471,7 +471,7 @@ async fn main() {
 }
 
 async fn list_mcp_tools(mcp: Arc<McpServer>) -> Json<Vec<allframe_mcp::McpTool>> {
-    Json(mcp.list_tools().await)
+    Json(mcp.list_tools())
 }
 
 async fn call_mcp_tool(
@@ -503,7 +503,7 @@ async fn main() -> Result<(), Error> {
     router.register("process_data", process_data_handler);
 
     // Create MCP server
-    let mcp = Arc::new(McpServer::new(router));
+    let mcp = Arc::new(McpServer::with_router(router));
 
     // Lambda handler
     lambda_runtime::run(service_fn(move |event| {
@@ -520,7 +520,7 @@ async fn handler(
 
     match method {
         "tools/list" => {
-            let tools = mcp.list_tools().await;
+            let tools = mcp.list_tools();
             Ok(serde_json::json!({"tools": tools}))
         }
         "tools/call" => {
@@ -534,22 +534,59 @@ async fn handler(
 }
 ```
 
+### Pattern 4: Local-Only Mode (Desktop / LLM Agent) **NEW in v0.1.15**
+
+Run MCP tools without a network port -- ideal for desktop apps and local LLM agents:
+
+```rust
+use allframe_mcp::McpServer;
+
+#[tokio::main]
+async fn main() {
+    // No router needed -- register tools directly
+    let mcp = McpServer::new();
+
+    mcp.register_tool("search_notes", |args| async move {
+        let query = args["query"].as_str().unwrap_or("");
+        Ok(serde_json::json!({"results": [{"title": "Note 1", "match": query}]}))
+    });
+
+    // Call tools in-process (no network, no stdio)
+    let result = mcp.call_tool_local("search_notes", serde_json::json!({"query": "rust"})).await;
+    println!("Result: {:?}", result);
+
+    assert!(!mcp.is_listening()); // No network port bound
+}
+```
+
 ## API Overview
 
 ### `McpServer`
 
-The main MCP server struct that wraps an AllFrame `Router`.
+The main MCP server struct. Can be created with a `Router` or standalone for local-only mode.
 
 ```rust
 impl McpServer {
-    /// Create a new MCP server from an AllFrame router
-    pub fn new(router: Router) -> Self;
+    /// Create a local-only MCP server (no router, no network)
+    pub fn new() -> Self;
+
+    /// Create an MCP server from an AllFrame router
+    pub fn with_router(router: Router) -> Self;
+
+    /// Register a tool for local dispatch
+    pub fn register_tool(&self, name: &str, handler: impl ToolHandler);
+
+    /// Call a locally registered tool
+    pub async fn call_tool_local(&self, name: &str, args: Value) -> Result<Value, String>;
+
+    /// Check if the server is bound to a network port
+    pub fn is_listening(&self) -> bool;
 
     /// Get the count of registered tools
     pub fn tool_count(&self) -> usize;
 
-    /// List all available tools
-    pub async fn list_tools(&self) -> Vec<McpTool>;
+    /// List all available tools (router + locally registered)
+    pub fn list_tools(&self) -> Vec<McpTool>;
 
     /// Call a tool by name with given arguments
     pub async fn call_tool(

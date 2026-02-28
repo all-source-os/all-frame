@@ -8,9 +8,10 @@
 [![Rust](https://img.shields.io/badge/rust-1.86%2B-orange.svg)](https://www.rust-lang.org)
 [![TDD](https://img.shields.io/badge/TDD-100%25-green.svg)](docs/current/PRD_01.md)
 [![CQRS](https://img.shields.io/badge/CQRS-Complete-success.svg)](docs/announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)
-[![Tests](https://img.shields.io/badge/tests-455%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
+[![Tests](https://img.shields.io/badge/tests-500%2B%20passing-brightgreen.svg)](docs/PROJECT_STATUS.md)
 [![Routing](https://img.shields.io/badge/Protocol%20Agnostic-Complete-success.svg)](docs/phases/PROTOCOL_AGNOSTIC_ROUTING_COMPLETE.md)
 [![MCP](https://img.shields.io/badge/MCP%20Server-Zero%20Bloat-success.svg)](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md)
+[![Offline](https://img.shields.io/badge/Offline--First-Complete-success.svg)](docs/current/UC_036_OFFLINE_FIRST.md)
 
 ---
 
@@ -97,17 +98,27 @@ We ship **composable crates** that give you exactly what you need:
   - `#[derive(Obfuscate)]` with `#[sensitive]` field attribute
   - `Sensitive<T>` wrapper (Debug/Display always shows "***")
   - Smart header obfuscation (Authorization, Cookie, API keys)
-- ✅ **Graceful Shutdown** - Production-ready shutdown utilities **[NEW!]**
+- ✅ **Graceful Shutdown** - Production-ready shutdown utilities
   - `ShutdownAwareTaskSpawner` for named tasks with automatic cancellation
   - `GracefulShutdownExt` for cleanup orchestration with error handling
   - `spawn_with_result()` for tasks that return values
   - `ShutdownExt` trait for making any future cancellable
+- ✅ **Offline-First Architecture** - Run fully offline on desktop and embedded devices **[NEW!]**
+  - SQLite event store backend (WAL mode, zero network deps)
+  - Offline circuit breaker with operation queuing and replay
+  - Store-and-forward pattern for intermittent connectivity
+  - Bidirectional projection sync with pluggable conflict resolution
+  - Lazy DI initialization with concurrent warm-up
+  - Saga compensation with file snapshots and SQLite savepoints
+  - Embedded MCP server for local-only LLM tool dispatch
+  - `allframe-tauri` crate for Tauri 2.x desktop integration
+  - **Zero network dependencies** in offline builds (verified by CI)
 - 📋 **LLM-powered code generation** - `allframe forge` CLI (v0.6 - planned)
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: **v0.1.14 - Protocol-Agnostic Routing Complete!** 455+ tests passing. Production-ready multi-protocol routing, MCP server, layered authentication, enhanced resilience (KeyedCircuitBreaker, Redis rate limiting), and safe logging!
-**Latest**: [Ignite Vision](docs/current/IGNITE_VISION.md) - Cloud-native microservice architecture generator roadmap!
+**Current Status**: **v0.1.15 - Offline-First Complete!** 500+ tests passing. SQLite event store, offline resilience, projection sync, embedded MCP, Tauri desktop integration, and lazy DI -- all with zero network dependencies!
+**Latest**: [Offline-First Spec](docs/current/UC_036_OFFLINE_FIRST.md) - Run AllFrame applications fully offline on desktop and embedded devices!
 
 ---
 
@@ -352,8 +363,8 @@ Expose your AllFrame APIs as LLM-callable tools using the [Model Context Protoco
 ```toml
 # Opt-in to MCP server (zero overhead if not used!)
 [dependencies]
-allframe = "0.1.14"       # Core framework
-allframe-mcp = "0.1.14"   # MCP server - separate crate for zero bloat
+allframe = "0.1.15"       # Core framework
+allframe-mcp = "0.1.15"   # MCP server - separate crate for zero bloat
 tokio = { version = "1.48", features = ["full"] }
 ```
 
@@ -375,10 +386,10 @@ async fn main() {
     });
 
     // Handlers automatically become LLM-callable tools!
-    let mcp = McpServer::new(router);
+    let mcp = McpServer::with_router(router);
 
     // List available tools
-    let tools = mcp.list_tools().await;
+    let tools = mcp.list_tools();
     println!("Available tools: {}", tools.len());
 
     // Call a tool
@@ -580,8 +591,75 @@ println!("{}", config.obfuscate());
 | **Safe Logging** | ✅ **Built-in** | ❌ | ❌ | ❌ |
 | Protocol-agnostic | ✅ | ❌ | ❌ | ❌ |
 | MCP Server | ✅ **Zero Bloat** | ❌ | ❌ | ❌ |
+| **Offline-First** | ✅ **Built-in** | ❌ | ❌ | ❌ |
+| **Desktop/Tauri** | ✅ **Built-in** | ❌ | ❌ | ❌ |
 | Zero runtime deps | ✅ | ❌ | ✅ | ❌ |
 | Binary size | < 8 MB | ~12 MB | ~6 MB | ~10 MB |
+
+---
+
+## Why This Matters for LLMs and LLM Wrappers
+
+AllFrame v0.1.15 is the first Rust web framework purpose-built for the way LLMs actually consume and produce APIs. Here's why this release matters if you're building LLM-powered applications:
+
+### The Problem
+
+LLM wrappers (ChatGPT plugins, Claude Desktop tools, Copilot extensions, custom agents) need to call APIs. Today, every wrapper reinvents the same plumbing: tool registration, schema generation, input validation, offline fallbacks. When the network drops, the LLM session breaks. When the user is on a plane, the desktop app is useless.
+
+### What AllFrame Solves
+
+**1. Native MCP Server with Local-Only Mode**
+
+LLMs speak [Model Context Protocol](https://modelcontextprotocol.io). AllFrame handlers automatically become MCP tools -- no glue code. New in v0.1.15: the embedded MCP server runs without a network port, so a desktop app (Tauri, Electron) can dispatch tool calls in-process:
+
+```rust
+let mcp = McpServer::new(); // No network binding
+mcp.register_tool("search_notes", |args| async move {
+    // LLM calls this tool directly in-process
+    Ok(search_local_db(args).await)
+});
+```
+
+**2. Offline Event Sourcing for LLM Context**
+
+LLM applications need durable context: conversation history, user preferences, tool results. AllFrame's SQLite event store persists everything locally with zero network dependencies:
+
+```rust
+let store = EventStore::new(SqliteEventStoreBackend::new("app.db")?);
+store.append("conversation-1", vec![MessageReceived { content }]).await?;
+// Works on a plane, in a tunnel, or air-gapped
+```
+
+**3. Store-and-Forward for Intermittent Connectivity**
+
+When an LLM agent tries to call an external API but the network is down, AllFrame queues the operation and replays it when connectivity returns:
+
+```rust
+let saf = StoreAndForward::new(queue, probe);
+let result = saf.execute("sync-to-cloud", || api.upload(data)).await;
+// Returns CallResult::Queued when offline -- no crash, no lost data
+```
+
+**4. Conflict-Free Sync Between Devices**
+
+Desktop LLM apps need to sync context across devices. AllFrame's projection sync engine handles bidirectional event replication with pluggable conflict resolution:
+
+```rust
+let engine = SyncEngine::with_resolver(local_store, cloud_store, LastWriteWins);
+let report = engine.sync().await?; // Pushes local, pulls remote, resolves conflicts
+```
+
+**5. Zero Network Dependencies (Verified by CI)**
+
+The `offline` feature compiles without `reqwest`, `redis`, `tonic`, `hyper`, or any network crate. This is enforced by CI -- if a network dependency leaks in, the build fails. LLM wrapper developers can ship a fully self-contained binary.
+
+### Who Benefits
+
+- **Claude Desktop / ChatGPT plugin builders** -- native MCP tool dispatch without network overhead
+- **Local-first AI apps** (Obsidian plugins, IDE extensions, personal assistants) -- SQLite-backed event sourcing with offline resilience
+- **Tauri / Electron desktop apps** -- `allframe-tauri` crate for IPC handler dispatch
+- **Edge / embedded AI** -- air-gapped deployments with store-and-forward sync
+- **Multi-device LLM agents** -- bidirectional sync with conflict resolution
 
 ---
 
@@ -591,7 +669,7 @@ println!("{}", config.obfuscate());
 
 ```toml
 [dependencies]
-allframe = "0.1.14"
+allframe = "0.1.15"
 ```
 
 ### As a CLI Tool
@@ -638,7 +716,7 @@ AllFrame uses Cargo feature flags to minimize bloat - you only pay for what you 
 
 ```toml
 [dependencies]
-allframe = { version = "0.1.14", features = ["di", "openapi"] }
+allframe = { version = "0.1.15", features = ["di", "openapi"] }
 ```
 
 ### Core Features
@@ -670,11 +748,19 @@ allframe = { version = "0.1.14", features = ["di", "openapi"] }
 | Feature | Description | Reduction | Default |
 |---------|-------------|-----------|---------|
 | `cqrs` | CQRS + Event Sourcing infrastructure | 85% avg | ✅ |
+| `cqrs-sqlite` | SQLite event store (WAL mode, zero network deps) | - | ❌ |
 | `cqrs-allsource` | AllSource backend (embedded DB) | - | ❌ |
 | `cqrs-postgres` | ⚠️ **DEPRECATED** - Use `cqrs-allsource` | - | ❌ |
 | `cqrs-rocksdb` | RocksDB backend (planned) | - | ❌ |
 | `vector-search` | Vector similarity search (fastembed + HNSW) | +5MB | ❌ |
 | `keyword-search` | Full-text keyword search (tantivy BM25) | +2MB | ❌ |
+
+### Offline-First Features (✅ NEW in v0.1.15)
+
+| Feature | Description | Binary Impact | Default |
+|---------|-------------|---------------|---------|
+| `cqrs-sqlite` | SQLite event store backend | +1MB | ❌ |
+| `offline` | Full offline bundle (cqrs + sqlite + di + security) | +1.5MB | ❌ |
 
 **What you get**:
 - CommandBus with automatic validation (90% reduction)
@@ -690,7 +776,7 @@ MCP (Model Context Protocol) is now a **separate crate** for 100% zero bloat:
 ```toml
 # Only add if you need LLM integration
 [dependencies]
-allframe-mcp = "0.1.14"
+allframe-mcp = "0.1.15"
 ```
 
 **Benefits:**
@@ -701,23 +787,38 @@ allframe-mcp = "0.1.14"
 
 See [MCP Zero-Bloat Strategy](docs/phases/MCP_ZERO_BLOAT_COMPLETE.md) for details.
 
+### Tauri Desktop Plugin (Separate Crate - NEW!)
+
+```toml
+# For Tauri 2.x desktop applications
+[dependencies]
+allframe-tauri = "0.1.15"
+```
+
+**Benefits:**
+- ✅ IPC handler dispatch for Tauri commands
+- ✅ Works fully offline with `cqrs-sqlite`
+- ✅ In-process handler execution (no HTTP server needed)
+
+See [allframe-tauri README](crates/allframe-tauri/README.md) for details.
+
 **💡 Tip:** Start minimal and add features as needed. See [docs/guides/FEATURE_FLAGS.md](docs/guides/FEATURE_FLAGS.md) for detailed guidance.
 
 ### Examples
 
 **Minimal REST API:**
 ```toml
-allframe = { version = "0.1.14", default-features = false, features = ["router"] }
+allframe = { version = "0.1.15", default-features = false, features = ["router"] }
 ```
 
 **Production GraphQL API:**
 ```toml
-allframe = { version = "0.1.14", features = ["router-graphql"] }
+allframe = { version = "0.1.15", features = ["router-graphql"] }
 ```
 
 **Multi-Protocol Gateway:**
 ```toml
-allframe = { version = "0.1.14", features = ["router-full"] }
+allframe = { version = "0.1.15", features = ["router-full"] }
 ```
 
 ---
@@ -807,6 +908,13 @@ allframe ignite --config architecture.toml
 ```
 
 ### Completed ✅
+
+- [x] **Offline-First Architecture** ✅ (Feb 2026)
+  - SQLite event store, offline resilience, projection sync
+  - Embedded MCP, lazy DI, saga compensation
+  - Tauri 2.x desktop integration
+  - Zero network dependencies (CI-enforced)
+  - **First Rust framework with built-in offline-first support!**
 
 - [ ] **Phase 6.4: gRPC Documentation** 📋 (Q1 2025)
   - Interactive gRPC service explorer
@@ -941,7 +1049,7 @@ AllFrame targets **TechEmpower Round 23** benchmarks in future releases:
 | Multiple queries | > 50k req/s | 📋 Planned |
 | Binary size | < 8 MB | ✅ Achieved (<2 MB) |
 
-**Note**: Performance benchmarking is planned for Q2 2025. Current focus is on feature completeness and correctness. All functionality is production-ready with comprehensive test coverage (450+ tests passing).
+**Note**: Performance benchmarking is planned for Q2 2025. Current focus is on feature completeness and correctness. All functionality is production-ready with comprehensive test coverage (500+ tests passing).
 
 ---
 

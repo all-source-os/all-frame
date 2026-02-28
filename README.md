@@ -113,7 +113,7 @@ We ship **composable crates** that give you exactly what you need:
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: **v0.1.15 - Offline-First Complete!** 500+ tests passing. SQLite event store, offline resilience, projection sync, embedded MCP, Tauri desktop integration, and lazy DI -- all with zero network dependencies!
+**Current Status**: **v0.1.16 - Offline-First Complete!** 500+ tests passing. SQLite event store, offline resilience, projection sync, embedded MCP, Tauri desktop integration, and lazy DI -- all with zero network dependencies!
 **Latest**: [Offline-First Spec](docs/current/UC_036_OFFLINE_FIRST.md) - Run AllFrame applications fully offline on desktop and embedded devices!
 
 ---
@@ -359,8 +359,8 @@ Expose your AllFrame APIs as LLM-callable tools using the [Model Context Protoco
 ```toml
 # Opt-in to MCP server (zero overhead if not used!)
 [dependencies]
-allframe = "0.1.15"       # Core framework
-allframe-mcp = "0.1.15"   # MCP server - separate crate for zero bloat
+allframe = "0.1.16"       # Core framework
+allframe-mcp = "0.1.16"   # MCP server - separate crate for zero bloat
 tokio = { version = "1.48", features = ["full"] }
 ```
 
@@ -596,7 +596,7 @@ println!("{}", config.obfuscate());
 
 ## Why This Matters for LLMs and LLM Wrappers
 
-AllFrame v0.1.15 is the first Rust web framework purpose-built for the way LLMs actually consume and produce APIs. Here's why this release matters if you're building LLM-powered applications:
+AllFrame v0.1.16 is the first Rust web framework purpose-built for the way LLMs actually consume and produce APIs. Here's why this release matters if you're building LLM-powered applications:
 
 ### The Problem
 
@@ -606,7 +606,7 @@ LLM wrappers (ChatGPT plugins, Claude Desktop tools, Copilot extensions, custom 
 
 **1. Native MCP Server with Local-Only Mode**
 
-LLMs speak [Model Context Protocol](https://modelcontextprotocol.io). AllFrame handlers automatically become MCP tools -- no glue code. New in v0.1.15: the embedded MCP server runs without a network port, so a desktop app (Tauri, Electron) can dispatch tool calls in-process:
+LLMs speak [Model Context Protocol](https://modelcontextprotocol.io). AllFrame handlers automatically become MCP tools -- no glue code. New in v0.1.16: the embedded MCP server runs without a network port, so a desktop app (Tauri, Electron) can dispatch tool calls in-process:
 
 ```rust
 let mcp = McpServer::new(); // No network binding
@@ -665,7 +665,7 @@ The `offline` feature compiles without `reqwest`, `redis`, `tonic`, `hyper`, or 
 
 ```toml
 [dependencies]
-allframe = "0.1.15"
+allframe = "0.1.16"
 ```
 
 ### As a CLI Tool
@@ -712,7 +712,7 @@ AllFrame uses Cargo feature flags to minimize bloat - you only pay for what you 
 
 ```toml
 [dependencies]
-allframe = { version = "0.1.15", features = ["di", "openapi"] }
+allframe = { version = "0.1.16", features = ["di", "openapi"] }
 ```
 
 ### Core Features
@@ -751,7 +751,7 @@ allframe = { version = "0.1.15", features = ["di", "openapi"] }
 | `vector-search` | Vector similarity search (fastembed + HNSW) | +5MB | ❌ |
 | `keyword-search` | Full-text keyword search (tantivy BM25) | +2MB | ❌ |
 
-### Offline-First Features (✅ NEW in v0.1.15)
+### Offline-First Features (✅ NEW in v0.1.16)
 
 | Feature | Description | Binary Impact | Default |
 |---------|-------------|---------------|---------|
@@ -772,7 +772,7 @@ MCP (Model Context Protocol) is now a **separate crate** for 100% zero bloat:
 ```toml
 # Only add if you need LLM integration
 [dependencies]
-allframe-mcp = "0.1.15"
+allframe-mcp = "0.1.16"
 ```
 
 **Benefits:**
@@ -804,17 +804,17 @@ See [allframe-tauri README](crates/allframe-tauri/README.md) for details.
 
 **Minimal REST API:**
 ```toml
-allframe = { version = "0.1.15", default-features = false, features = ["router"] }
+allframe = { version = "0.1.16", default-features = false, features = ["router"] }
 ```
 
 **Production GraphQL API:**
 ```toml
-allframe = { version = "0.1.15", features = ["router-graphql"] }
+allframe = { version = "0.1.16", features = ["router-graphql"] }
 ```
 
 **Multi-Protocol Gateway:**
 ```toml
-allframe = { version = "0.1.15", features = ["router-full"] }
+allframe = { version = "0.1.16", features = ["router-full"] }
 ```
 
 ---

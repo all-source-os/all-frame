@@ -39,7 +39,8 @@
       "Bash(gh release view:*)",
       "Bash(gh api:*)",
       "Bash(br:*)",
-      "Bash(cargo sort:*)"
+      "Bash(cargo sort:*)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []

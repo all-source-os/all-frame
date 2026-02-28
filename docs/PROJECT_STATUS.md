@@ -1,7 +1,7 @@
 # AllFrame Project Status
 
 **Last Updated**: 2026-02-28
-**Version**: 0.1.15
+**Version**: 0.1.16
 **Status**: Active Development
 
 > **Vision**: AllFrame is evolving from a composable Rust API framework into a **cloud-native microservice architecture generator**. See [ROADMAP.md](./current/ROADMAP.md) and [IGNITE_VISION.md](./current/IGNITE_VISION.md) for the full vision.

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.16] - 2026-02-28
+
+### Added
+- **Offline Desktop Example** (`examples/offline_desktop.rs`) - Standalone integration example combining SQLite event store, TauriServer, embedded MCP, and OfflineCircuitBreaker
+- **Tauri Desktop Scaffold** (`examples/tauri-desktop/`) - Minimal Tauri 2.x app with IPC frontend for `cargo tauri dev`
+
+### Fixed
+- README roadmap section cleaned up (removed duplicated completed items)
+- gRPC docs and allframe forge status updated to reflect actual implementation state
+
+---
+
 ## [0.1.15] - 2026-02-28
 
 ### Added

@@ -2,7 +2,7 @@
 # Main allframe crate - re-exports allframe-core
 [package]
 name = "allframe"
-version = "0.1.15"
+version = "0.1.16"
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
@@ -28,7 +28,7 @@ exclude = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.15"
+version = "0.1.16"
 edition = "2021"
 rust-version = "1.86"  # Required for async-graphql 7.0.17
 authors = ["AllFrame Contributors"]
@@ -47,10 +47,10 @@ categories = ["web-programming::http-server", "asynchronous"]
 #   1. Update workspace.package.version (line 73)
 #   2. Update these three version strings to match
 # This ensures crates.io consumers get the correct dependency versions.
-allframe-core = { version = "0.1.15", path = "crates/allframe-core", default-features = false }
-allframe-forge = { version = "0.1.15", path = "crates/allframe-forge" }
-allframe-macros = { version = "0.1.15", path = "crates/allframe-macros" }
-allframe-tauri = { version = "0.1.15", path = "crates/allframe-tauri" }
+allframe-core = { version = "0.1.16", path = "crates/allframe-core", default-features = false }
+allframe-forge = { version = "0.1.16", path = "crates/allframe-forge" }
+allframe-macros = { version = "0.1.16", path = "crates/allframe-macros" }
+allframe-tauri = { version = "0.1.16", path = "crates/allframe-tauri" }
 anyhow = "1.0.75"  # Minimum version for Rust 1.80+ compatibility
 rusqlite = { version = "0.31", features = ["bundled"] }
 

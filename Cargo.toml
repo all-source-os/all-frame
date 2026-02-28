@@ -22,6 +22,9 @@ members = [
     "crates/allframe-mcp",
     "crates/allframe-tauri",
 ]
+exclude = [
+    "examples/tauri-desktop",
+]
 resolver = "2"
 
 [workspace.package]

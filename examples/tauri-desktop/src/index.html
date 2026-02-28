@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AllFrame Desktop — Offline-First Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1117;
+      color: #e1e4e8;
+      padding: 2rem;
+    }
+    h1 { color: #58a6ff; margin-bottom: 0.5rem; }
+    .subtitle { color: #8b949e; margin-bottom: 2rem; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.ok { background: #3fb950; }
+    .dot.loading { background: #d29922; }
+    .dot.error { background: #f85149; }
+    .panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .panel h2 { color: #c9d1d9; font-size: 1rem; margin-bottom: 1rem; }
+    button {
+      background: #21262d;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    button:hover { background: #30363d; border-color: #58a6ff; }
+    pre {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-top: 1rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      color: #c9d1d9;
+      white-space: pre-wrap;
+    }
+    .handlers { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .handler-tag {
+      background: #1f6feb22;
+      border: 1px solid #1f6feb;
+      border-radius: 12px;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.8rem;
+      color: #58a6ff;
+    }
+  </style>
+</head>
+<body>
+  <h1>AllFrame Desktop</h1>
+  <p class="subtitle">Offline-First IPC via Tauri Plugin</p>
+
+  <div class="status" id="status">
+    <span class="dot loading"></span>
+    <span>Checking connection...</span>
+  </div>
+
+  <div class="panel">
+    <h2>Registered Handlers</h2>
+    <div class="handlers" id="handlers">Loading...</div>
+  </div>
+
+  <div class="panel">
+    <h2>Call a Handler</h2>
+    <div>
+      <button onclick="callHandler('list_notes')">list_notes</button>
+      <button onclick="callHandler('get_note')">get_note</button>
+      <button onclick="callHandler('health_check')">health_check</button>
+    </div>
+    <pre id="output">Click a button to call a handler...</pre>
+  </div>
+
+  <script type="module">
+    const { invoke } = window.__TAURI__.core;
+
+    // Discover handlers on load
+    async function init() {
+      try {
+        const handlers = await invoke("plugin:allframe|allframe_list");
+        const container = document.getElementById("handlers");
+        container.innerHTML = handlers
+          .map(h => `<span class="handler-tag">${h.name}</span>`)
+          .join("");
+
+        const status = document.getElementById("status");
+        status.innerHTML = `<span class="dot ok"></span><span>Online — ${handlers.length} handlers available (no network needed)</span>`;
+      } catch (e) {
+        const status = document.getElementById("status");
+        status.innerHTML = `<span class="dot error"></span><span>Error: ${e}</span>`;
+      }
+    }
+
+    // Call handler and display result
+    window.callHandler = async function(name) {
+      const output = document.getElementById("output");
+      output.textContent = `Calling ${name}...`;
+      try {
+        const result = await invoke("plugin:allframe|allframe_call", {
+          handler: name,
+          args: {}
+        });
+        output.textContent = `${name} →\n${JSON.stringify(JSON.parse(result.result), null, 2)}`;
+      } catch (e) {
+        output.textContent = `Error: ${JSON.stringify(e, null, 2)}`;
+      }
+    };
+
+    init();
+  </script>
+</body>
+</html>

@@ -49,13 +49,9 @@ We ship **composable crates** that give you exactly what you need:
   - Query history persistence
   - Dark/Light themes
   - Production-ready with 7 tests
-- 📋 **gRPC Documentation** - Interactive service explorer **[PLANNED]**
-  - gRPC reflection for auto-discovery
-  - Service and method browser
-  - Stream testing (unary, server, client, bidirectional)
-  - TLS/SSL support
-  - Custom metadata headers
-  - Production-ready with 7 tests
+- 🚧 **gRPC Documentation** - Interactive service explorer **[IN PROGRESS]**
+  - Config builder and HTML generator complete (8 tests)
+  - Browser-side grpc-web client pending
 - ✅ **Contract Testing** - Built-in contract test generators **[COMPLETE!]**
   - Automatic test generation from router
   - Schema validation framework
@@ -113,7 +109,7 @@ We ship **composable crates** that give you exactly what you need:
   - Embedded MCP server for local-only LLM tool dispatch
   - `allframe-tauri` crate for Tauri 2.x desktop integration
   - **Zero network dependencies** in offline builds (verified by CI)
-- 📋 **LLM-powered code generation** - `allframe forge` CLI (v0.6 - planned)
+- 📋 **LLM-powered code generation** - `allframe forge` CLI (command registered, implementation pending)
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
@@ -892,101 +888,20 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines. *(coming soon)*
 
 ## Roadmap
 
-> **AllFrame is evolving into a cloud-native microservice architecture generator.**
-
 See **[ROADMAP.md](docs/current/ROADMAP.md)** for the complete vision and **[Project Status](docs/PROJECT_STATUS.md)** for current progress.
 
-**Vision**: Generate deployable microservice architectures from declarative configuration:
+### In Progress
 
-```bash
-# Today
-allframe ignite my-project
+- [ ] **gRPC Documentation** - Interactive service explorer with grpc-web client (config/HTML generator done, browser JS is a stub)
+- [ ] **`allframe forge`** - LLM-powered code generation CLI (command exists, implementation pending)
 
-# Tomorrow (v0.5+)
-allframe ignite --config architecture.toml
-# Generates complete microservice architecture with Terraform/Pulumi IaC
-```
+### Planned
 
-### Completed ✅
-
-- [x] **Offline-First Architecture** ✅ (Feb 2026)
-  - SQLite event store, offline resilience, projection sync
-  - Embedded MCP, lazy DI, saga compensation
-  - Tauri 2.x desktop integration
-  - Zero network dependencies (CI-enforced)
-  - **First Rust framework with built-in offline-first support!**
-
-- [ ] **Phase 6.4: gRPC Documentation** 📋 (Q1 2025)
-  - Interactive gRPC service explorer
-  - gRPC reflection for auto-discovery
-  - Stream testing (unary, server, client, bidirectional)
-  - TLS/SSL support with custom headers
-  - Dark/Light themes with custom CSS
-  - **First Rust framework with web-based gRPC docs!**
-
-- [x] **Phase 6.3: GraphQL Documentation** ✅ (Dec 2025)
-  - Interactive GraphiQL 3.0 playground (<100KB bundle)
-  - Schema explorer with documentation
-  - WebSocket subscription support
-  - Query history persistence
-  - Dark/Light themes with custom CSS
-  - **Modern alternative to deprecated GraphQL Playground!**
-
-- [x] **Track A: Scalar Integration** ✅ (Dec 2025)
-  - Beautiful OpenAPI 3.1 documentation (<50KB bundle)
-  - CDN version pinning + SRI hashes
-  - CORS proxy for "Try It" functionality
-  - Custom theming and CSS
-  - **10x smaller than Swagger UI!**
-
-- [x] **Track B: Binary Size Monitoring** ✅ (Dec 2025)
-  - Automated CI/CD workflow
-  - Local development scripts
-  - cargo-make integration
-  - **All binaries < 2MB (exceeded targets!)**
-
-- [x] **Phases 1-5: CQRS Infrastructure** ✅ (Nov 2025)
-  - AllSource Integration (pluggable backends)
-  - CommandBus (90% reduction)
-  - ProjectionRegistry (90% reduction)
-  - Event Versioning (95% reduction)
-  - Saga Orchestration (75% reduction)
-  - **85% average boilerplate reduction!**
-
-- [x] **v0.0** - Repository setup, documentation migration ✅
-- [x] **v0.1** - `allframe ignite` + hello world ✅
-- [x] **v0.2** - Compile-time DI + OpenAPI ✅
-- [x] **v0.3** - OpenTelemetry tracing ✅
-
-### Active 🚧
-
-- [ ] **Phase 6: Router + API Documentation** 🚧 (Q1 2025)
-  - ✅ Router Core (protocol-agnostic)
-  - ✅ REST Documentation (Scalar)
-  - ✅ GraphQL Documentation (GraphiQL)
-  - 📋 gRPC Documentation (Service Explorer)
-  - ✅ Contract Testing (Complete - 9 tests)
-
-### Planned 📋
-
-**Next Up**: LLM Integration & Code Generation
-- ✅ **Native MCP server** (100% Zero Bloat - Separate Crate!)
-- 📋 LLM-powered code generation - `allframe forge` CLI (v0.6)
-
-**Performance & Ecosystem**
 - TechEmpower benchmarks (JSON serialization, query performance)
 - Production runtime integration (Axum, Actix, Rocket)
 - VS Code extension
-- Performance profiling and optimization
-
-**Advanced Features**
 - API versioning
-- Multi-language examples
-- Analytics
-
-**Production Hardening**
-- Security audit
-- 1.0 release preparation
+- Security audit and 1.0 release preparation
 
 **[Read the full roadmap →](docs/current/ROADMAP.md)** | **[View Ignite Vision →](docs/current/IGNITE_VISION.md)**
 

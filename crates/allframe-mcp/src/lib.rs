@@ -13,7 +13,7 @@
 //! router.register("get_user", || async { "User data".to_string() });
 //! router.register("create_user", || async { "Created".to_string() });
 //!
-//! let mcp_server = McpServer::new(router);
+//! let mcp_server = McpServer::with_router(router);
 //! // mcp_server.serve_stdio().await?;
 //! # Ok(())
 //! # }
@@ -54,7 +54,7 @@ mod tests {
     #[test]
     fn test_mcp_server_creation() {
         let router = Router::new();
-        let mcp_server = McpServer::new(router);
+        let mcp_server = McpServer::with_router(router);
 
         // Should create server successfully
         assert_eq!(mcp_server.tool_count(), 0);
@@ -67,7 +67,7 @@ mod tests {
         router.register("create_user", || async { "Created".to_string() });
         router.register("update_user", || async { "Updated".to_string() });
 
-        let mcp_server = McpServer::new(router);
+        let mcp_server = McpServer::with_router(router);
 
         // Should discover all 3 handlers as tools
         assert_eq!(mcp_server.tool_count(), 3);
@@ -79,8 +79,8 @@ mod tests {
         router.register("get_user", || async { "User data".to_string() });
         router.register("create_user", || async { "Created".to_string() });
 
-        let mcp_server = McpServer::new(router);
-        let tools = mcp_server.list_tools().await;
+        let mcp_server = McpServer::with_router(router);
+        let tools = mcp_server.list_tools();
 
         // Should return 2 tools
         assert_eq!(tools.len(), 2);
@@ -96,8 +96,8 @@ mod tests {
         let mut router = Router::new();
         router.register("get_user", || async { "User data".to_string() });
 
-        let mcp_server = McpServer::new(router);
-        let tools = mcp_server.list_tools().await;
+        let mcp_server = McpServer::with_router(router);
+        let tools = mcp_server.list_tools();
         let tool = &tools[0];
 
         // Tool should have name
@@ -115,7 +115,7 @@ mod tests {
         let mut router = Router::new();
         router.register("get_user", || async { "User data".to_string() });
 
-        let mcp_server = McpServer::new(router);
+        let mcp_server = McpServer::with_router(router);
 
         // Call tool without arguments
         let result = mcp_server
@@ -130,7 +130,7 @@ mod tests {
         let mut router = Router::new();
         router.register("echo", || async { "echoed".to_string() });
 
-        let mcp_server = McpServer::new(router);
+        let mcp_server = McpServer::with_router(router);
 
         // Call tool with arguments
         let args = serde_json::json!({
@@ -143,7 +143,7 @@ mod tests {
     #[tokio::test]
     async fn test_mcp_server_error_on_unknown_tool() {
         let router = Router::new();
-        let mcp_server = McpServer::new(router);
+        let mcp_server = McpServer::with_router(router);
 
         // Try to call non-existent tool
         let result = mcp_server
@@ -162,7 +162,7 @@ mod tests {
         // Handler that returns error in future (simulated by returning empty for now)
         router.register("failing_handler", || async { "".to_string() });
 
-        let mcp_server = McpServer::new(router);
+        let mcp_server = McpServer::with_router(router);
 
         // Call should succeed but we can test error propagation later
         let result = mcp_server
@@ -197,7 +197,7 @@ mod tests {
         router.register("tool1", || async { "result1".to_string() });
         router.register("tool2", || async { "result2".to_string() });
 
-        let mcp_server = McpServer::new(router);
+        let mcp_server = McpServer::with_router(router);
 
         // Call first tool
         let result1 = mcp_server.call_tool("tool1", serde_json::json!({})).await;
@@ -216,7 +216,7 @@ mod tests {
         router.register("tool_a", || async { "A".to_string() });
         router.register("tool_b", || async { "B".to_string() });
 
-        let mcp_server = McpServer::new(router);
+        let mcp_server = McpServer::with_router(router);
 
         // Calling tool_a should not affect tool_b
         let _ = mcp_server.call_tool("tool_a", serde_json::json!({})).await;
@@ -228,7 +228,7 @@ mod tests {
     #[test]
     fn test_mcp_server_empty_router() {
         let router = Router::new();
-        let mcp_server = McpServer::new(router);
+        let mcp_server = McpServer::with_router(router);
 
         // Should handle empty router gracefully
         assert_eq!(mcp_server.tool_count(), 0);
@@ -237,8 +237,8 @@ mod tests {
     #[tokio::test]
     async fn test_mcp_server_list_tools_empty() {
         let router = Router::new();
-        let mcp_server = McpServer::new(router);
-        let tools = mcp_server.list_tools().await;
+        let mcp_server = McpServer::with_router(router);
+        let tools = mcp_server.list_tools();
 
         // Should return empty list
         assert_eq!(tools.len(), 0);

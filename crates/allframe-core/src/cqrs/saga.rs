@@ -297,3 +297,121 @@ impl MacroSagaOrchestrator {
         Ok(())
     }
 }
+
+// ============================================================================
+// UC-036.7: Saga Compensation Primitives
+// ============================================================================
+
+/// A snapshot of a file's contents, used for rollback compensation.
+#[derive(Debug, Clone)]
+pub struct FileSnapshot {
+    /// Path to the file
+    pub path: std::path::PathBuf,
+    /// Original content
+    pub content: Vec<u8>,
+}
+
+impl FileSnapshot {
+    /// Capture the current content of a file.
+    pub async fn capture(path: &std::path::Path) -> Result<Self, String> {
+        let path_buf = path.to_path_buf();
+        let content = tokio::fs::read(&path_buf)
+            .await
+            .map_err(|e| format!("FileSnapshot capture: {}", e))?;
+        Ok(Self {
+            path: path_buf,
+            content,
+        })
+    }
+
+    /// Restore the file to its captured content.
+    pub async fn restore(&self) -> Result<(), String> {
+        tokio::fs::write(&self.path, &self.content)
+            .await
+            .map_err(|e| format!("FileSnapshot restore: {}", e))
+    }
+}
+
+/// Strategy for compensating saga steps on failure.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CompensationStrategy {
+    /// Roll back using local file snapshots / savepoints.
+    LocalRollback,
+}
+
+/// A saga step that writes content to a file, with automatic snapshot for compensation.
+pub struct WriteFileStep {
+    /// Path to write to.
+    pub path: std::path::PathBuf,
+    /// Content to write.
+    pub content: String,
+    /// Internal snapshot taken before execution.
+    snapshot: tokio::sync::Mutex<Option<FileSnapshot>>,
+}
+
+impl WriteFileStep {
+    /// Create a new WriteFileStep (convenience for tests that set path/content directly).
+    pub fn new(path: std::path::PathBuf, content: String) -> Self {
+        Self {
+            path,
+            content,
+            snapshot: tokio::sync::Mutex::new(None),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl<E: super::Event> super::saga_orchestrator::SagaStep<E> for WriteFileStep {
+    async fn execute(&self) -> Result<Vec<E>, String> {
+        // Capture snapshot before writing
+        if self.path.exists() {
+            let snap = FileSnapshot::capture(&self.path).await?;
+            *self.snapshot.lock().await = Some(snap);
+        }
+        tokio::fs::write(&self.path, &self.content)
+            .await
+            .map_err(|e| format!("WriteFileStep: {}", e))?;
+        Ok(vec![])
+    }
+
+    async fn compensate(&self) -> Result<Vec<E>, String> {
+        if let Some(snap) = self.snapshot.lock().await.as_ref() {
+            snap.restore().await?;
+        }
+        Ok(vec![])
+    }
+
+    fn name(&self) -> &str {
+        "WriteFileStep"
+    }
+}
+
+/// SQLite savepoint for transactional rollback within a saga step.
+///
+/// Holds a reference to the connection and the savepoint name.
+/// The caller must ensure the `SqliteSavepoint` does not outlive the connection.
+#[cfg(feature = "cqrs-sqlite")]
+pub struct SqliteSavepoint<'conn> {
+    conn: &'conn rusqlite::Connection,
+    name: String,
+}
+
+#[cfg(feature = "cqrs-sqlite")]
+impl<'conn> SqliteSavepoint<'conn> {
+    /// Create a savepoint on the given connection.
+    pub fn create(conn: &'conn rusqlite::Connection, name: &str) -> Result<Self, String> {
+        conn.execute_batch(&format!("SAVEPOINT {}", name))
+            .map_err(|e| format!("Savepoint create: {}", e))?;
+        Ok(Self {
+            conn,
+            name: name.to_string(),
+        })
+    }
+
+    /// Rollback to this savepoint.
+    pub fn rollback(&self) -> Result<(), String> {
+        self.conn
+            .execute_batch(&format!("ROLLBACK TO SAVEPOINT {}", self.name))
+            .map_err(|e| format!("Savepoint rollback: {}", e))
+    }
+}

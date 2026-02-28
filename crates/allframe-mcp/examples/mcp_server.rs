@@ -71,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create MCP server
     println!("🔧 Creating MCP server...\n");
-    let mcp_server = McpServer::new(router);
+    let mcp_server = McpServer::with_router(router);
 
     println!("   ✅ MCP server created");
     println!("   📊 Tool count: {}\n", mcp_server.tool_count());
@@ -80,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("═══════════════════════════════════════════════\n");
     println!("🛠️  Available MCP Tools:\n");
 
-    let tools = mcp_server.list_tools().await;
+    let tools = mcp_server.list_tools();
     for (i, tool) in tools.iter().enumerate() {
         println!("   {}. {}", i + 1, tool.name);
         println!("      Description: {}", tool.description);

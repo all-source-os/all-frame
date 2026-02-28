@@ -53,6 +53,12 @@ echo "  cargo make version-bump       - Bump version (patch by default)"
 echo "  cargo make changelog-sync     - Sync CHANGELOG.md to GitHub Pages"
 echo "  cargo make publish-dry-run    - Verify all crates are ready to publish"
 echo "  cargo make publish-all        - Publish all crates (parallel, skips published)"
+echo ""
+echo "Offline Quality Gates:"
+echo "  cargo make test-offline       - Run offline quality gate tests"
+echo "  cargo make test-tauri         - Run allframe-tauri tests"
+echo "  cargo make check-offline-deps - Verify no network deps in offline builds"
+echo "  cargo make ci-offline         - Run all offline CI checks"
 '''
 
 # Quality Gates
@@ -217,6 +223,83 @@ script_runner = "@shell"
 script = '''
 #!/usr/bin/env bash
 ./scripts/analyze_size.sh all
+'''
+
+# Offline Quality Gates (Issue #36)
+
+[tasks.test-offline]
+description = "Run offline quality gate tests (09_offline_quality_gates.rs)"
+command = "cargo"
+args = ["test", "--test", "09_offline_quality_gates", "--features", "cqrs,di,resilience,security,openapi"]
+
+[tasks.test-tauri]
+description = "Run allframe-tauri crate tests"
+command = "cargo"
+args = ["test", "-p", "allframe-tauri"]
+
+[tasks.check-offline-deps]
+description = "Verify no network dependencies in offline builds"
+workspace = false
+script_runner = "@shell"
+script = '''
+#!/usr/bin/env bash
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+BANNED="reqwest|redis|opentelemetry-otlp|tonic|hyper"
+ERRORS=0
+
+echo "Checking offline dependency trees..."
+echo ""
+
+# Check 1: allframe-core with offline-only features
+echo "━━━ Profile: offline-only-minimal (cqrs,di) ━━━"
+if cargo tree -p allframe-core --no-default-features --features "cqrs,di" 2>/dev/null | grep -E "$BANNED"; then
+    echo "  ❌ Network dependencies found!"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "  ✅ No network dependencies"
+fi
+
+echo ""
+
+# Check 2: allframe-core with desktop features
+echo "━━━ Profile: offline-first-desktop (cqrs,di,resilience,security) ━━━"
+if cargo tree -p allframe-core --no-default-features --features "cqrs,di,resilience,security" 2>/dev/null | grep -E "$BANNED"; then
+    echo "  ❌ Network dependencies found!"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "  ✅ No network dependencies"
+fi
+
+echo ""
+
+# Check 3: allframe-tauri
+echo "━━━ Crate: allframe-tauri ━━━"
+if cargo tree -p allframe-tauri 2>/dev/null | grep -E "$BANNED"; then
+    echo "  ❌ Network dependencies found!"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "  ✅ No network dependencies"
+fi
+
+echo ""
+
+if [ $ERRORS -gt 0 ]; then
+    echo "❌ Offline dependency check failed! $ERRORS profile(s) have network dependencies."
+    exit 1
+else
+    echo "✅ All offline profiles are network-free!"
+fi
+'''
+
+[tasks.ci-offline]
+description = "Run all offline CI checks"
+dependencies = ["test-offline", "test-tauri", "check-offline-deps"]
+script = '''
+echo ""
+echo "✅ All offline quality gates passed!"
 '''
 
 # Publishing to crates.io

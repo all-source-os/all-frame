@@ -99,6 +99,70 @@ cargo sort --check
 cargo test --features "di,openapi,router,cqrs"
 ```
 
+## Offline Quality Gates
+
+AllFrame supports offline-first and offline-only desktop/embedded deployments ([Issue #36](https://github.com/all-source-os/all-frame/issues/36)). These quality gates ensure the offline story remains clean.
+
+### Quick Commands
+
+```bash
+# Run offline quality gate tests
+cargo make test-offline
+
+# Run allframe-tauri tests
+cargo make test-tauri
+
+# Verify no network deps in offline builds
+cargo make check-offline-deps
+
+# Run all offline CI checks
+cargo make ci-offline
+```
+
+### Offline Feature Profiles
+
+| Profile | Features | Use Case |
+|---------|----------|----------|
+| `offline-only-minimal` | `cqrs,di` | Air-gapped, smallest footprint |
+| `offline-first-desktop` | `cqrs,di,resilience,security` | Tauri desktop apps |
+| `offline-with-router` | `router,cqrs,di` | Tauri IPC + event sourcing |
+| `offline-with-auth` | `cqrs,di,auth,auth-jwt,security` | Offline with local JWT |
+| `offline-with-cache` | `cqrs,di,cache-memory` | Offline with in-memory cache |
+
+### Network Dependency Boundaries
+
+**Network-free features** (safe for offline-only):
+- `cqrs` — InMemoryBackend, no external store
+- `di` — Compile-time dependency injection
+- `router` — In-memory handler registry (no HTTP)
+- `openapi` — Spec generation only
+- `resilience` — Local retry/circuit breaker
+- `security` — Logging utilities
+- `auth` — Trait definitions only
+- `auth-jwt` — Local token validation
+- `cache-memory` — In-process cache
+- `rate-limit` — Local rate limiting
+
+**Network-dependent features** (exclude for offline-only):
+- `health` → hyper
+- `otel-otlp` → opentelemetry-otlp
+- `http-client` → reqwest
+- `cache-redis` → redis
+- `resilience-redis` → redis
+- `router-grpc` → tonic
+- `router-grpc-tls` → rustls
+- `auth-axum` → hyper
+- `auth-tonic` → tonic
+
+### CI Enforcement
+
+The `offline-quality-gates.yml` workflow validates:
+1. All offline feature profiles compile on Linux and macOS
+2. `allframe-tauri` builds, tests, and passes clippy
+3. No network dependencies (`reqwest`, `redis`, `hyper`, `tonic`, `opentelemetry-otlp`) in offline builds
+4. Quality gate integration tests pass (`tests/09_offline_quality_gates.rs`)
+5. Binary size stays under 5MB for offline profile
+
 ## Configuration Files
 
 Quality gates are configured through standard Rust configuration files:

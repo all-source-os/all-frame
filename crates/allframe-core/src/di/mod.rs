@@ -29,6 +29,9 @@
 //! let container = AppContainer::build().await?;
 //! ```
 
+pub mod lazy;
+pub use lazy::*;
+
 use std::{any::Any, collections::HashMap, fmt, sync::Arc};
 
 /// Error type for dependency injection operations

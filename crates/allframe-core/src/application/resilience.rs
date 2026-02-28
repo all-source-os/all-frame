@@ -20,10 +20,13 @@ use std::time::Duration;
 
 use crate::domain::resilience::{ResilienceDomainError, ResiliencePolicy, ResilientOperation};
 #[cfg(feature = "resilience")]
+use crate::domain::resilience::BackoffStrategy;
+#[cfg(feature = "resilience")]
 use crate::resilience::{
-    CircuitBreaker, CircuitBreakerConfig, RateLimiter, RateLimiterConfig, RetryConfig, RetryError,
-    RetryExecutor,
+    CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, RateLimiter, RetryConfig,
 };
+#[cfg(feature = "resilience")]
+use dashmap::DashMap;
 
 /// Core trait for resilience orchestration.
 /// This trait defines the contract between application layer and
@@ -37,7 +40,7 @@ pub trait ResilienceOrchestrator: Send + Sync {
         operation: F,
     ) -> Result<T, ResilienceOrchestrationError>
     where
-        F: FnOnce() -> Fut + Send,
+        F: FnMut() -> Fut + Send,
         Fut: std::future::Future<Output = Result<T, E>> + Send,
         E: Into<ResilienceOrchestrationError> + Send;
 
@@ -104,10 +107,11 @@ pub struct ResilienceMetrics {
 /// Default implementation of ResilienceOrchestrator using infrastructure layer
 #[cfg(feature = "resilience")]
 pub struct DefaultResilienceOrchestrator {
-    retry_executor: Arc<RetryExecutor>,
     circuit_breakers: HashMap<String, CircuitBreaker>,
     rate_limiters: HashMap<String, RateLimiter>,
-    metrics: std::sync::Mutex<ResilienceMetrics>,
+    dynamic_circuit_breakers: DashMap<String, Arc<CircuitBreaker>>,
+    dynamic_rate_limiters: DashMap<String, Arc<RateLimiter>>,
+    metrics: parking_lot::Mutex<ResilienceMetrics>,
 }
 
 #[cfg(feature = "resilience")]
@@ -115,24 +119,25 @@ impl DefaultResilienceOrchestrator {
     /// Create a new orchestrator with default infrastructure components
     pub fn new() -> Self {
         Self {
-            retry_executor: Arc::new(RetryExecutor::new(RetryConfig::default())),
             circuit_breakers: HashMap::new(),
             rate_limiters: HashMap::new(),
-            metrics: std::sync::Mutex::new(ResilienceMetrics::default()),
+            dynamic_circuit_breakers: DashMap::new(),
+            dynamic_rate_limiters: DashMap::new(),
+            metrics: parking_lot::Mutex::new(ResilienceMetrics::default()),
         }
     }
 
     /// Create an orchestrator with custom infrastructure components
     pub fn with_components(
-        retry_executor: Arc<RetryExecutor>,
         circuit_breakers: HashMap<String, CircuitBreaker>,
         rate_limiters: HashMap<String, RateLimiter>,
     ) -> Self {
         Self {
-            retry_executor,
             circuit_breakers,
             rate_limiters,
-            metrics: std::sync::Mutex::new(ResilienceMetrics::default()),
+            dynamic_circuit_breakers: DashMap::new(),
+            dynamic_rate_limiters: DashMap::new(),
+            metrics: parking_lot::Mutex::new(ResilienceMetrics::default()),
         }
     }
 
@@ -146,54 +151,24 @@ impl DefaultResilienceOrchestrator {
         self.rate_limiters.insert(name, rate_limiter);
     }
 
-    /// Get or create a circuit breaker with the given configuration
-    fn get_or_create_circuit_breaker(
-        &mut self,
-        name: &str,
-        failure_threshold: u32,
-        recovery_timeout: Duration,
-    ) -> &CircuitBreaker {
-        self.circuit_breakers
-            .entry(name.to_string())
-            .or_insert_with(|| {
-                CircuitBreaker::new(
-                    name,
-                    CircuitBreakerConfig::new(failure_threshold, recovery_timeout),
-                )
-            })
-    }
-
-    /// Get or create a rate limiter with the given configuration
-    fn get_or_create_rate_limiter(
-        &mut self,
-        name: &str,
-        requests_per_second: u32,
-        burst_capacity: u32,
-    ) -> &RateLimiter {
-        self.rate_limiters
-            .entry(name.to_string())
-            .or_insert_with(|| RateLimiter::new(requests_per_second, burst_capacity))
-    }
-
     /// Update metrics for a successful operation
     fn record_success(&self) {
-        let mut metrics = self.metrics.lock().unwrap();
+        let mut metrics = self.metrics.lock();
         metrics.total_operations += 1;
         metrics.successful_operations += 1;
     }
 
     /// Update metrics for a failed operation
     fn record_failure(&self, error: &ResilienceOrchestrationError) {
-        let mut metrics = self.metrics.lock().unwrap();
+        let mut metrics = self.metrics.lock();
         metrics.total_operations += 1;
         metrics.failed_operations += 1;
 
         match error {
             ResilienceOrchestrationError::Domain(ResilienceDomainError::RetryExhausted {
-                attempts,
                 ..
             }) => {
-                metrics.retry_attempts += *attempts as u64;
+                // retry_attempts already tracked by record_retry() calls
             }
             ResilienceOrchestrationError::Domain(ResilienceDomainError::CircuitOpen) => {
                 metrics.circuit_breaker_trips += 1;
@@ -207,6 +182,92 @@ impl DefaultResilienceOrchestrator {
             _ => {}
         }
     }
+
+    /// Record a retry attempt in metrics
+    fn record_retry(&self) {
+        let mut metrics = self.metrics.lock();
+        metrics.retry_attempts += 1;
+    }
+
+    /// Get or create a persistent circuit breaker for a policy
+    fn get_or_create_circuit_breaker(
+        &self,
+        failure_threshold: u32,
+        recovery_timeout: Duration,
+        success_threshold: u32,
+    ) -> Arc<CircuitBreaker> {
+        let key = format!(
+            "cb_{}_{}_{}", failure_threshold, recovery_timeout.as_millis(), success_threshold
+        );
+        self.dynamic_circuit_breakers
+            .entry(key)
+            .or_insert_with(|| {
+                let config = CircuitBreakerConfig::new(failure_threshold)
+                    .with_timeout(recovery_timeout)
+                    .with_success_threshold(success_threshold);
+                Arc::new(CircuitBreaker::new("policy", config))
+            })
+            .clone()
+    }
+
+    /// Get or create a persistent rate limiter for a policy
+    fn get_or_create_rate_limiter(&self, rps: u32, burst: u32) -> Arc<RateLimiter> {
+        let key = format!("rl_{}_{}", rps, burst);
+        self.dynamic_rate_limiters
+            .entry(key)
+            .or_insert_with(|| Arc::new(RateLimiter::new(rps, burst)))
+            .clone()
+    }
+
+    /// Build a RetryConfig from a domain BackoffStrategy.
+    /// Domain `max_attempts` = total attempts (1 = no retries).
+    /// Infrastructure `max_retries` = retries after initial attempt.
+    fn build_retry_config(max_attempts: u32, backoff: &BackoffStrategy) -> RetryConfig {
+        let max_retries = max_attempts.saturating_sub(1);
+        match backoff {
+            BackoffStrategy::Fixed { delay } => RetryConfig::new(max_retries)
+                .with_initial_interval(*delay)
+                .with_multiplier(1.0)
+                .with_randomization_factor(0.0),
+            BackoffStrategy::Exponential {
+                initial_delay,
+                multiplier,
+                max_delay,
+                jitter,
+            } => {
+                let mut config = RetryConfig::new(max_retries)
+                    .with_initial_interval(*initial_delay)
+                    .with_multiplier(*multiplier);
+
+                if let Some(max) = max_delay {
+                    config = config.with_max_interval(*max);
+                }
+
+                if *jitter {
+                    config = config.with_randomization_factor(0.5);
+                } else {
+                    config = config.with_randomization_factor(0.0);
+                }
+
+                config
+            }
+            BackoffStrategy::Linear {
+                initial_delay,
+                increment: _,
+                max_delay,
+            } => {
+                let mut config = RetryConfig::new(max_retries)
+                    .with_initial_interval(*initial_delay)
+                    .with_multiplier(1.0);
+
+                if let Some(max) = max_delay {
+                    config = config.with_max_interval(*max);
+                }
+
+                config
+            }
+        }
+    }
 }
 
 #[cfg(feature = "resilience")]
@@ -215,10 +276,10 @@ impl ResilienceOrchestrator for DefaultResilienceOrchestrator {
     async fn execute_with_policy<T, F, Fut, E>(
         &self,
         policy: ResiliencePolicy,
-        operation: F,
+        mut operation: F,
     ) -> Result<T, ResilienceOrchestrationError>
     where
-        F: FnOnce() -> Fut + Send,
+        F: FnMut() -> Fut + Send,
         Fut: std::future::Future<Output = Result<T, E>> + Send,
         E: Into<ResilienceOrchestrationError> + Send,
     {
@@ -242,82 +303,38 @@ impl ResilienceOrchestrator for DefaultResilienceOrchestrator {
                 max_attempts,
                 backoff,
             } => {
-                let retry_config = match backoff {
-                    BackoffStrategy::Fixed { delay } => {
-                        RetryConfig::new(max_attempts).with_fixed_delay(delay)
-                    }
-                    BackoffStrategy::Exponential {
-                        initial_delay,
-                        multiplier,
-                        max_delay,
-                        jitter,
-                    } => {
-                        let mut config = RetryConfig::new(max_attempts)
-                            .with_initial_interval(initial_delay)
-                            .with_multiplier(multiplier);
+                let retry_config = Self::build_retry_config(max_attempts, &backoff);
 
-                        if let Some(max) = max_delay {
-                            config = config.with_max_interval(max);
+                // Inline retry loop — RetryExecutor requires E: std::error::Error
+                // which is more restrictive than E: Into<ResilienceOrchestrationError>
+                let mut attempts = 0u32;
+                loop {
+                    attempts += 1;
+                    match operation().await {
+                        Ok(value) => {
+                            self.record_success();
+                            return Ok(value);
                         }
+                        Err(error) => {
+                            let msg = format!("{}", error.into());
 
-                        if jitter {
-                            config = config.with_jitter();
-                        }
-
-                        config
-                    }
-                    BackoffStrategy::Linear {
-                        initial_delay,
-                        increment,
-                        max_delay,
-                    } => {
-                        // For linear backoff, we'll use exponential with multiplier 1.0
-                        // This is a simplification - a full implementation would need
-                        // a custom backoff strategy in the infrastructure layer
-                        let mut config = RetryConfig::new(max_attempts)
-                            .with_initial_interval(initial_delay)
-                            .with_multiplier(1.0);
-
-                        if let Some(max) = max_delay {
-                            config = config.with_max_interval(max);
-                        }
-
-                        config
-                    }
-                };
-
-                let retry_result = self
-                    .retry_executor
-                    .execute_with_config(retry_config, operation)
-                    .await;
-
-                match retry_result {
-                    Ok(value) => {
-                        self.record_success();
-                        Ok(value)
-                    }
-                    Err(retry_error) => {
-                        let orch_error = match retry_error {
-                            RetryError::OperationFailed {
-                                last_error,
-                                attempts,
-                            } => ResilienceOrchestrationError::Domain(
-                                ResilienceDomainError::RetryExhausted {
-                                    attempts: attempts as u32,
-                                    last_error: format!("{:?}", last_error),
-                                },
-                            ),
-                            RetryError::Timeout => {
-                                ResilienceOrchestrationError::Domain(
-                                    ResilienceDomainError::Timeout {
-                                        duration: Duration::from_secs(30), // Default timeout
+                            if attempts > retry_config.max_retries {
+                                let final_error = ResilienceOrchestrationError::Domain(
+                                    ResilienceDomainError::RetryExhausted {
+                                        attempts,
+                                        last_error: msg,
                                     },
-                                )
+                                );
+                                self.record_failure(&final_error);
+                                return Err(final_error);
                             }
-                        };
-                        self.record_failure(&orch_error);
-                        Err(orch_error)
+
+                            self.record_retry();
+                            // error is dropped here, before the await
+                        }
                     }
+                    let interval = retry_config.calculate_interval(attempts - 1);
+                    tokio::time::sleep(interval).await;
                 }
             }
 
@@ -327,24 +344,25 @@ impl ResilienceOrchestrator for DefaultResilienceOrchestrator {
                 success_threshold,
             } => {
                 let cb = self.get_or_create_circuit_breaker(
-                    "default",
                     failure_threshold,
                     recovery_timeout,
+                    success_threshold,
                 );
 
-                let cb_result = cb.call(operation).await;
-
-                match cb_result {
+                match cb.call(operation).await {
                     Ok(value) => {
                         self.record_success();
                         Ok(value)
                     }
-                    Err(cb_error) => {
-                        // Circuit breaker errors are typically wrapped operation errors
-                        // For now, we'll treat all circuit breaker failures as domain errors
+                    Err(CircuitBreakerError::CircuitOpen(_)) => {
                         let orch_error = ResilienceOrchestrationError::Domain(
                             ResilienceDomainError::CircuitOpen,
                         );
+                        self.record_failure(&orch_error);
+                        Err(orch_error)
+                    }
+                    Err(CircuitBreakerError::Inner(error)) => {
+                        let orch_error = error.into();
                         self.record_failure(&orch_error);
                         Err(orch_error)
                     }
@@ -355,8 +373,7 @@ impl ResilienceOrchestrator for DefaultResilienceOrchestrator {
                 requests_per_second,
                 burst_capacity,
             } => {
-                let limiter =
-                    self.get_or_create_rate_limiter("default", requests_per_second, burst_capacity);
+                let limiter = self.get_or_create_rate_limiter(requests_per_second, burst_capacity);
 
                 if limiter.check().is_ok() {
                     let result = operation().await;
@@ -382,16 +399,21 @@ impl ResilienceOrchestrator for DefaultResilienceOrchestrator {
             }
 
             ResiliencePolicy::Timeout { duration } => {
-                // For timeout, we'd need tokio::time::timeout
-                // This is a simplified implementation
-                let result = operation().await;
+                let result = tokio::time::timeout(duration, operation()).await;
                 match result {
-                    Ok(value) => {
+                    Ok(Ok(value)) => {
                         self.record_success();
                         Ok(value)
                     }
-                    Err(error) => {
+                    Ok(Err(error)) => {
                         let orch_error = error.into();
+                        self.record_failure(&orch_error);
+                        Err(orch_error)
+                    }
+                    Err(_elapsed) => {
+                        let orch_error = ResilienceOrchestrationError::Domain(
+                            ResilienceDomainError::Timeout { duration },
+                        );
                         self.record_failure(&orch_error);
                         Err(orch_error)
                     }
@@ -399,41 +421,72 @@ impl ResilienceOrchestrator for DefaultResilienceOrchestrator {
             }
 
             ResiliencePolicy::Combined { policies } => {
-                // For combined policies, we apply them in sequence
-                // This is a simplified implementation - a full implementation
-                // would need more sophisticated policy composition
-                let mut final_result = None;
-                let mut final_error = None;
+                if policies.is_empty() {
+                    return self
+                        .execute_with_policy(ResiliencePolicy::None, operation)
+                        .await;
+                }
+
+                // Separate guard policies (checked upfront) from execution policies.
+                // Guards: RateLimit, CircuitBreaker — checked before the operation runs.
+                // Execution: Retry, Timeout — wraps the actual operation call.
+                let mut execution_policy = None;
 
                 for policy in policies {
-                    let result = self.execute_with_policy(policy, || operation()).await;
-                    match result {
-                        Ok(value) => {
-                            final_result = Some(value);
-                            break; // Success, no need to continue
+                    match policy {
+                        ResiliencePolicy::RateLimit {
+                            requests_per_second,
+                            burst_capacity,
+                        } => {
+                            let limiter = self.get_or_create_rate_limiter(
+                                requests_per_second,
+                                burst_capacity,
+                            );
+                            if limiter.check().is_err() {
+                                let e = ResilienceOrchestrationError::Domain(
+                                    ResilienceDomainError::RateLimited { retry_after: None },
+                                );
+                                self.record_failure(&e);
+                                return Err(e);
+                            }
                         }
-                        Err(error) => {
-                            final_error = Some(error);
-                            // Continue with next policy
+                        ResiliencePolicy::CircuitBreaker {
+                            failure_threshold,
+                            recovery_timeout,
+                            success_threshold,
+                        } => {
+                            let cb = self.get_or_create_circuit_breaker(
+                                failure_threshold,
+                                recovery_timeout,
+                                success_threshold,
+                            );
+                            if cb.check().is_err() {
+                                let e = ResilienceOrchestrationError::Domain(
+                                    ResilienceDomainError::CircuitOpen,
+                                );
+                                self.record_failure(&e);
+                                return Err(e);
+                            }
+                        }
+                        p @ (ResiliencePolicy::Retry { .. }
+                        | ResiliencePolicy::Timeout { .. }) => {
+                            execution_policy = Some(p);
+                        }
+                        ResiliencePolicy::None => {}
+                        ResiliencePolicy::Combined { .. } => {
+                            return Err(ResilienceOrchestrationError::Configuration(
+                                "Nested Combined policies are not supported".to_string(),
+                            ));
                         }
                     }
                 }
 
-                match final_result {
-                    Some(value) => {
-                        self.record_success();
-                        Ok(value)
-                    }
-                    None => {
-                        let error = final_error.unwrap_or_else(|| {
-                            ResilienceOrchestrationError::Configuration(
-                                "No policies succeeded".to_string(),
-                            )
-                        });
-                        self.record_failure(&error);
-                        Err(error)
-                    }
-                }
+                // Execute with the found execution policy (or None for pass-through)
+                self.execute_with_policy(
+                    execution_policy.unwrap_or(ResiliencePolicy::None),
+                    operation,
+                )
+                .await
             }
         }
     }
@@ -447,10 +500,11 @@ impl ResilienceOrchestrator for DefaultResilienceOrchestrator {
     }
 
     fn metrics(&self) -> ResilienceMetrics {
-        self.metrics.lock().unwrap().clone()
+        self.metrics.lock().clone()
     }
 }
 
+#[cfg(feature = "resilience")]
 impl Default for DefaultResilienceOrchestrator {
     fn default() -> Self {
         Self::new()
@@ -459,10 +513,12 @@ impl Default for DefaultResilienceOrchestrator {
 
 #[cfg(all(test, feature = "resilience"))]
 mod tests {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Arc;
     use std::time::Duration;
 
     use super::*;
-    use crate::{application::CircuitBreakerConfig, domain::resilience::policies};
+    use crate::domain::resilience::policies;
 
     #[tokio::test]
     async fn test_no_resilience_policy() {
@@ -483,38 +539,35 @@ mod tests {
     #[tokio::test]
     async fn test_retry_policy_success() {
         let orchestrator = DefaultResilienceOrchestrator::new();
-        let mut attempts = 0;
+        let attempts = Arc::new(AtomicU32::new(0));
+        let attempts_clone = attempts.clone();
 
         let result = orchestrator
-            .execute_with_policy(policies::retry(3), || async {
-                attempts += 1;
-                if attempts < 2 {
-                    Err(ResilienceOrchestrationError::Domain(
-                        ResilienceDomainError::Infrastructure {
-                            message: "Temporary failure".to_string(),
-                        },
-                    ))
-                } else {
-                    Ok(42)
+            .execute_with_policy(policies::retry(3), move || {
+                let attempts = attempts_clone.clone();
+                async move {
+                    let count = attempts.fetch_add(1, Ordering::SeqCst) + 1;
+                    if count < 2 {
+                        Err(ResilienceOrchestrationError::Domain(
+                            ResilienceDomainError::Infrastructure {
+                                message: "Temporary failure".to_string(),
+                            },
+                        ))
+                    } else {
+                        Ok(42)
+                    }
                 }
             })
             .await;
 
         assert_eq!(result, Ok(42));
-        assert_eq!(attempts, 2); // Should succeed on second attempt
+        assert_eq!(attempts.load(Ordering::SeqCst), 2);
     }
 
     #[tokio::test]
     async fn test_circuit_breaker_policy() {
-        let mut orchestrator = DefaultResilienceOrchestrator::new();
+        let orchestrator = DefaultResilienceOrchestrator::new();
 
-        // Register a circuit breaker that opens after 2 failures
-        orchestrator.register_circuit_breaker(
-            "test".to_string(),
-            CircuitBreaker::new("test", CircuitBreakerConfig::new(2, Duration::from_secs(1))),
-        );
-
-        // This should work
         let result1 = orchestrator
             .execute_with_policy(
                 ResiliencePolicy::CircuitBreaker {
@@ -529,11 +582,80 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_rate_limit_policy() {
-        let mut orchestrator = DefaultResilienceOrchestrator::new();
+    async fn test_circuit_breaker_trips_after_failures() {
+        let orchestrator = DefaultResilienceOrchestrator::new();
+        let policy = ResiliencePolicy::CircuitBreaker {
+            failure_threshold: 2,
+            recovery_timeout: Duration::from_secs(60),
+            success_threshold: 1,
+        };
 
-        // Register a rate limiter that allows 1 request per second
-        orchestrator.register_rate_limiter("test".to_string(), RateLimiter::new(1, 1));
+        // Two failures should trip the circuit breaker
+        for _ in 0..2 {
+            let _ = orchestrator
+                .execute_with_policy(policy.clone(), || async {
+                    Err::<i32, _>(ResilienceOrchestrationError::Infrastructure(
+                        "fail".to_string(),
+                    ))
+                })
+                .await;
+        }
+
+        // Third call should fail with CircuitOpen (not even calling the operation)
+        let call_count = Arc::new(AtomicU32::new(0));
+        let call_count_clone = call_count.clone();
+        let result = orchestrator
+            .execute_with_policy(policy.clone(), move || {
+                let cc = call_count_clone.clone();
+                async move {
+                    cc.fetch_add(1, Ordering::SeqCst);
+                    Ok::<_, ResilienceOrchestrationError>(42)
+                }
+            })
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(ResilienceOrchestrationError::Domain(
+                ResilienceDomainError::CircuitOpen
+            ))
+        ));
+        // Operation should not have been called
+        assert_eq!(call_count.load(Ordering::SeqCst), 0);
+
+        let metrics = orchestrator.metrics();
+        assert!(metrics.circuit_breaker_trips > 0);
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_inner_error_preserved() {
+        let orchestrator = DefaultResilienceOrchestrator::new();
+
+        let result = orchestrator
+            .execute_with_policy(
+                ResiliencePolicy::CircuitBreaker {
+                    failure_threshold: 5,
+                    recovery_timeout: Duration::from_secs(60),
+                    success_threshold: 1,
+                },
+                || async {
+                    Err::<i32, _>(ResilienceOrchestrationError::Infrastructure(
+                        "db connection failed".to_string(),
+                    ))
+                },
+            )
+            .await;
+
+        // Should preserve the inner error, not report as CircuitOpen
+        assert!(matches!(
+            result,
+            Err(ResilienceOrchestrationError::Infrastructure(ref msg)) if msg == "db connection failed"
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_rate_limit_policy() {
+        let orchestrator = DefaultResilienceOrchestrator::new();
 
         // First request should succeed
         let result1 = orchestrator
@@ -546,26 +668,91 @@ mod tests {
             )
             .await;
         assert_eq!(result1, Ok(42));
+    }
 
-        // Second request should be rate limited
+    #[tokio::test]
+    async fn test_rate_limit_persists_across_calls() {
+        let orchestrator = DefaultResilienceOrchestrator::new();
+        let policy = ResiliencePolicy::RateLimit {
+            requests_per_second: 1,
+            burst_capacity: 1,
+        };
+
+        // First call uses the burst token
+        let result1 = orchestrator
+            .execute_with_policy(policy.clone(), || async {
+                Ok::<_, ResilienceOrchestrationError>(1)
+            })
+            .await;
+        assert!(result1.is_ok());
+
+        // Second call should be rate-limited (same limiter instance)
         let result2 = orchestrator
-            .execute_with_policy(
+            .execute_with_policy(policy, || async {
+                Ok::<_, ResilienceOrchestrationError>(2)
+            })
+            .await;
+        assert!(matches!(
+            result2,
+            Err(ResilienceOrchestrationError::Domain(
+                ResilienceDomainError::RateLimited { .. }
+            ))
+        ));
+
+        let metrics = orchestrator.metrics();
+        assert!(metrics.rate_limit_hits > 0);
+    }
+
+    #[tokio::test]
+    async fn test_combined_rate_limit_and_retry() {
+        let orchestrator = DefaultResilienceOrchestrator::new();
+        let attempts = Arc::new(AtomicU32::new(0));
+        let attempts_clone = attempts.clone();
+
+        let policy = ResiliencePolicy::Combined {
+            policies: vec![
                 ResiliencePolicy::RateLimit {
-                    requests_per_second: 1,
-                    burst_capacity: 1,
+                    requests_per_second: 100,
+                    burst_capacity: 10,
+                },
+                policies::retry(3),
+            ],
+        };
+
+        let result = orchestrator
+            .execute_with_policy(policy, move || {
+                let attempts = attempts_clone.clone();
+                async move {
+                    let count = attempts.fetch_add(1, Ordering::SeqCst) + 1;
+                    if count < 2 {
+                        Err(ResilienceOrchestrationError::Infrastructure(
+                            "temporary".to_string(),
+                        ))
+                    } else {
+                        Ok(42)
+                    }
+                }
+            })
+            .await;
+
+        assert_eq!(result, Ok(42));
+        assert_eq!(attempts.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    async fn test_combined_empty_policies() {
+        let orchestrator = DefaultResilienceOrchestrator::new();
+
+        let result = orchestrator
+            .execute_with_policy(
+                ResiliencePolicy::Combined {
+                    policies: vec![],
                 },
                 || async { Ok::<_, ResilienceOrchestrationError>(42) },
             )
             .await;
 
-        match result2 {
-            Err(ResilienceOrchestrationError::Domain(ResilienceDomainError::RateLimited {
-                ..
-            })) => {
-                // Expected rate limiting
-            }
-            other => panic!("Expected rate limiting error, got {:?}", other),
-        }
+        assert_eq!(result, Ok(42));
     }
 
     #[test]
@@ -580,6 +767,7 @@ mod tests {
 
 /// Stub implementation when resilience features are not available
 #[cfg(not(feature = "resilience"))]
+#[derive(Default)]
 pub struct DefaultResilienceOrchestrator;
 
 #[cfg(not(feature = "resilience"))]
@@ -595,14 +783,13 @@ impl ResilienceOrchestrator for DefaultResilienceOrchestrator {
     async fn execute_with_policy<T, F, Fut, E>(
         &self,
         _policy: ResiliencePolicy,
-        operation: F,
+        mut operation: F,
     ) -> Result<T, ResilienceOrchestrationError>
     where
-        F: FnOnce() -> Fut + Send,
+        F: FnMut() -> Fut + Send,
         Fut: std::future::Future<Output = Result<T, E>> + Send,
         E: Into<ResilienceOrchestrationError> + Send,
     {
-        // Without resilience features, just execute the operation once
         let result = operation().await;
         match result {
             Ok(value) => Ok(value),

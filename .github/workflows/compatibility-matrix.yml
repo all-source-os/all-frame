@@ -130,6 +130,12 @@ jobs:
           - "health"
           - "http-client"
           - "metrics"
+          # Offline-first profiles (Issue #36)
+          - "cqrs,di"
+          - "cqrs,di,resilience,security"
+          - "router,cqrs,di"
+          - "cqrs,di,auth,auth-jwt,security"
+          - "cqrs,di,cache-memory"
 
     steps:
       - uses: actions/checkout@v4

@@ -20,11 +20,16 @@ use std::{
 
 use crate::{
     application::resilience::{
-        CircuitBreaker, RateLimiter, ResilienceMetrics, ResilienceOrchestrationError,
-        ResilienceOrchestrator,
+        ResilienceMetrics, ResilienceOrchestrationError, ResilienceOrchestrator,
     },
     domain::resilience::{ResilienceDomainError, ResiliencePolicy},
 };
+
+#[cfg(feature = "resilience")]
+use crate::resilience::{CircuitBreaker, RateLimiter};
+
+#[cfg(not(feature = "resilience"))]
+use crate::application::resilience::{CircuitBreaker, RateLimiter};
 
 /// Observability service for resilience operations
 #[derive(Clone)]
@@ -397,7 +402,7 @@ impl<T: ResilienceOrchestrator> ResilienceOrchestrator for InstrumentedResilienc
         operation: F,
     ) -> Result<V, ResilienceOrchestrationError>
     where
-        F: FnOnce() -> Fut + Send,
+        F: FnMut() -> Fut + Send,
         Fut: std::future::Future<Output = Result<V, E>> + Send,
         E: Into<ResilienceOrchestrationError> + Send,
     {
@@ -421,15 +426,27 @@ impl<T: ResilienceOrchestrator> ResilienceOrchestrator for InstrumentedResilienc
                     &Ok(()),
                 );
             }
-            Err(err) => {
-                let err_ref: Result<(), ResilienceOrchestrationError> = Err(
-                    ResilienceOrchestrationError::Infrastructure(format!("{}", err)),
-                );
+            Err(ref err) => {
+                // Clone the original error to preserve its type for observability
+                let cloned_err = match err {
+                    ResilienceOrchestrationError::Domain(d) => {
+                        ResilienceOrchestrationError::Domain(d.clone())
+                    }
+                    ResilienceOrchestrationError::Infrastructure(s) => {
+                        ResilienceOrchestrationError::Infrastructure(s.clone())
+                    }
+                    ResilienceOrchestrationError::Configuration(s) => {
+                        ResilienceOrchestrationError::Configuration(s.clone())
+                    }
+                    ResilienceOrchestrationError::Cancelled => {
+                        ResilienceOrchestrationError::Cancelled
+                    }
+                };
                 self.observability.record_operation_complete(
                     operation_id,
                     &policy_clone,
                     duration,
-                    &err_ref,
+                    &Err(cloned_err),
                 );
             }
         }

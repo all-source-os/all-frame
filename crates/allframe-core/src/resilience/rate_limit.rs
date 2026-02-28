@@ -285,8 +285,20 @@ impl AdaptiveRateLimiter {
     /// Wait until a request is allowed.
     pub async fn wait(&self) {
         self.maybe_recover();
-        self.limiter.read().until_ready().await;
-        self.requests.fetch_add(1, Ordering::Relaxed);
+        loop {
+            let check_result = self.limiter.read().check();
+            match check_result {
+                Ok(_) => {
+                    self.requests.fetch_add(1, Ordering::Relaxed);
+                    return;
+                }
+                Err(not_until) => {
+                    let wait_time =
+                        not_until.wait_time_from(DefaultClock::default().now());
+                    tokio::time::sleep(wait_time).await;
+                }
+            }
+        }
     }
 
     /// Get the current status.

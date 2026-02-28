@@ -20,6 +20,7 @@ members = [
     "crates/allframe-forge",
     "crates/allframe-macros",
     "crates/allframe-mcp",
+    "crates/allframe-tauri",
 ]
 resolver = "2"
 
@@ -46,7 +47,9 @@ categories = ["web-programming::http-server", "asynchronous"]
 allframe-core = { version = "0.1.14", path = "crates/allframe-core", default-features = false }
 allframe-forge = { version = "0.1.14", path = "crates/allframe-forge" }
 allframe-macros = { version = "0.1.14", path = "crates/allframe-macros" }
+allframe-tauri = { version = "0.1.14", path = "crates/allframe-tauri" }
 anyhow = "1.0.75"  # Minimum version for Rust 1.80+ compatibility
+rusqlite = { version = "0.31", features = ["bundled"] }
 
 # === Testing Dependencies ===
 # Updated: 2025-12-04 - Latest test utilities
@@ -101,6 +104,8 @@ cqrs-allsource = ["allframe-core/cqrs-allsource"]
 # DEPRECATED: Use cqrs-allsource instead. Will be removed in a future release.
 cqrs-postgres = ["allframe-core/cqrs-postgres"]
 cqrs-rocksdb = ["allframe-core/cqrs-rocksdb"]
+cqrs-sqlite = ["allframe-core/cqrs-sqlite"]
+offline = ["allframe-core/offline"]
 
 # AllSource search features
 vector-search = ["allframe-core/vector-search"]
@@ -124,12 +129,15 @@ anyhow = { workspace = true }
 
 [dev-dependencies]
 allframe-macros = { workspace = true }
+allframe-mcp = { version = "0.1.14", path = "crates/allframe-mcp" }
+allframe-tauri = { workspace = true }
 assert_cmd = "2.0"
 async-trait = { workspace = true }
 predicates = "3.0"
 rand = "0.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
+rusqlite = { workspace = true }
 tempfile = "3.8"
 thiserror = { workspace = true }
 tokio = { workspace = true }

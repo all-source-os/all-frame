@@ -15,7 +15,7 @@
 //! #[tokio::main]
 //! async fn main() {
 //!     let router = Router::new();
-//!     let mcp = McpServer::new(router);
+//!     let mcp = McpServer::with_router(router);
 //!
 //!     let config = StdioConfig::default()
 //!         .with_debug_tool(true);
@@ -248,7 +248,6 @@ impl StdioTransport {
                 let mut tools: Vec<Value> = self
                     .mcp
                     .list_tools()
-                    .await
                     .iter()
                     .map(|t| {
                         json!({

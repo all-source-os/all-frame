@@ -12,6 +12,8 @@ pub mod memory_backend;
 pub mod projection_registry;
 pub mod saga;
 pub mod saga_orchestrator;
+pub mod sqlite_backend;
+pub mod sync;
 
 /// Trait for resolving the event type name used in AllSource storage.
 ///
@@ -171,7 +173,12 @@ pub use saga::{
     SagaStep as MacroSagaStep, StepExecutionResult, StepOutput,
 };
 // Resolve SagaError conflict - prefer saga_orchestrator version
+pub use saga::{CompensationStrategy, FileSnapshot, WriteFileStep};
+#[cfg(feature = "cqrs-sqlite")]
+pub use saga::SqliteSavepoint;
 pub use saga_orchestrator::{
     SagaDefinition, SagaMetadata, SagaOrchestrator, SagaResult, SagaStatus,
     SagaStep as OrchestratorSagaStep,
 };
+pub use sqlite_backend::*;
+pub use sync::*;

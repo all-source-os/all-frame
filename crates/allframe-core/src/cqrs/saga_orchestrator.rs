@@ -128,6 +128,10 @@ pub struct SagaDefinition<E: Event> {
     steps: Vec<Box<dyn SagaStep<E>>>,
     /// Metadata
     metadata: SagaMetadata,
+    /// Compensation strategy (optional, for UC-036.7)
+    compensation_strategy: Option<super::saga::CompensationStrategy>,
+    /// Directory for snapshots (optional, for UC-036.7)
+    snapshot_dir: Option<std::path::PathBuf>,
 }
 
 impl<E: Event> SagaDefinition<E> {
@@ -144,6 +148,8 @@ impl<E: Event> SagaDefinition<E> {
             },
             id,
             steps: Vec::new(),
+            compensation_strategy: None,
+            snapshot_dir: None,
         }
     }
 
@@ -167,6 +173,18 @@ impl<E: Event> SagaDefinition<E> {
     /// Get metadata
     pub fn metadata(&self) -> &SagaMetadata {
         &self.metadata
+    }
+
+    /// Set the compensation strategy.
+    pub fn with_compensation(mut self, strategy: super::saga::CompensationStrategy) -> Self {
+        self.compensation_strategy = Some(strategy);
+        self
+    }
+
+    /// Set the snapshot directory for file-based compensation.
+    pub fn with_snapshot_dir(mut self, dir: &std::path::Path) -> Self {
+        self.snapshot_dir = Some(dir.to_path_buf());
+        self
     }
 }
 

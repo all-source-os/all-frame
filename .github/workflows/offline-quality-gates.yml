@@ -1,0 +1,201 @@
+name: Offline Quality Gates
+
+# Ensures AllFrame works correctly in offline-first and offline-only
+# desktop/embedded deployments (GitHub Issue #36).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Gate 1: Offline feature combinations compile
+  offline-feature-matrix:
+    name: Offline Features - ${{ matrix.profile.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        profile:
+          - name: "offline-only-minimal"
+            description: "Air-gapped: cqrs + di only"
+            features: "cqrs,di"
+
+          - name: "offline-first-desktop"
+            description: "Tauri desktop: cqrs + di + resilience + security"
+            features: "cqrs,di,resilience,security"
+
+          - name: "offline-with-router"
+            description: "Tauri IPC: router + cqrs + di"
+            features: "router,cqrs,di"
+
+          - name: "offline-with-auth"
+            description: "Offline with local JWT validation"
+            features: "cqrs,di,auth,auth-jwt,security"
+
+          - name: "offline-with-cache"
+            description: "Offline with in-memory cache"
+            features: "cqrs,di,cache-memory"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build allframe-core (${{ matrix.profile.name }})
+        run: >
+          cargo build -p allframe-core
+          --no-default-features
+          --features "${{ matrix.profile.features }}"
+
+      - name: Test allframe-core (${{ matrix.profile.name }})
+        run: >
+          cargo test -p allframe-core
+          --no-default-features
+          --features "${{ matrix.profile.features }}"
+
+  # Gate 2: allframe-tauri crate
+  tauri-crate:
+    name: allframe-tauri
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check
+        run: cargo check -p allframe-tauri
+
+      - name: Test
+        run: cargo test -p allframe-tauri
+
+      - name: Clippy
+        run: cargo clippy -p allframe-tauri -- -D warnings
+
+  # Gate 3: No network dependencies in offline builds
+  dependency-tree-validation:
+    name: Dependency Tree - ${{ matrix.profile.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        profile:
+          - name: "offline-only-minimal"
+            features: "cqrs,di"
+            # These crates indicate network dependencies leaked in
+            banned: "reqwest|redis|opentelemetry-otlp|tonic|hyper"
+
+          - name: "offline-first-desktop"
+            features: "cqrs,di,resilience,security"
+            banned: "reqwest|redis|opentelemetry-otlp|tonic|hyper"
+
+          - name: "allframe-tauri"
+            package: "allframe-tauri"
+            banned: "reqwest|redis|opentelemetry-otlp|tonic|hyper"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Validate no network deps (${{ matrix.profile.name }})
+        run: |
+          PACKAGE="${{ matrix.profile.package || 'allframe-core' }}"
+          FEATURES="${{ matrix.profile.features || '' }}"
+          BANNED="${{ matrix.profile.banned }}"
+
+          if [ -n "$FEATURES" ]; then
+            TREE=$(cargo tree -p "$PACKAGE" --no-default-features --features "$FEATURES" 2>&1)
+          else
+            TREE=$(cargo tree -p "$PACKAGE" 2>&1)
+          fi
+
+          echo "$TREE"
+
+          if echo "$TREE" | grep -E "$BANNED"; then
+            echo ""
+            echo "::error::Network dependencies found in ${{ matrix.profile.name }} build!"
+            echo "The following crates should NOT appear: $BANNED"
+            exit 1
+          else
+            echo ""
+            echo "PASS: No network dependencies in ${{ matrix.profile.name }}"
+          fi
+
+  # Gate 4: Offline quality gate integration tests
+  offline-quality-gate-tests:
+    name: Quality Gate Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run offline quality gate tests
+        run: >
+          cargo test
+          --test 09_offline_quality_gates
+          --features "cqrs,di,resilience,security,openapi"
+
+  # Gate 5: Binary size for offline profile
+  offline-binary-size:
+    name: Binary Size (offline profile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build offline profile (release)
+        run: >
+          cargo build --release -p allframe-core
+          --no-default-features
+          --features "cqrs,di,resilience,security"
+
+      - name: Measure and report size
+        run: |
+          SIZE=$(stat -c%s "target/release/liballframe_core.rlib" 2>/dev/null || stat -f%z "target/release/liballframe_core.rlib" 2>/dev/null || echo "0")
+          SIZE_MB=$(echo "scale=2; $SIZE / 1048576" | bc)
+          echo "## Offline Profile Binary Size" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Features: \`cqrs,di,resilience,security\` (no-default-features)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Size: ${SIZE_MB}MB**" >> $GITHUB_STEP_SUMMARY
+
+          # Offline profile should be smaller than full framework
+          # Limit: 5MB for offline-only (no HTTP server, no gRPC, no OTLP)
+          if (( $(echo "$SIZE_MB > 5.0" | bc -l) )); then
+            echo "::error::Offline binary size (${SIZE_MB}MB) exceeds 5.0MB limit"
+            exit 1
+          fi
+
+          echo ""
+          echo "PASS: Offline binary size ${SIZE_MB}MB (limit: 5.0MB)"
+
+  # Gate 6: Full workspace regression
+  workspace-regression:
+    name: Workspace Regression
+    runs-on: ubuntu-latest
+    needs: [offline-feature-matrix, tauri-crate]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Full workspace test
+        run: cargo test
+
+      - name: Full workspace clippy
+        run: cargo clippy -- -D warnings

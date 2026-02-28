@@ -41,11 +41,12 @@ mod circuit_breaker;
 mod rate_limit;
 #[cfg(feature = "resilience-redis")]
 mod rate_limit_redis;
+pub mod offline;
 mod retry;
 
 pub use circuit_breaker::{
-    CircuitBreaker, CircuitBreakerConfig, CircuitBreakerManager, CircuitBreakerStats,
-    CircuitOpenError, CircuitState, KeyedCircuitBreaker,
+    CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitBreakerManager,
+    CircuitBreakerStats, CircuitOpenError, CircuitState, KeyedCircuitBreaker,
 };
 pub use rate_limit::{
     AdaptiveRateLimiter, KeyedRateLimiter, RateLimitError, RateLimiter, RateLimiterStatus,
@@ -53,5 +54,9 @@ pub use rate_limit::{
 #[cfg(feature = "resilience-redis")]
 pub use rate_limit_redis::{
     KeyedRedisRateLimiter, RedisRateLimiter, RedisRateLimiterConfig, RedisRateLimiterError,
+};
+pub use offline::{
+    AlwaysOnlineProbe, CallResult, ConnectivityProbe, ConnectivityStatus, InMemoryQueue,
+    OfflineCircuitBreaker, PendingOperation, ReplayReport, StoreAndForward,
 };
 pub use retry::{AdaptiveRetry, RetryBudget, RetryConfig, RetryError, RetryExecutor, RetryPolicy};

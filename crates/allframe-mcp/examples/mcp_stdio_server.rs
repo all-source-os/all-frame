@@ -64,7 +64,7 @@ async fn main() {
     let router = create_router();
 
     // Create MCP server
-    let mcp = McpServer::new(router);
+    let mcp = McpServer::with_router(router);
 
     // Configure the stdio transport
     let config = StdioConfig::default()

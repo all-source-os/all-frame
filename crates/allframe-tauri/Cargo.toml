@@ -1,0 +1,32 @@
+[package]
+name = "allframe-tauri"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords = ["tauri", "desktop", "ipc", "offline-first", "framework"]
+categories = ["gui", "api-bindings"]
+description = "Tauri 2.x plugin for AllFrame - Expose handlers via IPC for offline-first desktop apps"
+readme = "README.md"
+
+[features]
+default = []
+# Enable tracing-based logging for debugging
+tracing = ["dep:tracing"]
+
+[dependencies]
+allframe-core = { workspace = true, default-features = false, features = ["router"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tauri = { version = "2", features = ["wry"] }
+thiserror = { workspace = true }
+
+# Optional tracing support
+tracing = { version = "0.1", optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

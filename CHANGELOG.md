@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.17] - 2026-03-01
+
+### Added
+- **Typed Handler Args** - `register_with_args()` deserializes JSON args into `T: DeserializeOwned` before calling the handler
+- **State Injection** - `Router::with_state()` + `register_with_state()` / `register_with_state_only()` inject `State<Arc<S>>` into handlers
+- **Args Forwarding** - `Router::call_handler()` now forwards the request string to handlers instead of ignoring it
+- **Tauri DI Convenience** - `allframe_tauri::init_with_state(router, state)` for one-line Tauri plugin setup with DI
+- **`State` in Prelude** - `use allframe_core::prelude::State` for ergonomic imports
+- **MCP Typed Args** - MCP tools automatically gain typed arg support (zero code changes needed)
+
+### Fixed
+- State type mismatches return `Err` instead of panicking in the request path
+- Prometheus metrics collector now uses real metric operations instead of no-op stubs
+
+---
+
 ## [0.1.16] - 2026-02-28
 
 ### Added

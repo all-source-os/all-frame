@@ -303,66 +303,113 @@ impl ResilienceTracer for NoOpTracer {
 
 /// Prometheus metrics collector implementation
 #[cfg(feature = "prometheus")]
-pub mod prometheus {
-    use prometheus::{CounterVec, Encoder, GaugeVec, HistogramVec, TextEncoder};
+pub mod prometheus_metrics {
+    use std::collections::HashMap;
+    use std::sync::RwLock;
+
+    use ::prometheus::{CounterVec, GaugeVec, HistogramVec, Opts};
 
     use super::*;
 
+    /// Prometheus-backed metrics collector for resilience observability
     pub struct PrometheusMetricsCollector {
-        counters: HashMap<String, CounterVec>,
-        histograms: HashMap<String, HistogramVec>,
-        gauges: HashMap<String, GaugeVec>,
+        counters: RwLock<HashMap<String, CounterVec>>,
+        histograms: RwLock<HashMap<String, HistogramVec>>,
+        gauges: RwLock<HashMap<String, GaugeVec>>,
     }
 
     impl PrometheusMetricsCollector {
+        /// Create a new Prometheus metrics collector
         pub fn new() -> Self {
             Self {
-                counters: HashMap::new(),
-                histograms: HashMap::new(),
-                gauges: HashMap::new(),
+                counters: RwLock::new(HashMap::new()),
+                histograms: RwLock::new(HashMap::new()),
+                gauges: RwLock::new(HashMap::new()),
             }
         }
 
-        fn get_or_create_counter(&mut self, name: &str, help: &str) -> &CounterVec {
-            self.counters.entry(name.to_string()).or_insert_with(|| {
-                CounterVec::new(
-                    prometheus::Opts::new(name, help),
-                    &["operation", "status", "error_type"],
-                )
-                .expect("Failed to create counter")
-            })
-        }
-
-        fn get_or_create_histogram(&mut self, name: &str, help: &str) -> &HistogramVec {
-            self.histograms.entry(name.to_string()).or_insert_with(|| {
-                HistogramVec::new(
-                    prometheus::HistogramOpts::new(name, help),
-                    &["operation", "policy_type"],
-                )
-                .expect("Failed to create histogram")
-            })
-        }
-
-        fn get_or_create_gauge(&mut self, name: &str, help: &str) -> &GaugeVec {
-            self.gauges.entry(name.to_string()).or_insert_with(|| {
-                GaugeVec::new(prometheus::Opts::new(name, help), &["operation"])
-                    .expect("Failed to create gauge")
-            })
+        fn label_values<'a>(labels: &'a [(&'a str, &'a str)]) -> Vec<&'a str> {
+            labels.iter().map(|(_, v)| *v).collect()
         }
     }
 
     impl MetricsCollector for PrometheusMetricsCollector {
         fn increment_counter(&self, name: &str, labels: &[(&str, &str)]) {
-            // Implementation would increment the appropriate counter
-            // This is a simplified version
+            let label_names: Vec<&str> = labels.iter().map(|(k, _)| *k).collect();
+            let label_vals = Self::label_values(labels);
+
+            let counters = self.counters.read().unwrap();
+            if let Some(counter) = counters.get(name) {
+                if let Ok(m) = counter.get_metric_with_label_values(&label_vals) {
+                    m.inc();
+                }
+                return;
+            }
+            drop(counters);
+
+            let mut counters = self.counters.write().unwrap();
+            let counter = counters.entry(name.to_string()).or_insert_with(|| {
+                let c = CounterVec::new(Opts::new(name, name), &label_names)
+                    .expect("Failed to create counter");
+                let _ = ::prometheus::register(Box::new(c.clone()));
+                c
+            });
+            if let Ok(m) = counter.get_metric_with_label_values(&label_vals) {
+                m.inc();
+            }
         }
 
         fn record_histogram(&self, name: &str, value: f64, labels: &[(&str, &str)]) {
-            // Implementation would record histogram values
+            let label_names: Vec<&str> = labels.iter().map(|(k, _)| *k).collect();
+            let label_vals = Self::label_values(labels);
+
+            let histograms = self.histograms.read().unwrap();
+            if let Some(hist) = histograms.get(name) {
+                if let Ok(m) = hist.get_metric_with_label_values(&label_vals) {
+                    m.observe(value);
+                }
+                return;
+            }
+            drop(histograms);
+
+            let mut histograms = self.histograms.write().unwrap();
+            let hist = histograms.entry(name.to_string()).or_insert_with(|| {
+                let h = HistogramVec::new(
+                    ::prometheus::HistogramOpts::new(name, name),
+                    &label_names,
+                )
+                .expect("Failed to create histogram");
+                let _ = ::prometheus::register(Box::new(h.clone()));
+                h
+            });
+            if let Ok(m) = hist.get_metric_with_label_values(&label_vals) {
+                m.observe(value);
+            }
         }
 
         fn record_gauge(&self, name: &str, value: f64, labels: &[(&str, &str)]) {
-            // Implementation would set gauge values
+            let label_names: Vec<&str> = labels.iter().map(|(k, _)| *k).collect();
+            let label_vals = Self::label_values(labels);
+
+            let gauges = self.gauges.read().unwrap();
+            if let Some(gauge) = gauges.get(name) {
+                if let Ok(m) = gauge.get_metric_with_label_values(&label_vals) {
+                    m.set(value);
+                }
+                return;
+            }
+            drop(gauges);
+
+            let mut gauges = self.gauges.write().unwrap();
+            let gauge = gauges.entry(name.to_string()).or_insert_with(|| {
+                let g = GaugeVec::new(Opts::new(name, name), &label_names)
+                    .expect("Failed to create gauge");
+                let _ = ::prometheus::register(Box::new(g.clone()));
+                g
+            });
+            if let Ok(m) = gauge.get_metric_with_label_values(&label_vals) {
+                m.set(value);
+            }
         }
     }
 }

@@ -62,7 +62,7 @@ pub mod server;
 pub mod types;
 
 pub use error::TauriServerError;
-pub use plugin::init;
+pub use plugin::{init, init_with_state};
 pub use server::TauriServer;
 pub use types::{CallResponse, HandlerInfo};
 
@@ -200,5 +200,59 @@ mod tests {
         let err = TauriServerError::HandlerNotFound("missing".to_string());
         let json = serde_json::to_string(&err).unwrap();
         assert!(json.contains("missing"));
+    }
+
+    #[tokio::test]
+    async fn test_typed_args_flow_through_tauri_server() {
+        #[derive(serde::Deserialize)]
+        struct Input {
+            name: String,
+        }
+
+        let mut router = Router::new();
+        router.register_with_args("greet", |args: Input| async move {
+            format!(r#"{{"greeting":"Hello {}"}}"#, args.name)
+        });
+
+        let server = TauriServer::new(router);
+        let result = server
+            .call_handler("greet", r#"{"name":"Alice"}"#)
+            .await
+            .unwrap();
+
+        assert_eq!(result.result, r#"{"greeting":"Hello Alice"}"#);
+    }
+
+    #[tokio::test]
+    async fn test_state_injection_through_tauri_server() {
+        use allframe_core::router::State;
+        use std::sync::Arc;
+
+        struct AppState {
+            prefix: String,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct Input {
+            name: String,
+        }
+
+        let mut router = Router::new().with_state(AppState {
+            prefix: "Hey".to_string(),
+        });
+        router.register_with_state::<AppState, Input, _, _>(
+            "greet",
+            |state: State<Arc<AppState>>, args: Input| async move {
+                format!("{} {}", state.prefix, args.name)
+            },
+        );
+
+        let server = TauriServer::new(router);
+        let result = server
+            .call_handler("greet", r#"{"name":"Bob"}"#)
+            .await
+            .unwrap();
+
+        assert_eq!(result.result, "Hey Bob");
     }
 }

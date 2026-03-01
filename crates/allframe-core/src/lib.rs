@@ -541,7 +541,7 @@ pub mod prelude {
     };
     pub use crate::router::{
         GraphQLAdapter, GrpcAdapter, GrpcRequest, GrpcStatus, Method, ProtocolAdapter, RestAdapter,
-        RestRequest, RestResponse, RouteMetadata, Router, ToJsonSchema,
+        RestRequest, RestResponse, RouteMetadata, Router, State, ToJsonSchema,
     };
     #[cfg(feature = "router")]
     pub use crate::router::{GraphQLConfig, GrpcConfig, RestConfig, RouterConfig, ServerConfig};

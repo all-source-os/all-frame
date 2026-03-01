@@ -54,3 +54,36 @@ pub fn init<R: Runtime>(router: Router) -> TauriPlugin<R> {
         })
         .build()
 }
+
+/// Create a Tauri 2.x plugin with shared state for dependency injection.
+///
+/// Convenience wrapper that calls `router.with_state(state)` before
+/// constructing the plugin.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use allframe_core::router::Router;
+///
+/// struct AppState { db: DbPool }
+///
+/// fn main() {
+///     let state = AppState { db: pool };
+///     let mut router = Router::new().with_state(state);
+///     router.register_with_state_only::<AppState, _, _>("health", |s| async move {
+///         format!("ok")
+///     });
+///
+///     tauri::Builder::default()
+///         .plugin(allframe_tauri::init_with_state(router))
+///         .run(tauri::generate_context!())
+///         .unwrap();
+/// }
+/// ```
+pub fn init_with_state<R: Runtime, S: Send + Sync + 'static>(
+    router: Router,
+    state: S,
+) -> TauriPlugin<R> {
+    let router = router.with_state(state);
+    init(router)
+}

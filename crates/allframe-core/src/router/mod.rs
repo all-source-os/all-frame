@@ -61,7 +61,8 @@
 //! port = 8081
 //! ```
 
-use std::{collections::HashMap, future::Future};
+use serde::de::DeserializeOwned;
+use std::{any::Any, collections::HashMap, future::Future, sync::Arc};
 
 pub mod adapter;
 pub mod builder;
@@ -104,7 +105,7 @@ pub use grpc::{GrpcAdapter, GrpcMethod, GrpcMethodType, GrpcRequest, GrpcStatus}
 pub use grpc_explorer::{grpc_explorer_html, GrpcExplorerConfig, GrpcExplorerTheme};
 #[cfg(feature = "router-grpc")]
 pub use grpc_prod::{protobuf, status, streaming, GrpcProductionAdapter, GrpcService};
-pub use handler::{Handler, HandlerFn};
+pub use handler::{Handler, HandlerFn, HandlerWithArgs, HandlerWithState, HandlerWithStateOnly, State};
 pub use metadata::RouteMetadata;
 pub use method::Method;
 pub use openapi::{OpenApiGenerator, OpenApiServer};
@@ -120,6 +121,7 @@ pub struct Router {
     handlers: HashMap<String, Box<dyn Handler>>,
     adapters: HashMap<String, Box<dyn ProtocolAdapter>>,
     routes: Vec<RouteMetadata>,
+    state: Option<Arc<dyn Any + Send + Sync>>,
     #[cfg(feature = "router")]
     #[allow(dead_code)]
     config: Option<RouterConfig>,
@@ -132,6 +134,7 @@ impl Router {
             handlers: HashMap::new(),
             adapters: HashMap::new(),
             routes: Vec::new(),
+            state: None,
             #[cfg(feature = "router")]
             config: None,
         }
@@ -144,6 +147,7 @@ impl Router {
             handlers: HashMap::new(),
             adapters: HashMap::new(),
             routes: Vec::new(),
+            state: None,
             config: Some(config.clone()),
         };
 
@@ -161,7 +165,13 @@ impl Router {
         router
     }
 
-    /// Register a handler with a name
+    /// Set shared state for dependency injection (builder pattern)
+    pub fn with_state<S: Send + Sync + 'static>(mut self, state: S) -> Self {
+        self.state = Some(Arc::new(state));
+        self
+    }
+
+    /// Register a handler with a name (zero-arg, backward compatible)
     pub fn register<F, Fut>(&mut self, name: &str, handler: F)
     where
         F: Fn() -> Fut + Send + Sync + 'static,
@@ -169,6 +179,58 @@ impl Router {
     {
         self.handlers
             .insert(name.to_string(), Box::new(HandlerFn::new(handler)));
+    }
+
+    /// Register a handler that receives typed, deserialized args
+    pub fn register_with_args<T, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        T: DeserializeOwned + Send + 'static,
+        F: Fn(T) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = String> + Send + 'static,
+    {
+        self.handlers
+            .insert(name.to_string(), Box::new(HandlerWithArgs::new(handler)));
+    }
+
+    /// Register a handler that receives injected state and typed args
+    ///
+    /// # Panics
+    ///
+    /// Panics at call-time if `with_state` was not called, or if the state
+    /// type does not match `S`.
+    pub fn register_with_state<S, T, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        S: Send + Sync + 'static,
+        T: DeserializeOwned + Send + 'static,
+        F: Fn(State<Arc<S>>, T) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = String> + Send + 'static,
+    {
+        let state = self
+            .state
+            .clone()
+            .expect("register_with_state requires with_state to be called first");
+        self.handlers
+            .insert(name.to_string(), Box::new(HandlerWithState::new(handler, state)));
+    }
+
+    /// Register a handler that receives only injected state (no args)
+    ///
+    /// # Panics
+    ///
+    /// Panics at call-time if `with_state` was not called, or if the state
+    /// type does not match `S`.
+    pub fn register_with_state_only<S, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        S: Send + Sync + 'static,
+        F: Fn(State<Arc<S>>) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = String> + Send + 'static,
+    {
+        let state = self
+            .state
+            .clone()
+            .expect("register_with_state_only requires with_state to be called first");
+        self.handlers
+            .insert(name.to_string(), Box::new(HandlerWithStateOnly::new(handler, state)));
     }
 
     /// Get the number of registered handlers
@@ -200,10 +262,15 @@ impl Router {
         adapter.handle(request).await
     }
 
-    /// Execute a handler by name
+    /// Execute a handler by name (zero-arg shorthand)
     pub async fn execute(&self, name: &str) -> Result<String, String> {
+        self.execute_with_args(name, "{}").await
+    }
+
+    /// Execute a handler by name with JSON args
+    pub async fn execute_with_args(&self, name: &str, args: &str) -> Result<String, String> {
         match self.handlers.get(name) {
-            Some(handler) => handler.call().await,
+            Some(handler) => handler.call(args).await,
             None => Err(format!("Handler '{}' not found", name)),
         }
     }
@@ -216,14 +283,12 @@ impl Router {
         self.handlers.keys().cloned().collect()
     }
 
-    /// Call a handler by name with request data
+    /// Call a handler by name with request data (JSON args)
     ///
-    /// This is an alias for `execute()` that provides a more explicit
-    /// API for directly calling handlers. Used by MCP server.
-    pub async fn call_handler(&self, name: &str, _request: &str) -> Result<String, String> {
-        // For now, ignore request parameter and just execute the handler
-        // In Phase 2, we'll add proper parameter parsing
-        self.execute(name).await
+    /// Forwards the request string as args to the handler.
+    /// Used by MCP server and Tauri plugin.
+    pub async fn call_handler(&self, name: &str, request: &str) -> Result<String, String> {
+        self.execute_with_args(name, request).await
     }
 
     /// Check if handler can be called via REST

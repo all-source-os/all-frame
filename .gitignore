@@ -203,5 +203,11 @@ result-*
 # beads task artifacts
 .beads/
 
+# chronis task artifacts
+.chronis/
+
+# Claude Code local settings
+.claude/settings.local.json
+
 # tasks directory
 tasks/

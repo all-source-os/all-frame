@@ -224,6 +224,193 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_tauri_compat_handler_through_server() {
+        use allframe_macros::tauri_compat;
+
+        #[tauri_compat]
+        async fn greet(name: String, age: u32) -> String {
+            format!(r#"{{"greeting":"Hello {}, age {}"}}"#, name, age)
+        }
+
+        let mut router = Router::new();
+        router.register_with_args::<GreetArgs, _, _>("greet", greet);
+
+        let server = TauriServer::new(router);
+        let result = server
+            .call_handler("greet", r#"{"name":"Alice","age":30}"#)
+            .await
+            .unwrap();
+
+        assert_eq!(result.result, r#"{"greeting":"Hello Alice, age 30"}"#);
+    }
+
+    #[tokio::test]
+    async fn test_tauri_compat_optional_param() {
+        use allframe_macros::tauri_compat;
+
+        #[tauri_compat]
+        async fn greet_optional(name: String, title: Option<String>) -> String {
+            match title {
+                Some(t) => format!("{} {}", t, name),
+                None => name,
+            }
+        }
+
+        let mut router = Router::new();
+        router
+            .register_with_args::<GreetOptionalArgs, _, _>("greet_optional", greet_optional);
+
+        let server = TauriServer::new(router);
+
+        // With optional param
+        let result = server
+            .call_handler("greet_optional", r#"{"name":"Alice","title":"Dr."}"#)
+            .await
+            .unwrap();
+        assert_eq!(result.result, "Dr. Alice");
+
+        // Without optional param
+        let result = server
+            .call_handler("greet_optional", r#"{"name":"Bob"}"#)
+            .await
+            .unwrap();
+        assert_eq!(result.result, "Bob");
+    }
+
+    #[tokio::test]
+    async fn test_typed_return_struct() {
+        #[derive(serde::Serialize)]
+        struct UserResponse {
+            id: u32,
+            name: String,
+        }
+
+        let mut router = Router::new();
+        router.register_typed("get_user", || async {
+            UserResponse {
+                id: 1,
+                name: "Alice".to_string(),
+            }
+        });
+
+        let server = TauriServer::new(router);
+        let result = server.call_handler("get_user", "{}").await.unwrap();
+        assert_eq!(result.result, r#"{"id":1,"name":"Alice"}"#);
+    }
+
+    #[tokio::test]
+    async fn test_typed_return_with_args() {
+        #[derive(serde::Deserialize)]
+        struct Input {
+            x: i32,
+        }
+
+        #[derive(serde::Serialize)]
+        struct Output {
+            doubled: i32,
+        }
+
+        let mut router = Router::new();
+        router.register_typed_with_args("double", |args: Input| async move {
+            Output { doubled: args.x * 2 }
+        });
+
+        let server = TauriServer::new(router);
+        let result = server.call_handler("double", r#"{"x":21}"#).await.unwrap();
+        assert_eq!(result.result, r#"{"doubled":42}"#);
+    }
+
+    #[tokio::test]
+    async fn test_result_handler_ok() {
+        #[derive(serde::Serialize)]
+        struct Data {
+            value: i32,
+        }
+
+        let mut router = Router::new();
+        router.register_result("get_data", || async {
+            Ok::<_, String>(Data { value: 42 })
+        });
+
+        let server = TauriServer::new(router);
+        let result = server.call_handler("get_data", "{}").await.unwrap();
+        assert_eq!(result.result, r#"{"value":42}"#);
+    }
+
+    #[tokio::test]
+    async fn test_result_handler_err() {
+        #[derive(serde::Serialize)]
+        struct Data {
+            value: i32,
+        }
+
+        let mut router = Router::new();
+        router.register_result("fail", || async {
+            Err::<Data, String>("not found".to_string())
+        });
+
+        let server = TauriServer::new(router);
+        let result = server.call_handler("fail", "{}").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_typed_return_with_state() {
+        use allframe_core::router::State;
+        use std::sync::Arc;
+
+        struct AppState {
+            prefix: String,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct Input {
+            name: String,
+        }
+
+        #[derive(serde::Serialize)]
+        struct Greeting {
+            message: String,
+        }
+
+        let mut router = Router::new().with_state(AppState {
+            prefix: "Hey".to_string(),
+        });
+        router.register_typed_with_state::<AppState, Input, Greeting, _, _>(
+            "greet",
+            |state: State<Arc<AppState>>, args: Input| async move {
+                Greeting {
+                    message: format!("{} {}", state.prefix, args.name),
+                }
+            },
+        );
+
+        let server = TauriServer::new(router);
+        let result = server
+            .call_handler("greet", r#"{"name":"Dave"}"#)
+            .await
+            .unwrap();
+        assert_eq!(result.result, r#"{"message":"Hey Dave"}"#);
+    }
+
+    #[tokio::test]
+    async fn test_tauri_compat_no_args() {
+        use allframe_macros::tauri_compat;
+
+        #[tauri_compat]
+        async fn health_check() -> String {
+            "ok".to_string()
+        }
+
+        let mut router = Router::new();
+        router.register("health_check", health_check);
+
+        let server = TauriServer::new(router);
+        let result = server.call_handler("health_check", "{}").await.unwrap();
+        assert_eq!(result.result, "ok");
+    }
+
+    #[tokio::test]
     async fn test_state_injection_through_tauri_server() {
         use allframe_core::router::State;
         use std::sync::Arc;

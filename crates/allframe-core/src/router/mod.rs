@@ -62,6 +62,7 @@
 //! ```
 
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::{any::Any, collections::HashMap, future::Future, sync::Arc};
 
 pub mod adapter;
@@ -81,6 +82,7 @@ pub mod openapi;
 pub mod rest;
 pub mod scalar;
 pub mod schema;
+pub mod ts_codegen;
 
 // Production adapters (optional features)
 #[cfg(feature = "router-graphql")]
@@ -105,13 +107,17 @@ pub use grpc::{GrpcAdapter, GrpcMethod, GrpcMethodType, GrpcRequest, GrpcStatus}
 pub use grpc_explorer::{grpc_explorer_html, GrpcExplorerConfig, GrpcExplorerTheme};
 #[cfg(feature = "router-grpc")]
 pub use grpc_prod::{protobuf, status, streaming, GrpcProductionAdapter, GrpcService};
-pub use handler::{Handler, HandlerFn, HandlerWithArgs, HandlerWithState, HandlerWithStateOnly, State};
+pub use handler::{
+    Handler, HandlerFn, HandlerWithArgs, HandlerWithState, HandlerWithStateOnly,
+    IntoHandlerResult, Json, State,
+};
 pub use metadata::RouteMetadata;
 pub use method::Method;
 pub use openapi::{OpenApiGenerator, OpenApiServer};
 pub use rest::{RestAdapter, RestRequest, RestResponse, RestRoute};
 pub use scalar::{scalar_html, ScalarConfig, ScalarLayout, ScalarTheme};
 pub use schema::ToJsonSchema;
+pub use ts_codegen::{generate_ts_client, HandlerMeta, TsField, TsType};
 
 /// Router manages handler registration and protocol adapters
 ///
@@ -122,6 +128,7 @@ pub struct Router {
     adapters: HashMap<String, Box<dyn ProtocolAdapter>>,
     routes: Vec<RouteMetadata>,
     state: Option<Arc<dyn Any + Send + Sync>>,
+    handler_metas: HashMap<String, HandlerMeta>,
     #[cfg(feature = "router")]
     #[allow(dead_code)]
     config: Option<RouterConfig>,
@@ -135,6 +142,7 @@ impl Router {
             adapters: HashMap::new(),
             routes: Vec::new(),
             state: None,
+            handler_metas: HashMap::new(),
             #[cfg(feature = "router")]
             config: None,
         }
@@ -148,6 +156,7 @@ impl Router {
             adapters: HashMap::new(),
             routes: Vec::new(),
             state: None,
+            handler_metas: HashMap::new(),
             config: Some(config.clone()),
         };
 
@@ -233,9 +242,213 @@ impl Router {
             .insert(name.to_string(), Box::new(HandlerWithStateOnly::new(handler, state)));
     }
 
+    // ─── Typed return registration (auto-serialize via Json wrapper) ─────
+
+    /// Register a handler that returns `R: Serialize` (auto-serialized to JSON)
+    pub fn register_typed<R, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        R: Serialize + Send + 'static,
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+    {
+        let wrapped = move || {
+            let fut = handler();
+            async move { Json(fut.await) }
+        };
+        self.handlers
+            .insert(name.to_string(), Box::new(HandlerFn::new(wrapped)));
+    }
+
+    /// Register a handler that accepts typed args and returns `R: Serialize`
+    pub fn register_typed_with_args<T, R, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        T: DeserializeOwned + Send + 'static,
+        R: Serialize + Send + 'static,
+        F: Fn(T) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+    {
+        let wrapped = move |args: T| {
+            let fut = handler(args);
+            async move { Json(fut.await) }
+        };
+        self.handlers
+            .insert(name.to_string(), Box::new(HandlerWithArgs::new(wrapped)));
+    }
+
+    /// Register a handler that receives state + typed args and returns `R: Serialize`
+    pub fn register_typed_with_state<S, T, R, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        S: Send + Sync + 'static,
+        T: DeserializeOwned + Send + 'static,
+        R: Serialize + Send + 'static,
+        F: Fn(State<Arc<S>>, T) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+    {
+        let state = self
+            .state
+            .clone()
+            .expect("register_typed_with_state requires with_state to be called first");
+        let wrapped = move |s: State<Arc<S>>, args: T| {
+            let fut = handler(s, args);
+            async move { Json(fut.await) }
+        };
+        self.handlers
+            .insert(name.to_string(), Box::new(HandlerWithState::new(wrapped, state)));
+    }
+
+    /// Register a handler that receives state only and returns `R: Serialize`
+    pub fn register_typed_with_state_only<S, R, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        S: Send + Sync + 'static,
+        R: Serialize + Send + 'static,
+        F: Fn(State<Arc<S>>) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+    {
+        let state = self
+            .state
+            .clone()
+            .expect("register_typed_with_state_only requires with_state to be called first");
+        let wrapped = move |s: State<Arc<S>>| {
+            let fut = handler(s);
+            async move { Json(fut.await) }
+        };
+        self.handlers
+            .insert(name.to_string(), Box::new(HandlerWithStateOnly::new(wrapped, state)));
+    }
+
+    // ─── Result return registration ─────────────────────────────────────
+
+    /// Register a handler returning `Result<R, E>` (no args)
+    ///
+    /// On `Ok(value)`, `value` is serialized to JSON. On `Err(e)`, the error
+    /// is returned as a string.
+    pub fn register_result<R, E, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        R: Serialize + Send + 'static,
+        E: std::fmt::Display + Send + 'static,
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<R, E>> + Send + 'static,
+    {
+        self.handlers
+            .insert(name.to_string(), Box::new(HandlerFn::new(handler)));
+    }
+
+    /// Register a handler returning `Result<R, E>` with typed args
+    pub fn register_result_with_args<T, R, E, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        T: DeserializeOwned + Send + 'static,
+        R: Serialize + Send + 'static,
+        E: std::fmt::Display + Send + 'static,
+        F: Fn(T) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<R, E>> + Send + 'static,
+    {
+        self.handlers
+            .insert(name.to_string(), Box::new(HandlerWithArgs::new(handler)));
+    }
+
+    /// Register a handler returning `Result<R, E>` with state + typed args
+    pub fn register_result_with_state<S, T, R, E, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        S: Send + Sync + 'static,
+        T: DeserializeOwned + Send + 'static,
+        R: Serialize + Send + 'static,
+        E: std::fmt::Display + Send + 'static,
+        F: Fn(State<Arc<S>>, T) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<R, E>> + Send + 'static,
+    {
+        let state = self
+            .state
+            .clone()
+            .expect("register_result_with_state requires with_state to be called first");
+        self.handlers
+            .insert(name.to_string(), Box::new(HandlerWithState::new(handler, state)));
+    }
+
+    /// Register a handler returning `Result<R, E>` with state only
+    pub fn register_result_with_state_only<S, R, E, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        S: Send + Sync + 'static,
+        R: Serialize + Send + 'static,
+        E: std::fmt::Display + Send + 'static,
+        F: Fn(State<Arc<S>>) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<R, E>> + Send + 'static,
+    {
+        let state = self
+            .state
+            .clone()
+            .expect("register_result_with_state_only requires with_state to be called first");
+        self.handlers
+            .insert(name.to_string(), Box::new(HandlerWithStateOnly::new(handler, state)));
+    }
+
     /// Get the number of registered handlers
     pub fn handlers_count(&self) -> usize {
         self.handlers.len()
+    }
+
+    // ─── TypeScript codegen metadata ────────────────────────────────────
+
+    /// Attach type metadata to a handler for TypeScript client generation
+    ///
+    /// The metadata describes the handler's argument fields and return type,
+    /// which `generate_ts_client()` uses to generate typed async functions.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use allframe_core::router::{Router, TsField, TsType};
+    ///
+    /// let mut router = Router::new();
+    /// router.register("get_user", || async { r#"{"id":1}"#.to_string() });
+    /// router.describe_handler("get_user", vec![], TsType::Object(vec![
+    ///     TsField::new("id", TsType::Number),
+    ///     TsField::new("name", TsType::String),
+    /// ]));
+    /// ```
+    pub fn describe_handler(
+        &mut self,
+        name: &str,
+        args: Vec<TsField>,
+        returns: TsType,
+    ) {
+        debug_assert!(
+            self.handlers.contains_key(name),
+            "describe_handler: handler '{}' not registered",
+            name
+        );
+        self.handler_metas
+            .insert(name.to_string(), HandlerMeta { args, returns });
+    }
+
+    /// Generate a complete TypeScript client module from all described handlers
+    ///
+    /// Returns a string containing TypeScript code with typed async functions
+    /// for each handler that has metadata attached via `describe_handler()`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use allframe_core::router::{Router, TsField, TsType};
+    ///
+    /// let mut router = Router::new();
+    /// router.register("get_user", || async { r#"{"id":1}"#.to_string() });
+    /// router.describe_handler("get_user", vec![
+    ///     TsField::new("id", TsType::Number),
+    /// ], TsType::Object(vec![
+    ///     TsField::new("id", TsType::Number),
+    ///     TsField::new("name", TsType::String),
+    /// ]));
+    ///
+    /// let ts_code = router.generate_ts_client();
+    /// assert!(ts_code.contains("export async function getUser"));
+    /// ```
+    pub fn generate_ts_client(&self) -> String {
+        generate_ts_client(&self.handler_metas)
+    }
+
+    /// Get handler metadata (for inspection/testing)
+    pub fn handler_meta(&self, name: &str) -> Option<&HandlerMeta> {
+        self.handler_metas.get(name)
     }
 
     /// Add a protocol adapter

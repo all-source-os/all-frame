@@ -15,6 +15,7 @@ mod otel;
 mod resilience;
 mod saga;
 mod security;
+mod tauri_compat;
 
 use proc_macro::TokenStream;
 
@@ -702,6 +703,55 @@ pub fn extract_output(input: TokenStream) -> TokenStream {
     let input = proc_macro2::TokenStream::from(input);
 
     saga::extract_output_impl(input)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Tauri command compatibility macro
+///
+/// Transforms a function with individual Tauri-style parameters into an
+/// AllFrame handler. Generates a `{FnName}Args` struct with `#[derive(Deserialize)]`
+/// and rewrites the function to accept that struct, making it directly usable with
+/// `router.register_with_args()`.
+///
+/// This enables incremental migration from Tauri commands: keep the same function
+/// body and parameter names, just swap `#[tauri::command]` for `#[tauri_compat]`.
+///
+/// # Example
+///
+/// ```ignore
+/// use allframe_macros::tauri_compat;
+///
+/// // Before (Tauri):
+/// // #[tauri::command]
+/// // async fn greet(name: String, age: u32) -> String { ... }
+///
+/// // After (AllFrame):
+/// #[tauri_compat]
+/// async fn greet(name: String, age: u32) -> String {
+///     format!(r#"{{"greeting":"Hello {}, age {}"}}"#, name, age)
+/// }
+///
+/// // Generates `GreetArgs { name: String, age: u32 }` and rewrites greet to
+/// // accept `GreetArgs`. Register with:
+/// // router.register_with_args::<GreetArgs>("greet", |args| greet(args));
+/// ```
+///
+/// # Option parameters
+///
+/// `Option<T>` parameters get `#[serde(default)]` automatically, matching
+/// Tauri's behavior where optional params can be omitted from the frontend call.
+///
+/// # State parameters
+///
+/// Parameters with type `State<...>` are recognized as injected state and kept
+/// as separate function parameters (not included in the args struct).
+#[proc_macro_attribute]
+pub fn tauri_compat(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = proc_macro2::TokenStream::from(attr);
+    let item = proc_macro2::TokenStream::from(item);
+
+    tauri_compat::tauri_compat_impl(attr, item)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.18] - 2026-03-17
+
+### Added
+- **`#[tauri_compat]` Macro** - Attribute macro that transforms Tauri-style functions (individual params) into AllFrame handlers (single args struct). Generates `{FnName}Args` with `#[derive(Deserialize)]`, handles `Option<T>` with `#[serde(default)]`, and separates `State<...>` extractors automatically.
+- **Typed Return Values** - Handlers can now return `impl Serialize` instead of `String`. New `register_typed*` methods auto-serialize return values to JSON. Eliminates manual `serde_json::to_string` at both ends.
+- **`IntoHandlerResult` Trait** - Axum-style extensible return type system. Implementations for `String` (passthrough), `Json<T>` (auto-serialize), and `Result<T, E>` (serialize Ok, stringify Err). Collapses 10 handler structs into 4.
+- **TypeScript Client Codegen** - `router.generate_ts_client()` produces typed async TS functions from handler metadata. Generated code unwraps `CallResponse` and `JSON.parse`s automatically. Deterministic, idempotent output.
+- **`register_result_with_state`** and **`register_result_with_state_only`** - Previously missing Result+State handler variants, now free via `IntoHandlerResult`.
+
+### Changed
+- Handler architecture refactored: 10 structs collapsed to 4 generic structs (`HandlerFn`, `HandlerWithArgs`, `HandlerWithState`, `HandlerWithStateOnly`) parameterized over `R: IntoHandlerResult`. Net 200 lines removed.
+- Removed `register_tauri_compat` (was a useless alias for `register_with_args`).
+
+### Fixed
+- **TS codegen `to_camel_case` bug** - `"GET_USER"` now correctly produces `"getUser"` (was `"gETUSER"`).
+- **TS codegen CallResponse unwrapping** - Generated TS functions now unwrap `{ result: string }` and parse JSON instead of returning the raw `CallResponse` wrapper.
+- **`describe_handler` validation** - `debug_assert!` verifies the handler exists when attaching type metadata.
+- **Generated struct visibility** - `#[tauri_compat]` now matches field visibility to function visibility (was always `pub`).
+- **Generated struct `#[allow(dead_code)]`** - Suppresses warnings when the generated args struct isn't directly referenced.
+
+---
+
 ## [0.1.17] - 2026-03-01
 
 ### Added

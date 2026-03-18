@@ -133,6 +133,10 @@ async fn allframe_stream_cancel<R: Runtime>(
 
 /// Create a Tauri 2.x plugin that exposes AllFrame handlers via IPC.
 ///
+/// The Tauri `AppHandle<R>` is automatically injected as state during plugin
+/// setup, so handlers registered with `register_with_state::<AppHandle<R>, …>`
+/// (or any `*_with_state*` variant) can access it directly.
+///
 /// # Example
 ///
 /// ```rust,ignore
@@ -157,6 +161,8 @@ pub fn init<R: Runtime>(router: Router) -> TauriPlugin<R> {
             allframe_stream_cancel,
         ])
         .setup(move |app, _api| {
+            let mut router = router;
+            router.inject_state(app.app_handle().clone());
             app.manage(TauriServer::new(router));
             app.manage(Arc::new(ActiveStreams::new()));
             Ok(())
@@ -167,7 +173,8 @@ pub fn init<R: Runtime>(router: Router) -> TauriPlugin<R> {
 /// Create a Tauri 2.x plugin with shared state for dependency injection.
 ///
 /// Convenience wrapper that calls `router.with_state(state)` before
-/// constructing the plugin.
+/// constructing the plugin. The Tauri `AppHandle<R>` is also automatically
+/// injected (see [`init`]).
 ///
 /// # Example
 ///

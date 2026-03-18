@@ -157,7 +157,7 @@ pub struct Router {
     streaming_handlers: HashMap<String, Box<dyn StreamHandler>>,
     adapters: HashMap<String, Box<dyn ProtocolAdapter>>,
     routes: Vec<RouteMetadata>,
-    state: Option<Arc<dyn Any + Send + Sync>>,
+    states: HashMap<std::any::TypeId, Arc<dyn Any + Send + Sync>>,
     handler_metas: HashMap<String, HandlerMeta>,
     #[cfg(feature = "router")]
     #[allow(dead_code)]
@@ -172,7 +172,7 @@ impl Router {
             streaming_handlers: HashMap::new(),
             adapters: HashMap::new(),
             routes: Vec::new(),
-            state: None,
+            states: HashMap::new(),
             handler_metas: HashMap::new(),
             #[cfg(feature = "router")]
             config: None,
@@ -187,7 +187,7 @@ impl Router {
             streaming_handlers: HashMap::new(),
             adapters: HashMap::new(),
             routes: Vec::new(),
-            state: None,
+            states: HashMap::new(),
             handler_metas: HashMap::new(),
             config: Some(config.clone()),
         };
@@ -206,10 +206,42 @@ impl Router {
         router
     }
 
-    /// Set shared state for dependency injection (builder pattern)
+    /// Add shared state for dependency injection (builder pattern).
+    ///
+    /// Can be called multiple times with different types. Each state type
+    /// is stored independently and looked up by `TypeId` at registration time.
+    ///
+    /// ```rust,ignore
+    /// let router = Router::new()
+    ///     .with_state(db_pool)       // handlers can request State<Arc<DbPool>>
+    ///     .with_state(app_handle);   // handlers can request State<Arc<AppHandle>>
+    /// ```
     pub fn with_state<S: Send + Sync + 'static>(mut self, state: S) -> Self {
-        self.state = Some(Arc::new(state));
+        self.states.insert(std::any::TypeId::of::<S>(), Arc::new(state));
         self
+    }
+
+    /// Add shared state for dependency injection (mutable, non-builder).
+    ///
+    /// Like `with_state` but takes `&mut self` instead of consuming `self`.
+    /// Useful when the state is not available at router construction time
+    /// (e.g., Tauri's `AppHandle` which is only available during plugin setup).
+    pub fn inject_state<S: Send + Sync + 'static>(&mut self, state: S) {
+        self.states.insert(std::any::TypeId::of::<S>(), Arc::new(state));
+    }
+
+    /// Look up state by type. Panics with a helpful message if not found.
+    fn get_state<S: Send + Sync + 'static>(&self, method: &str) -> Arc<dyn Any + Send + Sync> {
+        self.states
+            .get(&std::any::TypeId::of::<S>())
+            .cloned()
+            .unwrap_or_else(|| {
+                panic!(
+                    "{} requires with_state::<{}>() to be called first",
+                    method,
+                    std::any::type_name::<S>()
+                )
+            })
     }
 
     /// Register a handler with a name (zero-arg, backward compatible)
@@ -246,10 +278,7 @@ impl Router {
         F: Fn(State<Arc<S>>, T) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = String> + Send + 'static,
     {
-        let state = self
-            .state
-            .clone()
-            .expect("register_with_state requires with_state to be called first");
+        let state = self.get_state::<S>("register_with_state");
         self.handlers
             .insert(name.to_string(), Box::new(HandlerWithState::new(handler, state)));
     }
@@ -266,10 +295,7 @@ impl Router {
         F: Fn(State<Arc<S>>) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = String> + Send + 'static,
     {
-        let state = self
-            .state
-            .clone()
-            .expect("register_with_state_only requires with_state to be called first");
+        let state = self.get_state::<S>("register_with_state_only");
         self.handlers
             .insert(name.to_string(), Box::new(HandlerWithStateOnly::new(handler, state)));
     }
@@ -316,10 +342,7 @@ impl Router {
         F: Fn(State<Arc<S>>, T) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = R> + Send + 'static,
     {
-        let state = self
-            .state
-            .clone()
-            .expect("register_typed_with_state requires with_state to be called first");
+        let state = self.get_state::<S>("register_typed_with_state");
         let wrapped = move |s: State<Arc<S>>, args: T| {
             let fut = handler(s, args);
             async move { Json(fut.await) }
@@ -336,10 +359,7 @@ impl Router {
         F: Fn(State<Arc<S>>) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = R> + Send + 'static,
     {
-        let state = self
-            .state
-            .clone()
-            .expect("register_typed_with_state_only requires with_state to be called first");
+        let state = self.get_state::<S>("register_typed_with_state_only");
         let wrapped = move |s: State<Arc<S>>| {
             let fut = handler(s);
             async move { Json(fut.await) }
@@ -388,10 +408,7 @@ impl Router {
         F: Fn(State<Arc<S>>, T) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<R, E>> + Send + 'static,
     {
-        let state = self
-            .state
-            .clone()
-            .expect("register_result_with_state requires with_state to be called first");
+        let state = self.get_state::<S>("register_result_with_state");
         self.handlers
             .insert(name.to_string(), Box::new(HandlerWithState::new(handler, state)));
     }
@@ -405,10 +422,7 @@ impl Router {
         F: Fn(State<Arc<S>>) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<R, E>> + Send + 'static,
     {
-        let state = self
-            .state
-            .clone()
-            .expect("register_result_with_state_only requires with_state to be called first");
+        let state = self.get_state::<S>("register_result_with_state_only");
         self.handlers
             .insert(name.to_string(), Box::new(HandlerWithStateOnly::new(handler, state)));
     }
@@ -452,10 +466,7 @@ impl Router {
         Fut: Future<Output = R> + Send + 'static,
         R: IntoHandlerResult + 'static,
     {
-        let state = self
-            .state
-            .clone()
-            .expect("register_streaming_with_state requires with_state to be called first");
+        let state = self.get_state::<S>("register_streaming_with_state");
         self.streaming_handlers
             .insert(name.to_string(), Box::new(StreamingHandlerWithState::new(handler, state)));
     }
@@ -468,10 +479,7 @@ impl Router {
         Fut: Future<Output = R> + Send + 'static,
         R: IntoHandlerResult + 'static,
     {
-        let state = self
-            .state
-            .clone()
-            .expect("register_streaming_with_state_only requires with_state to be called first");
+        let state = self.get_state::<S>("register_streaming_with_state_only");
         self.streaming_handlers
             .insert(name.to_string(), Box::new(StreamingHandlerWithStateOnly::new(handler, state)));
     }
@@ -1892,5 +1900,93 @@ mod tests {
 
         assert!(router.is_streaming("my_stream"));
         assert!(!router.is_streaming("nonexistent"));
+    }
+
+    #[tokio::test]
+    async fn test_multiple_state_types() {
+        struct DbPool {
+            url: String,
+        }
+        struct AppConfig {
+            name: String,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct Input {
+            key: String,
+        }
+
+        let mut router = Router::new()
+            .with_state(DbPool {
+                url: "postgres://localhost".to_string(),
+            })
+            .with_state(AppConfig {
+                name: "MyApp".to_string(),
+            });
+
+        // Handler using DbPool
+        router.register_with_state::<DbPool, Input, _, _>(
+            "db_query",
+            |state: State<Arc<DbPool>>, args: Input| async move {
+                format!("{}:{}", state.url, args.key)
+            },
+        );
+
+        // Handler using AppConfig
+        router.register_with_state_only::<AppConfig, _, _>(
+            "app_name",
+            |state: State<Arc<AppConfig>>| async move { state.name.clone() },
+        );
+
+        let result = router.call_handler("db_query", r#"{"key":"users"}"#).await;
+        assert_eq!(result, Ok("postgres://localhost:users".to_string()));
+
+        let result = router.call_handler("app_name", "{}").await;
+        assert_eq!(result, Ok("MyApp".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_inject_state_after_construction() {
+        struct LateState {
+            value: String,
+        }
+
+        let mut router = Router::new();
+        router.inject_state(LateState {
+            value: "injected".to_string(),
+        });
+        router.register_with_state_only::<LateState, _, _>(
+            "get_value",
+            |state: State<Arc<LateState>>| async move { state.value.clone() },
+        );
+
+        let result = router.call_handler("get_value", "{}").await;
+        assert_eq!(result, Ok("injected".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_multiple_state_streaming() {
+        struct StreamConfig {
+            prefix: String,
+        }
+
+        let mut router = Router::new().with_state(StreamConfig {
+            prefix: "stream".to_string(),
+        });
+
+        router.register_streaming_with_state_only::<StreamConfig, _, _, _>(
+            "prefixed_stream",
+            |state: State<Arc<StreamConfig>>, tx: StreamSender| async move {
+                tx.send(format!("{}:item", state.prefix)).await.ok();
+                "done".to_string()
+            },
+        );
+
+        let (mut rx, fut) = router
+            .call_streaming_handler("prefixed_stream", "{}")
+            .unwrap();
+        let result = fut.await;
+        assert_eq!(result, Ok("done".to_string()));
+        assert_eq!(rx.recv().await, Some("stream:item".to_string()));
     }
 }

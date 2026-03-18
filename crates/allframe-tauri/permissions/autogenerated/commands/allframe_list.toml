@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-allframe-list"
+description = "Enables the allframe_list command without any pre-configured scope."
+commands.allow = ["allframe_list"]
+
+[[permission]]
+identifier = "deny-allframe-list"
+description = "Denies the allframe_list command without any pre-configured scope."
+commands.deny = ["allframe_list"]

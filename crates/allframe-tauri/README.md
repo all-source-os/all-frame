@@ -20,12 +20,12 @@ LLM-powered desktop apps (local assistants, knowledge bases, IDE extensions) nee
 
 ```toml
 [dependencies]
-allframe-tauri = "0.1.15"
-allframe-core = { version = "0.1.15", features = ["router"] }
+allframe-tauri = "0.1.20"
+allframe-core = { version = "0.1.20", features = ["router"] }
 tauri = { version = "2", features = ["wry"] }
 ```
 
-### Rust (Tauri App)
+### 1. Rust (Tauri App)
 
 ```rust
 use allframe_core::router::Router;
@@ -43,7 +43,32 @@ fn main() {
 }
 ```
 
-### Frontend (TypeScript)
+### 2. Permissions (Required for Tauri 2)
+
+Add `"allframe:default"` to your app's capabilities. Create `src-tauri/capabilities/default.json`:
+
+```json
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "allframe:default"
+  ]
+}
+```
+
+This grants access to all AllFrame IPC commands (`allframe_list`, `allframe_call`, `allframe_stream`, `allframe_stream_cancel`). For fine-grained control, grant individual permissions instead:
+
+```json
+"permissions": [
+  "allframe:allow-allframe-list",
+  "allframe:allow-allframe-call"
+]
+```
+
+### 3. Frontend (TypeScript)
 
 ```typescript
 import { invoke } from "@tauri-apps/api/core";
@@ -81,8 +106,11 @@ assert_eq!(result.result, "results");
 | `TauriServer` | In-process handler dispatcher (no Tauri runtime needed) |
 | `init(router)` | Creates a Tauri plugin from an AllFrame Router |
 | `CallResponse` | Handler result wrapper (`{ result: String }`) |
-| `HandlerInfo` | Handler metadata (`{ name, description }`) |
-| `TauriServerError` | Error type (`HandlerNotFound`, `DispatchError`) |
+| `HandlerInfo` | Handler metadata (`{ name, description, kind }`) |
+| `HandlerKind` | `RequestResponse` or `Streaming` |
+| `StreamReceiver` | Receiver for streaming handler items (auto-cancels on drop) |
+| `StreamStartResponse` | Streaming init response (`{ stream_id: String }`) |
+| `TauriServerError` | Error type (`HandlerNotFound`, `NotStreamingHandler`, `ExecutionFailed`) |
 
 ## Features
 
@@ -96,8 +124,8 @@ Combine with AllFrame's offline features for a fully self-contained desktop app:
 
 ```toml
 [dependencies]
-allframe-core = { version = "0.1.15", features = ["offline"] }
-allframe-tauri = "0.1.15"
+allframe-core = { version = "0.1.20", features = ["offline"] }
+allframe-tauri = "0.1.20"
 ```
 
 This gives you:

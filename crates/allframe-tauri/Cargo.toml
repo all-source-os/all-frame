@@ -12,6 +12,7 @@ keywords = ["tauri", "desktop", "ipc", "offline-first", "framework"]
 categories = ["gui", "api-bindings"]
 description = "Tauri 2.x plugin for AllFrame - Expose handlers via IPC for offline-first desktop apps"
 readme = "README.md"
+links = "allframe-tauri"
 
 [features]
 default = []
@@ -29,6 +30,9 @@ uuid = { version = "1", features = ["v4"] }
 
 # Optional tracing support
 tracing = { version = "0.1", optional = true }
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
 
 [dev-dependencies]
 allframe-macros = { workspace = true }

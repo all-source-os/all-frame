@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.20] - 2026-03-18
+
+### Fixed
+- **Tauri 2 plugin permissions** ([#53](https://github.com/all-source-os/all-frame/issues/53)) — `allframe-tauri` now includes a `permissions/` directory with auto-generated command permissions and a `default.toml` that grants all AllFrame IPC commands. Previously, `invoke("plugin:allframe|allframe_call")` failed with "Plugin not found" because Tauri 2's security model requires explicit permission grants for all plugin commands.
+
+### Added
+- **`build.rs`** in `allframe-tauri` — Uses `tauri_plugin::Builder` to auto-generate permission TOML files for all 4 IPC commands (`allframe_list`, `allframe_call`, `allframe_stream`, `allframe_stream_cancel`).
+- **`permissions/default.toml`** — Default permission set granting all AllFrame commands. Consuming apps get full access by adding `"allframe:default"` to their capabilities.
+
+### Changed
+- `allframe-tauri` now has `links = "allframe-tauri"` in Cargo.toml (required by `tauri-plugin` build system).
+- Added `tauri-plugin` as a build dependency.
+
+---
+
 ## [0.1.19] - 2026-03-18
 
 ### Added

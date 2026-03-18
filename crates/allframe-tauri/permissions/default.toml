@@ -1,0 +1,16 @@
+[default]
+description = """
+Default permissions for the AllFrame plugin.
+
+Grants access to all AllFrame IPC commands:
+- allframe_list: Query registered handlers
+- allframe_call: Call a request/response handler
+- allframe_stream: Start a streaming handler (returns stream_id, emits events)
+- allframe_stream_cancel: Cancel an active stream
+"""
+permissions = [
+  "allow-allframe-list",
+  "allow-allframe-call",
+  "allow-allframe-stream",
+  "allow-allframe-stream-cancel",
+]

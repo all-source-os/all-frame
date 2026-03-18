@@ -24,6 +24,8 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tauri = { version = "2", features = ["wry"] }
 thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync", "rt"] }
+uuid = { version = "1", features = ["v4"] }
 
 # Optional tracing support
 tracing = { version = "0.1", optional = true }

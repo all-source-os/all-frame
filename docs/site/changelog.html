@@ -243,6 +243,31 @@
         <div class="timeline">
             <div class="container">
 
+                <!-- v0.1.19 -->
+                <div class="release">
+                    <div class="release-meta">
+                        <div class="release-date">March 18, 2026</div>
+                        <div class="release-version">0.1.19</div>
+                    </div>
+                    <div class="release-content">
+                        <h2 class="release-title">Streaming Handler Support</h2>
+                        <div class="release-tags">
+                            <span class="tag new">New</span>
+                            <span class="tag feature">Streaming</span>
+                            <span class="tag feature">Tauri</span>
+                        </div>
+                        <ul>
+                            <li><strong>Streaming Handlers</strong> - StreamSender with bounded channel backpressure, CancellationToken auto-cancel on receiver drop, both callback and impl Stream patterns</li>
+                            <li><strong>Tauri IPC Bridge</strong> - allframe_stream / allframe_stream_cancel commands with per-stream UUID event channels and ActiveStreams cancellation tracking</li>
+                            <li><strong>TypeScript Streaming Codegen</strong> - StreamObserver, StreamSubscription interfaces, callStreamHandler helper with auto-listener-cleanup on complete/error</li>
+                            <li><strong>RxJS Adapter</strong> - toObservable() with lazy import("rxjs") - zero hard dependency</li>
+                            <li><strong>#[tauri_compat(streaming)]</strong> - Macro variant for streaming handler migration, generates args struct excluding StreamSender params</li>
+                            <li><strong>HandlerKind enum</strong> - allframe_list reports request_response vs streaming for each handler</li>
+                            <li><strong>register_stream*</strong> - Bridge futures::Stream to channel-based StreamSender with proper error handling</li>
+                        </ul>
+                    </div>
+                </div>
+
                 <!-- v0.1.12 -->
                 <div class="release">
                     <div class="release-meta">

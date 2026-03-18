@@ -109,17 +109,25 @@ We ship **composable crates** that give you exactly what you need:
   - Embedded MCP server for local-only LLM tool dispatch
   - `allframe-tauri` crate for Tauri 2.x desktop integration
   - **Zero network dependencies** in offline builds (verified by CI)
-- ✅ **Tauri Migration Ergonomics** - Mechanical migration from Tauri to AllFrame **[NEW!]**
+- ✅ **Tauri Migration Ergonomics** - Mechanical migration from Tauri to AllFrame
   - `#[tauri_compat]` macro: keep your function signatures, swap the attribute
   - Typed return values: handlers return `impl Serialize`, framework serializes
   - TypeScript client codegen: auto-generate typed TS functions from handler registrations
   - `IntoHandlerResult` trait: extensible handler return types (`String`, `Json<T>`, `Result<T, E>`)
+- ✅ **Streaming Handlers** - Send incremental updates during handler execution **[NEW!]**
+  - `StreamSender` with bounded channel backpressure and typed `send()` via `IntoStreamItem`
+  - `CancellationToken` auto-cancelled on receiver drop for cooperative cancellation
+  - Both callback-based (`StreamSender`) and `impl Stream` return patterns
+  - Tauri IPC bridge: `allframe_stream` / `allframe_stream_cancel` commands with per-stream event channels
+  - TypeScript codegen: `StreamObserver`, `StreamSubscription`, auto-cleanup on complete/error
+  - RxJS adapter: `toObservable()` with lazy `import("rxjs")` (zero hard dependency)
+  - `#[tauri_compat(streaming)]` macro for streaming handler migration
 - 📋 **LLM-powered code generation** - `allframe forge` CLI (command registered, implementation pending)
 
 **Target**: Binaries < 8 MB, > 500k req/s (TechEmpower parity with Actix), and **100% test coverage enforced by CI**.
 
-**Current Status**: **v0.1.18 - Migration Ergonomics!** 500+ tests passing. `#[tauri_compat]` macro for zero-friction Tauri migration, typed return values (`impl Serialize`), TypeScript client codegen, and `IntoHandlerResult` trait-based handler architecture.
-**Latest**: Tauri migration is now mechanical: register a handler in Rust, TS client auto-generated, frontend swaps `invoke()` for typed calls.
+**Current Status**: **v0.1.19 - Streaming Handlers!** 500+ tests passing. Handlers can now send incremental updates during execution — streaming LLM tokens, workflow progress, and agent loops via `StreamSender`. Full Tauri IPC bridge with per-stream events and cancellation. TypeScript codegen for streaming with RxJS adapter.
+**Latest**: 6 production streaming commands can migrate from raw `app.emit()` to AllFrame's streaming protocol.
 
 ---
 

@@ -61,10 +61,11 @@ pub mod plugin;
 pub mod server;
 pub mod types;
 
+pub use allframe_core::router::StreamReceiver;
 pub use error::TauriServerError;
 pub use plugin::{init, init_with_state};
 pub use server::TauriServer;
-pub use types::{CallResponse, HandlerInfo};
+pub use types::{CallResponse, HandlerInfo, HandlerKind, StreamStartResponse};
 
 #[cfg(test)]
 mod tests {
@@ -189,10 +190,12 @@ mod tests {
         let info = HandlerInfo {
             name: "test".to_string(),
             description: "A test handler".to_string(),
+            kind: HandlerKind::RequestResponse,
         };
         let json = serde_json::to_string(&info).unwrap();
         assert!(json.contains("test"));
         assert!(json.contains("A test handler"));
+        assert!(json.contains("request_response"));
     }
 
     #[test]
@@ -441,5 +444,64 @@ mod tests {
             .unwrap();
 
         assert_eq!(result.result, "Hey Bob");
+    }
+
+    #[tokio::test]
+    async fn test_tauri_compat_streaming_with_args() {
+        use allframe_core::router::StreamSender;
+        use allframe_macros::tauri_compat;
+
+        #[tauri_compat(streaming)]
+        async fn stream_greet(name: String, count: u32, tx: StreamSender) -> String {
+            for i in 0..count {
+                tx.send(format!("Hello {} #{}", name, i)).await.ok();
+            }
+            "done".to_string()
+        }
+
+        let mut router = Router::new();
+        router.register_streaming_with_args::<StreamGreetArgs, _, _, _>(
+            "stream_greet",
+            stream_greet,
+        );
+
+        let server = TauriServer::new(router);
+        let (mut rx, handle) = server
+            .call_streaming_handler("stream_greet", r#"{"name":"Alice","count":2}"#)
+            .unwrap();
+
+        let msg1 = rx.recv().await.unwrap();
+        assert_eq!(msg1, "Hello Alice #0");
+        let msg2 = rx.recv().await.unwrap();
+        assert_eq!(msg2, "Hello Alice #1");
+
+        let response = handle.await.unwrap().unwrap();
+        assert_eq!(response.result, "done");
+    }
+
+    #[tokio::test]
+    async fn test_tauri_compat_streaming_no_args() {
+        use allframe_core::router::StreamSender;
+        use allframe_macros::tauri_compat;
+
+        #[tauri_compat(streaming)]
+        async fn stream_ping(tx: StreamSender) -> String {
+            tx.send("pong".to_string()).await.ok();
+            "done".to_string()
+        }
+
+        let mut router = Router::new();
+        router.register_streaming("stream_ping", stream_ping);
+
+        let server = TauriServer::new(router);
+        let (mut rx, handle) = server
+            .call_streaming_handler("stream_ping", "{}")
+            .unwrap();
+
+        let msg = rx.recv().await.unwrap();
+        assert_eq!(msg, "pong");
+
+        let response = handle.await.unwrap().unwrap();
+        assert_eq!(response.result, "done");
     }
 }

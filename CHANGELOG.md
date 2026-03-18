@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.19] - 2026-03-18
+
+### Added
+- **Streaming Handler Support** ([#52](https://github.com/all-source-os/all-frame/issues/52)) - Handlers can now send incremental updates during execution, enabling LLM token streaming, multi-step workflow progress, and real-time agent loops.
+  - **`StreamSender`** - Bounded channel sender for streaming handlers with typed `send()` via `IntoStreamItem` trait
+  - **`StreamReceiver`** - Receiver with `Drop`-based auto-cancellation of `CancellationToken`
+  - **`StreamHandler` trait** - Parallel to `Handler` for streaming dispatch, with 4 handler struct variants (Fn, WithArgs, WithState, WithStateOnly)
+  - **`CancellationToken` integration** - Automatic cancellation when receiver is dropped, plus explicit `cancel()` and `token.cancelled()` future for `tokio::select!`
+  - **Router streaming registration** - `register_streaming`, `register_streaming_with_args`, `register_streaming_with_state`, `register_streaming_with_state_only`
+  - **`register_stream*` adapters** - Bridge `impl Stream<Item = T>` to the channel-based `StreamSender` via `futures_core::Stream`
+  - **`spawn_streaming_handler`** - Spawns streaming handler as a tokio task with `'static` lifetime for use in `tokio::spawn`
+  - **`HandlerKind` enum** - `allframe_list` now reports whether each handler is `request_response` or `streaming`
+  - **TypeScript streaming codegen** - Generated `callStreamHandler` helper with Tauri event listeners, `StreamObserver<T, F>` interface, `StreamSubscription` with `unsubscribe()`, auto-cleanup on complete/error
+  - **RxJS adapter** - Generated `toObservable<T>()` function with lazy `import("rxjs")` (zero hard dependency)
+  - **`#[tauri_compat(streaming)]`** - Macro variant for streaming handlers: generates args struct excluding `StreamSender` params, rewrites function signature
+  - **Tauri IPC bridge** - `allframe_stream` command (spawns stream, returns `stream_id`, emits events) and `allframe_stream_cancel` command (aborts active stream via `AbortHandle`)
+  - **`ActiveStreams` managed state** - Tracks active stream tasks for cancellation with automatic cleanup on completion
+  - 30 integration tests across 4 test files (`10_streaming_core/router/tauri/codegen.rs`)
+
+### Changed
+- `StreamSender::channel()` now returns `(StreamSender, StreamReceiver)` instead of raw `mpsc::Receiver<String>`. The `StreamReceiver` auto-cancels the `CancellationToken` on drop.
+- `describe_handler` and `describe_streaming_handler` now use `assert!` instead of `debug_assert!` — panics in release builds if handler doesn't exist.
+- `HandlerInfo` gains `kind: HandlerKind` field (serializes as `"request_response"` or `"streaming"`).
+- `TauriServer` re-exports core `StreamReceiver` instead of defining its own wrapper.
+
+### Dependencies
+- Added `tokio-util` (CancellationToken), `futures-core` (Stream trait), `uuid` (stream IDs) as dependencies
+- Added `tokio-stream` as dev-dependency for stream adapter tests
+
+---
+
 ## [0.1.18] - 2026-03-17
 
 ### Added

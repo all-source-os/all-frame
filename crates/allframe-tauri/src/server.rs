@@ -5,10 +5,11 @@
 
 use std::sync::Arc;
 
-use allframe_core::router::Router;
+use allframe_core::router::{Router, StreamReceiver};
+use tokio::task::JoinHandle;
 
 use crate::error::TauriServerError;
-use crate::types::{CallResponse, HandlerInfo};
+use crate::types::{CallResponse, HandlerInfo, HandlerKind};
 
 /// Wraps an AllFrame `Router` for Tauri IPC dispatch.
 ///
@@ -26,9 +27,17 @@ impl TauriServer {
         let handlers = router
             .list_handlers()
             .into_iter()
-            .map(|name| HandlerInfo {
-                description: format!("Handler: {name}"),
-                name,
+            .map(|name| {
+                let kind = if router.is_streaming(&name) {
+                    HandlerKind::Streaming
+                } else {
+                    HandlerKind::RequestResponse
+                };
+                HandlerInfo {
+                    description: format!("Handler: {name}"),
+                    kind,
+                    name,
+                }
             })
             .collect();
 
@@ -65,6 +74,53 @@ impl TauriServer {
             Ok(result) => Ok(CallResponse { result }),
             Err(e) => Err(TauriServerError::ExecutionFailed(e)),
         }
+    }
+
+    /// Call a streaming handler by name.
+    ///
+    /// Returns `(StreamReceiver, JoinHandle)` where:
+    /// - `StreamReceiver` yields intermediate messages
+    /// - `JoinHandle` resolves with the final handler result
+    pub fn call_streaming_handler(
+        &self,
+        name: &str,
+        args: &str,
+    ) -> Result<
+        (
+            StreamReceiver,
+            JoinHandle<Result<CallResponse, TauriServerError>>,
+        ),
+        TauriServerError,
+    > {
+        // Check handler exists
+        let handler_info = self
+            .handlers
+            .iter()
+            .find(|h| h.name == name)
+            .ok_or_else(|| TauriServerError::HandlerNotFound(name.to_string()))?;
+
+        // Check it's actually a streaming handler
+        if handler_info.kind != HandlerKind::Streaming {
+            return Err(TauriServerError::NotStreamingHandler(name.to_string()));
+        }
+
+        let (rx, join) = self
+            .router
+            .spawn_streaming_handler(name, args)
+            .map_err(TauriServerError::ExecutionFailed)?;
+
+        // Wrap the JoinHandle to convert the result type
+        let handle = tokio::spawn(async move {
+            match join.await {
+                Ok(Ok(result)) => Ok(CallResponse { result }),
+                Ok(Err(e)) => Err(TauriServerError::ExecutionFailed(e)),
+                Err(e) => Err(TauriServerError::ExecutionFailed(format!(
+                    "Handler task panicked: {e}"
+                ))),
+            }
+        });
+
+        Ok((rx, handle))
     }
 }
 
@@ -146,5 +202,109 @@ mod tests {
         let _ = server.call_handler("x", "{}").await;
         let y = server.call_handler("y", "{}").await.unwrap();
         assert_eq!(y.result, "Y");
+    }
+
+    // ─── HandlerKind tests ──────────────────────────────────────────────
+
+    #[test]
+    fn test_handler_kind_request_response() {
+        let mut router = Router::new();
+        router.register("regular", || async { "ok".to_string() });
+
+        let server = TauriServer::new(router);
+        let handlers = server.list_handlers();
+        assert_eq!(handlers[0].kind, HandlerKind::RequestResponse);
+    }
+
+    #[test]
+    fn test_handler_kind_streaming() {
+        use allframe_core::router::StreamSender;
+
+        let mut router = Router::new();
+        router.register_streaming("stream", |_tx: StreamSender| async move {
+            "done".to_string()
+        });
+
+        let server = TauriServer::new(router);
+        let handlers = server.list_handlers();
+        assert_eq!(handlers[0].kind, HandlerKind::Streaming);
+    }
+
+    #[test]
+    fn test_handler_kind_mixed() {
+        use allframe_core::router::StreamSender;
+
+        let mut router = Router::new();
+        router.register("regular", || async { "ok".to_string() });
+        router.register_streaming("stream", |_tx: StreamSender| async move {
+            "done".to_string()
+        });
+
+        let server = TauriServer::new(router);
+        let handlers = server.list_handlers();
+        assert_eq!(handlers.len(), 2);
+
+        let regular = handlers.iter().find(|h| h.name == "regular").unwrap();
+        let stream = handlers.iter().find(|h| h.name == "stream").unwrap();
+        assert_eq!(regular.kind, HandlerKind::RequestResponse);
+        assert_eq!(stream.kind, HandlerKind::Streaming);
+    }
+
+    #[test]
+    fn test_handler_kind_serialization() {
+        let json = serde_json::to_string(&HandlerKind::RequestResponse).unwrap();
+        assert_eq!(json, r#""request_response""#);
+
+        let json = serde_json::to_string(&HandlerKind::Streaming).unwrap();
+        assert_eq!(json, r#""streaming""#);
+    }
+
+    // ─── TauriServer streaming tests ────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_call_streaming_handler_success() {
+        use allframe_core::router::StreamSender;
+
+        let mut router = Router::new();
+        router.register_streaming("stream", |tx: StreamSender| async move {
+            tx.send("item1".to_string()).await.ok();
+            tx.send("item2".to_string()).await.ok();
+            "final".to_string()
+        });
+
+        let server = TauriServer::new(router);
+        let (mut rx, handle) = server.call_streaming_handler("stream", "{}").unwrap();
+
+        let final_result = handle.await.unwrap().unwrap();
+        assert_eq!(final_result.result, "final");
+
+        assert_eq!(rx.recv().await, Some("item1".to_string()));
+        assert_eq!(rx.recv().await, Some("item2".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_call_streaming_handler_not_found() {
+        let router = Router::new();
+        let server = TauriServer::new(router);
+
+        let result = server.call_streaming_handler("missing", "{}");
+        match result {
+            Err(TauriServerError::HandlerNotFound(name)) => assert_eq!(name, "missing"),
+            other => panic!("Expected HandlerNotFound, got: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_call_streaming_handler_wrong_kind() {
+        let mut router = Router::new();
+        router.register("regular", || async { "ok".to_string() });
+
+        let server = TauriServer::new(router);
+
+        let result = server.call_streaming_handler("regular", "{}");
+        match result {
+            Err(TauriServerError::NotStreamingHandler(name)) => assert_eq!(name, "regular"),
+            other => panic!("Expected NotStreamingHandler, got: {other:?}"),
+        }
     }
 }

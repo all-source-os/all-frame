@@ -1,3 +1,4 @@
+use allframe_core::router::StreamSender;
 use allframe_macros::tauri_compat;
 
 // Test: basic function with multiple args
@@ -103,4 +104,80 @@ async fn test_vec_arg() {
         serde_json::from_str(r#"{"items":["a","b","c"],"limit":10}"#).unwrap();
     let result = with_vec(args).await;
     assert_eq!(result, "3 items, limit 10");
+}
+
+// ─── Streaming tests ────────────────────────────────────────────────────────
+
+// Test: streaming with args
+#[tauri_compat(streaming)]
+async fn stream_chat(prompt: String, model: String, tx: StreamSender) -> String {
+    tx.send(format!("streaming {} with {}", prompt, model))
+        .await
+        .ok();
+    "done".to_string()
+}
+
+#[tokio::test]
+async fn test_streaming_basic() {
+    let args = StreamChatArgs {
+        prompt: "hello".to_string(),
+        model: "gpt-4".to_string(),
+    };
+    let (tx, mut rx) = StreamSender::channel();
+    let result = stream_chat(args, tx).await;
+    assert_eq!(result, "done");
+
+    let msg = rx.recv().await.unwrap();
+    assert_eq!(msg, "streaming hello with gpt-4");
+}
+
+#[tokio::test]
+async fn test_streaming_args_deserialize() {
+    let args: StreamChatArgs =
+        serde_json::from_str(r#"{"prompt":"hi","model":"claude"}"#).unwrap();
+    assert_eq!(args.prompt, "hi");
+    assert_eq!(args.model, "claude");
+}
+
+// Test: streaming with no regular args (only StreamSender)
+#[tauri_compat(streaming)]
+async fn stream_all(tx: StreamSender) -> String {
+    tx.send("chunk".to_string()).await.ok();
+    "complete".to_string()
+}
+
+#[tokio::test]
+async fn test_streaming_no_args() {
+    let (tx, mut rx) = StreamSender::channel();
+    let result = stream_all(tx).await;
+    assert_eq!(result, "complete");
+
+    let msg = rx.recv().await.unwrap();
+    assert_eq!(msg, "chunk");
+}
+
+// Test: streaming with optional param
+#[tauri_compat(streaming)]
+async fn stream_optional(query: String, limit: Option<u32>, tx: StreamSender) -> String {
+    let limit = limit.unwrap_or(10);
+    tx.send(format!("{} limit={}", query, limit)).await.ok();
+    "ok".to_string()
+}
+
+#[tokio::test]
+async fn test_streaming_optional_param() {
+    // With limit
+    let args: StreamOptionalArgs =
+        serde_json::from_str(r#"{"query":"search","limit":5}"#).unwrap();
+    let (tx, mut rx) = StreamSender::channel();
+    let result = stream_optional(args, tx).await;
+    assert_eq!(result, "ok");
+    assert_eq!(rx.recv().await.unwrap(), "search limit=5");
+
+    // Without limit (should default to None)
+    let args: StreamOptionalArgs = serde_json::from_str(r#"{"query":"search"}"#).unwrap();
+    let (tx, mut rx) = StreamSender::channel();
+    let result = stream_optional(args, tx).await;
+    assert_eq!(result, "ok");
+    assert_eq!(rx.recv().await.unwrap(), "search limit=10");
 }

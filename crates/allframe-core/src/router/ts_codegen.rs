@@ -85,6 +85,32 @@ pub struct HandlerMeta {
     pub args: Vec<TsField>,
     /// Return type
     pub returns: TsType,
+    /// Whether this is a streaming handler
+    pub streaming: bool,
+    /// For streaming handlers: the type of each stream item
+    pub stream_item: Option<TsType>,
+}
+
+impl HandlerMeta {
+    /// Create metadata for a request/response handler
+    pub fn new(args: Vec<TsField>, returns: TsType) -> Self {
+        Self {
+            args,
+            returns,
+            streaming: false,
+            stream_item: None,
+        }
+    }
+
+    /// Create metadata for a streaming handler
+    pub fn streaming(args: Vec<TsField>, item_type: TsType, final_type: TsType) -> Self {
+        Self {
+            args,
+            returns: final_type,
+            streaming: true,
+            stream_item: Some(item_type),
+        }
+    }
 }
 
 impl TsType {
@@ -178,6 +204,12 @@ pub fn generate_ts_client(handler_metas: &HashMap<String, HandlerMeta>) -> Strin
     output.push_str("// Regenerate with: allframe generate-ts-client\n\n");
     output.push_str("import { invoke } from \"@tauri-apps/api/core\";\n\n");
 
+    // Imports for streaming (listen for events)
+    let has_streaming = handler_metas.values().any(|m| m.streaming);
+    if has_streaming {
+        output.push_str("import { listen, type UnlistenFn } from \"@tauri-apps/api/event\";\n\n");
+    }
+
     // Internal helper that unwraps CallResponse and parses JSON
     output.push_str("/** @internal Unwrap CallResponse and parse the JSON result. */\n");
     output.push_str("async function callHandler<T>(handler: string, args: Record<string, unknown> = {}): Promise<T> {\n");
@@ -185,12 +217,74 @@ pub fn generate_ts_client(handler_metas: &HashMap<String, HandlerMeta>) -> Strin
     output.push_str("  return JSON.parse(response.result) as T;\n");
     output.push_str("}\n\n");
 
+    // StreamSubscription interface and helper (only if streaming handlers exist)
+    if has_streaming {
+        output.push_str("/** Observer for streaming handler updates. */\n");
+        output.push_str("export interface StreamObserver<T, F = void> {\n");
+        output.push_str("  next: (item: T) => void;\n");
+        output.push_str("  error?: (err: Error) => void;\n");
+        output.push_str("  complete?: (result: F) => void;\n");
+        output.push_str("}\n\n");
+
+        output.push_str("/** Subscription handle returned by streaming handlers. */\n");
+        output.push_str("export interface StreamSubscription {\n");
+        output.push_str("  unsubscribe: () => void;\n");
+        output.push_str("}\n\n");
+
+        output.push_str("/** @internal Start a streaming handler, wire events to observer. */\n");
+        output.push_str("async function callStreamHandler<T, F>(\n");
+        output.push_str("  handler: string,\n");
+        output.push_str("  args: Record<string, unknown>,\n");
+        output.push_str("  observer: StreamObserver<T, F>,\n");
+        output.push_str("): Promise<StreamSubscription> {\n");
+        output.push_str("  const { stream_id } = await invoke<{ stream_id: string }>(\"plugin:allframe|allframe_stream\", { handler, args });\n");
+        output.push_str("  const unlistens: UnlistenFn[] = [];\n");
+        output.push_str("  const eventBase = `allframe:stream:${handler}:${stream_id}`;\n");
+        output.push_str("  const cleanup = () => unlistens.forEach(fn => fn());\n");
+        output.push_str("  unlistens.push(await listen<string>(eventBase, (e) => observer.next(JSON.parse(e.payload) as T)));\n");
+        output.push_str("  unlistens.push(await listen<string>(`${eventBase}:complete`, (e) => { cleanup(); observer.complete?.(JSON.parse(e.payload) as F); }));\n");
+        output.push_str("  unlistens.push(await listen<string>(`${eventBase}:error`, (e) => { cleanup(); observer.error?.(new Error(e.payload)); }));\n");
+        output.push_str("  unlistens.push(await listen<void>(`${eventBase}:cancelled`, () => { cleanup(); observer.error?.(new Error('Stream cancelled')); }));\n");
+        output.push_str("  return {\n");
+        output.push_str("    unsubscribe: () => {\n");
+        output.push_str("      cleanup();\n");
+        output.push_str("      invoke(\"plugin:allframe|allframe_stream_cancel\", { streamId: stream_id }).catch(() => {});\n");
+        output.push_str("    },\n");
+        output.push_str("  };\n");
+        output.push_str("}\n\n");
+
+        output.push_str("/**\n");
+        output.push_str(" * Convert an AllFrame streaming handler to an RxJS Observable.\n");
+        output.push_str(" * Requires `rxjs` as a peer dependency: `bun add rxjs`\n");
+        output.push_str(" * @example\n");
+        output.push_str(" * const obs$ = await toObservable((observer) => streamChat({ prompt: \"Hi\" }, observer));\n");
+        output.push_str(" * obs$.subscribe(token => console.log(token));\n");
+        output.push_str(" */\n");
+        output.push_str("export async function toObservable<T>(\n");
+        output.push_str("  start: (observer: StreamObserver<T, unknown>) => Promise<StreamSubscription>,\n");
+        output.push_str("): Promise<import(\"rxjs\").Observable<T>> {\n");
+        output.push_str("  const { Observable } = await import(\"rxjs\");\n");
+        output.push_str("  const subPromise = new Promise<StreamSubscription>((resolve) => {\n");
+        output.push_str("    // Resolved inside the Observable constructor below\n");
+        output.push_str("    (subPromise as any).__resolve = resolve;\n");
+        output.push_str("  });\n");
+        output.push_str("  return new Observable<T>((subscriber) => {\n");
+        output.push_str("    start({\n");
+        output.push_str("      next: (item) => subscriber.next(item),\n");
+        output.push_str("      error: (err) => subscriber.error(err),\n");
+        output.push_str("      complete: () => subscriber.complete(),\n");
+        output.push_str("    }).then((s) => (subPromise as any).__resolve(s));\n");
+        output.push_str("    return () => { subPromise.then(s => s.unsubscribe()); };\n");
+        output.push_str("  });\n");
+        output.push_str("}\n\n");
+    }
+
     // Collect interfaces to generate
     let mut interfaces: Vec<(String, &[TsField])> = Vec::new();
 
     // Sort handlers by name for deterministic output
     let mut sorted_handlers: Vec<_> = handler_metas.iter().collect();
-    sorted_handlers.sort_by_key(|(name, _)| (*name).clone());
+    sorted_handlers.sort_by(|(a, _), (b, _)| a.cmp(b));
 
     // First pass: collect interfaces from Object types
     for (handler_name, meta) in &sorted_handlers {
@@ -225,36 +319,76 @@ pub fn generate_ts_client(handler_metas: &HashMap<String, HandlerMeta>) -> Strin
         let fn_name = to_camel_case(handler_name);
         let pascal = to_pascal_case(handler_name);
 
-        // Determine return type string
-        let return_type = if let TsType::Object(_) = &meta.returns {
-            format!("{pascal}Response")
-        } else {
-            meta.returns.render()
-        };
+        if meta.streaming {
+            // Streaming handler function
+            let item_type = meta
+                .stream_item
+                .as_ref()
+                .map(|t| t.render())
+                .unwrap_or_else(|| "unknown".to_string());
 
-        if meta.args.is_empty() {
-            writeln!(
-                output,
-                "export async function {fn_name}(): Promise<{return_type}> {{",
-            )
-            .unwrap();
-            writeln!(
-                output,
-                "  return callHandler<{return_type}>(\"{handler_name}\");",
-            )
-            .unwrap();
+            let final_type = if let TsType::Object(_) = &meta.returns {
+                format!("{pascal}Response")
+            } else {
+                meta.returns.render()
+            };
+
+            if meta.args.is_empty() {
+                writeln!(
+                    output,
+                    "export async function {fn_name}(observer: StreamObserver<{item_type}, {final_type}>): Promise<StreamSubscription> {{",
+                )
+                .unwrap();
+                writeln!(
+                    output,
+                    "  return callStreamHandler<{item_type}, {final_type}>(\"{handler_name}\", {{}}, observer);",
+                )
+                .unwrap();
+            } else {
+                let args_type = format!("{pascal}Args");
+                writeln!(
+                    output,
+                    "export async function {fn_name}(args: {args_type}, observer: StreamObserver<{item_type}, {final_type}>): Promise<StreamSubscription> {{",
+                )
+                .unwrap();
+                writeln!(
+                    output,
+                    "  return callStreamHandler<{item_type}, {final_type}>(\"{handler_name}\", args, observer);",
+                )
+                .unwrap();
+            }
         } else {
-            let args_type = format!("{pascal}Args");
-            writeln!(
-                output,
-                "export async function {fn_name}(args: {args_type}): Promise<{return_type}> {{",
-            )
-            .unwrap();
-            writeln!(
-                output,
-                "  return callHandler<{return_type}>(\"{handler_name}\", args);",
-            )
-            .unwrap();
+            // Regular request/response handler function
+            let return_type = if let TsType::Object(_) = &meta.returns {
+                format!("{pascal}Response")
+            } else {
+                meta.returns.render()
+            };
+
+            if meta.args.is_empty() {
+                writeln!(
+                    output,
+                    "export async function {fn_name}(): Promise<{return_type}> {{",
+                )
+                .unwrap();
+                writeln!(
+                    output,
+                    "  return callHandler<{return_type}>(\"{handler_name}\");",
+                )
+                .unwrap();
+            } else {
+                let args_type = format!("{pascal}Args");
+                writeln!(
+                    output,
+                    "export async function {fn_name}(args: {args_type}): Promise<{return_type}> {{",
+                )
+                .unwrap();
+                writeln!(
+                    output,
+                    "  return callHandler<{return_type}>(\"{handler_name}\", args);",
+                )
+                .unwrap();
+            }
         }
 
         output.push_str("}\n\n");
@@ -327,10 +461,9 @@ mod tests {
         let mut metas = HashMap::new();
         metas.insert(
             "get_status".to_string(),
-            HandlerMeta {
-                args: vec![],
-                returns: TsType::String,
-            },
+            HandlerMeta::new(
+                vec![], TsType::String,
+            ),
         );
 
         let ts = generate_ts_client(&metas);
@@ -343,13 +476,13 @@ mod tests {
         let mut metas = HashMap::new();
         metas.insert(
             "greet".to_string(),
-            HandlerMeta {
-                args: vec![
+            HandlerMeta::new(
+                vec![
                     TsField::new("name", TsType::String),
                     TsField::new("age", TsType::Number),
                 ],
-                returns: TsType::Object(vec![TsField::new("greeting", TsType::String)]),
-            },
+                TsType::Object(vec![TsField::new("greeting", TsType::String)]),
+            ),
         );
 
         let ts = generate_ts_client(&metas);
@@ -373,13 +506,13 @@ mod tests {
         let mut metas = HashMap::new();
         metas.insert(
             "search".to_string(),
-            HandlerMeta {
-                args: vec![
+            HandlerMeta::new(
+                vec![
                     TsField::new("query", TsType::String),
                     TsField::optional("limit", TsType::Number),
                 ],
-                returns: TsType::Array(Box::new(TsType::String)),
-            },
+                TsType::Array(Box::new(TsType::String)),
+            ),
         );
 
         let ts = generate_ts_client(&metas);
@@ -393,17 +526,17 @@ mod tests {
         let mut metas = HashMap::new();
         metas.insert(
             "delete_user".to_string(),
-            HandlerMeta {
-                args: vec![TsField::new("id", TsType::Number)],
-                returns: TsType::Void,
-            },
+            HandlerMeta::new(
+                vec![TsField::new("id", TsType::Number)],
+                TsType::Void,
+            ),
         );
         metas.insert(
             "create_user".to_string(),
-            HandlerMeta {
-                args: vec![TsField::new("name", TsType::String)],
-                returns: TsType::Object(vec![TsField::new("id", TsType::Number)]),
-            },
+            HandlerMeta::new(
+                vec![TsField::new("name", TsType::String)],
+                TsType::Object(vec![TsField::new("id", TsType::Number)]),
+            ),
         );
 
         let ts = generate_ts_client(&metas);
@@ -419,10 +552,10 @@ mod tests {
         let mut metas = HashMap::new();
         metas.insert(
             "get_user".to_string(),
-            HandlerMeta {
-                args: vec![TsField::new("id", TsType::Number)],
-                returns: TsType::Named("User".to_string()),
-            },
+            HandlerMeta::new(
+                vec![TsField::new("id", TsType::Number)],
+                TsType::Named("User".to_string()),
+            ),
         );
 
         let ts = generate_ts_client(&metas);
@@ -446,10 +579,10 @@ mod tests {
         let mut metas = HashMap::new();
         metas.insert(
             "greet".to_string(),
-            HandlerMeta {
-                args: vec![TsField::new("name", TsType::String)],
-                returns: TsType::String,
-            },
+            HandlerMeta::new(
+                vec![TsField::new("name", TsType::String)],
+                TsType::String,
+            ),
         );
 
         let ts1 = generate_ts_client(&metas);
@@ -462,14 +595,14 @@ mod tests {
         let mut metas = HashMap::new();
         metas.insert(
             "get_user".to_string(),
-            HandlerMeta {
-                args: vec![TsField::new("id", TsType::Number)],
-                returns: TsType::Object(vec![
+            HandlerMeta::new(
+                vec![TsField::new("id", TsType::Number)],
+                TsType::Object(vec![
                     TsField::new("id", TsType::Number),
                     TsField::new("name", TsType::String),
                     TsField::optional("email", TsType::String),
                 ]),
-            },
+            ),
         );
 
         let ts = generate_ts_client(&metas);
@@ -481,5 +614,143 @@ mod tests {
             "export async function getUser(args: GetUserArgs): Promise<GetUserResponse>"
         ));
         assert!(ts.contains("callHandler<GetUserResponse>(\"get_user\", args)"));
+    }
+
+    // ─── Streaming codegen tests ────────────────────────────────────────
+
+    #[test]
+    fn test_generate_streaming_handler_no_args() {
+        let mut metas = HashMap::new();
+        metas.insert(
+            "stream_updates".to_string(),
+            HandlerMeta::streaming(vec![], TsType::String, TsType::Boolean),
+        );
+
+        let ts = generate_ts_client(&metas);
+
+        // Should generate streaming infrastructure
+        assert!(ts.contains("import { listen"));
+        assert!(ts.contains("export interface StreamObserver"));
+        assert!(ts.contains("export interface StreamSubscription"));
+        assert!(ts.contains("async function callStreamHandler"));
+        assert!(ts.contains("allframe_stream"));
+
+        // Should generate streaming function
+        assert!(ts.contains("export async function streamUpdates(observer: StreamObserver<string, boolean>): Promise<StreamSubscription>"));
+        assert!(ts.contains("callStreamHandler<string, boolean>(\"stream_updates\", {}, observer)"));
+    }
+
+    #[test]
+    fn test_generate_streaming_handler_with_args() {
+        let mut metas = HashMap::new();
+        metas.insert(
+            "stream_chat".to_string(),
+            HandlerMeta::streaming(
+                vec![TsField::new("prompt", TsType::String)],
+                TsType::Object(vec![TsField::new("token", TsType::String)]),
+                TsType::Object(vec![TsField::new("done", TsType::Boolean)]),
+            ),
+        );
+
+        let ts = generate_ts_client(&metas);
+
+        // Should generate args interface
+        assert!(ts.contains("export interface StreamChatArgs {"));
+        assert!(ts.contains("  prompt: string;"));
+
+        // Should generate response interface for final type
+        assert!(ts.contains("export interface StreamChatResponse {"));
+        assert!(ts.contains("  done: boolean;"));
+
+        // Should generate streaming function with args
+        assert!(ts.contains("export async function streamChat(args: StreamChatArgs, observer: StreamObserver<"));
+        assert!(ts.contains("callStreamHandler<"));
+    }
+
+    #[test]
+    fn test_generate_mixed_handlers() {
+        let mut metas = HashMap::new();
+        metas.insert(
+            "get_user".to_string(),
+            HandlerMeta::new(
+                vec![TsField::new("id", TsType::Number)],
+                TsType::String,
+            ),
+        );
+        metas.insert(
+            "stream_data".to_string(),
+            HandlerMeta::streaming(vec![], TsType::String, TsType::Void),
+        );
+
+        let ts = generate_ts_client(&metas);
+
+        // Regular handler uses callHandler
+        assert!(ts.contains("callHandler<string>(\"get_user\""));
+        // Streaming handler uses callStreamHandler
+        assert!(ts.contains("callStreamHandler<string, void>(\"stream_data\""));
+        // Both helpers present
+        assert!(ts.contains("async function callHandler"));
+        assert!(ts.contains("async function callStreamHandler"));
+    }
+
+    #[test]
+    fn test_no_streaming_infrastructure_when_no_streaming_handlers() {
+        let mut metas = HashMap::new();
+        metas.insert(
+            "get_user".to_string(),
+            HandlerMeta::new(vec![], TsType::String),
+        );
+
+        let ts = generate_ts_client(&metas);
+
+        // Should NOT contain streaming infrastructure
+        assert!(!ts.contains("StreamObserver"));
+        assert!(!ts.contains("StreamSubscription"));
+        assert!(!ts.contains("callStreamHandler"));
+        assert!(!ts.contains("listen"));
+    }
+
+    #[test]
+    fn test_handler_meta_new_defaults() {
+        let meta = HandlerMeta::new(vec![], TsType::String);
+        assert!(!meta.streaming);
+        assert!(meta.stream_item.is_none());
+    }
+
+    #[test]
+    fn test_handler_meta_streaming_constructor() {
+        let meta = HandlerMeta::streaming(vec![], TsType::Number, TsType::Boolean);
+        assert!(meta.streaming);
+        assert_eq!(meta.stream_item, Some(TsType::Number));
+        assert_eq!(meta.returns, TsType::Boolean);
+    }
+
+    #[test]
+    fn test_generate_rxjs_adapter() {
+        let mut metas = HashMap::new();
+        metas.insert(
+            "stream_data".to_string(),
+            HandlerMeta::streaming(vec![], TsType::String, TsType::Void),
+        );
+
+        let ts = generate_ts_client(&metas);
+
+        assert!(ts.contains("export async function toObservable"));
+        assert!(ts.contains("import(\"rxjs\")"));
+        assert!(ts.contains("new Observable"));
+        assert!(ts.contains("subscriber.next"));
+        assert!(ts.contains("s.unsubscribe()"));
+    }
+
+    #[test]
+    fn test_no_rxjs_adapter_without_streaming() {
+        let mut metas = HashMap::new();
+        metas.insert(
+            "get_user".to_string(),
+            HandlerMeta::new(vec![], TsType::String),
+        );
+
+        let ts = generate_ts_client(&metas);
+        assert!(!ts.contains("toObservable"));
     }
 }

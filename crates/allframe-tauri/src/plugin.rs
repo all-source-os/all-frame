@@ -1,12 +1,30 @@
 //! Tauri 2.x plugin builder
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use allframe_core::router::Router;
 use tauri::plugin::{Builder as PluginBuilder, TauriPlugin};
-use tauri::Runtime;
+use tauri::{Emitter, Manager, Runtime};
+use tokio::sync::Mutex;
 
 use crate::error::TauriServerError;
 use crate::server::TauriServer;
-use crate::types::{CallResponse, HandlerInfo};
+use crate::types::{CallResponse, HandlerInfo, StreamStartResponse};
+
+/// Managed state for tracking active streams (for cancellation).
+struct ActiveStreams {
+    /// Maps stream_id -> JoinHandle abort handle
+    handles: Mutex<HashMap<String, tokio::task::AbortHandle>>,
+}
+
+impl ActiveStreams {
+    fn new() -> Self {
+        Self {
+            handles: Mutex::new(HashMap::new()),
+        }
+    }
+}
 
 /// List all registered AllFrame handlers.
 #[tauri::command]
@@ -25,6 +43,92 @@ async fn allframe_call(
 ) -> Result<CallResponse, TauriServerError> {
     let args_str = args.to_string();
     server.call_handler(&handler, &args_str).await
+}
+
+/// Start a streaming handler. Returns a stream_id immediately.
+/// Stream items are emitted as Tauri events:
+/// - `allframe:stream:{handler}:{stream_id}` — each item
+/// - `allframe:stream:{handler}:{stream_id}:complete` — final result
+/// - `allframe:stream:{handler}:{stream_id}:error` — handler error
+#[tauri::command]
+async fn allframe_stream<R: Runtime>(
+    handler: String,
+    args: serde_json::Value,
+    app: tauri::AppHandle<R>,
+    server: tauri::State<'_, TauriServer>,
+    active: tauri::State<'_, Arc<ActiveStreams>>,
+) -> Result<StreamStartResponse, TauriServerError> {
+    let stream_id = uuid::Uuid::new_v4().to_string();
+    let args_str = args.to_string();
+
+    let (mut rx, join_handle) = server.call_streaming_handler(&handler, &args_str)?;
+
+    let sid = stream_id.clone();
+    let handler_name = handler.clone();
+    let app_clone = app.clone();
+    let active_inner: Arc<ActiveStreams> = (*active).clone();
+
+    let task = tokio::spawn(async move {
+        let event_base = format!("allframe:stream:{}:{}", handler_name, sid);
+
+        // Forward stream items as events
+        while let Some(item) = rx.recv().await {
+            let _ = app_clone.emit(&event_base, &item);
+        }
+
+        // Wait for the handler to complete and emit final event
+        match join_handle.await {
+            Ok(Ok(response)) => {
+                let _ = app_clone.emit(&format!("{event_base}:complete"), &response.result);
+            }
+            Ok(Err(e)) => {
+                let _ = app_clone.emit(&format!("{event_base}:error"), &e.to_string());
+            }
+            Err(e) => {
+                let _ = app_clone.emit(
+                    &format!("{event_base}:error"),
+                    &format!("Handler task panicked: {e}"),
+                );
+            }
+        }
+
+        // Cleanup from active streams map
+        active_inner.handles.lock().await.remove(&sid);
+    });
+
+    // Store abort handle for cancellation
+    active
+        .handles
+        .lock()
+        .await
+        .insert(stream_id.clone(), task.abort_handle());
+
+    Ok(StreamStartResponse { stream_id })
+}
+
+/// Cancel an active stream by stream_id.
+#[tauri::command]
+async fn allframe_stream_cancel<R: Runtime>(
+    stream_id: String,
+    app: tauri::AppHandle<R>,
+    active: tauri::State<'_, Arc<ActiveStreams>>,
+) -> Result<(), TauriServerError> {
+    let mut handles = active.handles.lock().await;
+    match handles.remove(&stream_id) {
+        Some(abort_handle) => {
+            abort_handle.abort();
+            // The stream's StreamReceiver will be dropped when the task is aborted,
+            // which auto-cancels the CancellationToken.
+            let _ = app.emit(
+                &format!("allframe:stream:unknown:{}:cancelled", stream_id),
+                &(),
+            );
+            Ok(())
+        }
+        None => Err(TauriServerError::ExecutionFailed(format!(
+            "Stream not found or already completed: {stream_id}"
+        ))),
+    }
 }
 
 /// Create a Tauri 2.x plugin that exposes AllFrame handlers via IPC.
@@ -46,10 +150,15 @@ async fn allframe_call(
 /// ```
 pub fn init<R: Runtime>(router: Router) -> TauriPlugin<R> {
     PluginBuilder::new("allframe")
-        .invoke_handler(tauri::generate_handler![allframe_list, allframe_call])
+        .invoke_handler(tauri::generate_handler![
+            allframe_list,
+            allframe_call,
+            allframe_stream,
+            allframe_stream_cancel,
+        ])
         .setup(move |app, _api| {
-            use tauri::Manager;
             app.manage(TauriServer::new(router));
+            app.manage(Arc::new(ActiveStreams::new()));
             Ok(())
         })
         .build()

@@ -63,7 +63,8 @@
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::{any::Any, collections::HashMap, future::Future, sync::Arc};
+use futures_core::Stream;
+use std::{any::Any, collections::HashMap, future::Future, pin::Pin, sync::Arc};
 
 pub mod adapter;
 pub mod builder;
@@ -109,7 +110,9 @@ pub use grpc_explorer::{grpc_explorer_html, GrpcExplorerConfig, GrpcExplorerThem
 pub use grpc_prod::{protobuf, status, streaming, GrpcProductionAdapter, GrpcService};
 pub use handler::{
     Handler, HandlerFn, HandlerWithArgs, HandlerWithState, HandlerWithStateOnly,
-    IntoHandlerResult, Json, State,
+    IntoHandlerResult, IntoStreamItem, Json, State, StreamError, StreamHandler, StreamReceiver,
+    StreamSender, StreamingHandlerFn, StreamingHandlerWithArgs, StreamingHandlerWithState,
+    StreamingHandlerWithStateOnly, DEFAULT_STREAM_CAPACITY,
 };
 pub use metadata::RouteMetadata;
 pub use method::Method;
@@ -119,12 +122,39 @@ pub use scalar::{scalar_html, ScalarConfig, ScalarLayout, ScalarTheme};
 pub use schema::ToJsonSchema;
 pub use ts_codegen::{generate_ts_client, HandlerMeta, TsField, TsType};
 
+/// Drive a `Stream` to completion, forwarding items through a `StreamSender`.
+///
+/// Returns a JSON result: `"null"` on success, or a JSON error string if a
+/// serialization error occurred.
+async fn drive_stream<T, St>(stream: St, tx: &StreamSender) -> String
+where
+    T: IntoStreamItem,
+    St: Stream<Item = T> + Send,
+{
+    tokio::pin!(stream);
+    loop {
+        let next = std::future::poll_fn(|cx| stream.as_mut().poll_next(cx)).await;
+        match next {
+            Some(item) => match tx.send(item).await {
+                Ok(()) => {}
+                Err(StreamError::Closed) => break,
+                Err(StreamError::Serialize(e)) => {
+                    return serde_json::json!({"error": e}).to_string();
+                }
+            },
+            None => break,
+        }
+    }
+    "null".to_string()
+}
+
 /// Router manages handler registration and protocol adapters
 ///
 /// The router allows you to register handlers once and expose them via
 /// multiple protocols based on configuration.
 pub struct Router {
     handlers: HashMap<String, Box<dyn Handler>>,
+    streaming_handlers: HashMap<String, Box<dyn StreamHandler>>,
     adapters: HashMap<String, Box<dyn ProtocolAdapter>>,
     routes: Vec<RouteMetadata>,
     state: Option<Arc<dyn Any + Send + Sync>>,
@@ -139,6 +169,7 @@ impl Router {
     pub fn new() -> Self {
         Self {
             handlers: HashMap::new(),
+            streaming_handlers: HashMap::new(),
             adapters: HashMap::new(),
             routes: Vec::new(),
             state: None,
@@ -153,6 +184,7 @@ impl Router {
     pub fn with_config(config: RouterConfig) -> Self {
         let mut router = Self {
             handlers: HashMap::new(),
+            streaming_handlers: HashMap::new(),
             adapters: HashMap::new(),
             routes: Vec::new(),
             state: None,
@@ -381,9 +413,198 @@ impl Router {
             .insert(name.to_string(), Box::new(HandlerWithStateOnly::new(handler, state)));
     }
 
-    /// Get the number of registered handlers
+    /// Get the number of registered handlers (request/response only)
     pub fn handlers_count(&self) -> usize {
         self.handlers.len()
+    }
+
+    // ─── Streaming handler registration ─────────────────────────────────
+
+    /// Register a streaming handler (no args, receives StreamSender)
+    pub fn register_streaming<F, Fut, R>(&mut self, name: &str, handler: F)
+    where
+        F: Fn(StreamSender) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        self.streaming_handlers
+            .insert(name.to_string(), Box::new(StreamingHandlerFn::new(handler)));
+    }
+
+    /// Register a streaming handler with typed args
+    pub fn register_streaming_with_args<T, F, Fut, R>(&mut self, name: &str, handler: F)
+    where
+        T: DeserializeOwned + Send + 'static,
+        F: Fn(T, StreamSender) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        self.streaming_handlers
+            .insert(name.to_string(), Box::new(StreamingHandlerWithArgs::new(handler)));
+    }
+
+    /// Register a streaming handler with state and typed args
+    pub fn register_streaming_with_state<S, T, F, Fut, R>(&mut self, name: &str, handler: F)
+    where
+        S: Send + Sync + 'static,
+        T: DeserializeOwned + Send + 'static,
+        F: Fn(State<Arc<S>>, T, StreamSender) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        let state = self
+            .state
+            .clone()
+            .expect("register_streaming_with_state requires with_state to be called first");
+        self.streaming_handlers
+            .insert(name.to_string(), Box::new(StreamingHandlerWithState::new(handler, state)));
+    }
+
+    /// Register a streaming handler with state only (no args)
+    pub fn register_streaming_with_state_only<S, F, Fut, R>(&mut self, name: &str, handler: F)
+    where
+        S: Send + Sync + 'static,
+        F: Fn(State<Arc<S>>, StreamSender) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        let state = self
+            .state
+            .clone()
+            .expect("register_streaming_with_state_only requires with_state to be called first");
+        self.streaming_handlers
+            .insert(name.to_string(), Box::new(StreamingHandlerWithStateOnly::new(handler, state)));
+    }
+
+    /// Register a handler that returns a `Stream` of items (no args).
+    ///
+    /// The stream is internally bridged to a `StreamSender` channel.
+    /// Items are forwarded through a bounded channel (default capacity 64).
+    /// Register a handler that returns a `Stream` of items (no args).
+    ///
+    /// The stream is internally bridged to a `StreamSender` channel.
+    /// Items are forwarded through a bounded channel (default capacity 64).
+    pub fn register_stream<T, St, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        T: IntoStreamItem + 'static,
+        St: Stream<Item = T> + Send + 'static,
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = St> + Send + 'static,
+    {
+        self.register_streaming(name, move |tx: StreamSender| {
+            let stream_fut = handler();
+            async move {
+                drive_stream(stream_fut.await, &tx).await
+            }
+        });
+    }
+
+    /// Register a handler that takes typed args and returns a `Stream` of items.
+    pub fn register_stream_with_args<T, Item, St, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        T: DeserializeOwned + Send + 'static,
+        Item: IntoStreamItem + 'static,
+        St: Stream<Item = Item> + Send + 'static,
+        F: Fn(T) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = St> + Send + 'static,
+    {
+        self.register_streaming_with_args::<T, _, _, _>(name, move |args: T, tx: StreamSender| {
+            let stream_fut = handler(args);
+            async move {
+                drive_stream(stream_fut.await, &tx).await
+            }
+        });
+    }
+
+    /// Register a handler that takes state + typed args and returns a `Stream` of items.
+    pub fn register_stream_with_state<S, T, Item, St, F, Fut>(&mut self, name: &str, handler: F)
+    where
+        S: Send + Sync + 'static,
+        T: DeserializeOwned + Send + 'static,
+        Item: IntoStreamItem + 'static,
+        St: Stream<Item = Item> + Send + 'static,
+        F: Fn(State<Arc<S>>, T) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = St> + Send + 'static,
+    {
+        self.register_streaming_with_state::<S, T, _, _, _>(name, move |state: State<Arc<S>>, args: T, tx: StreamSender| {
+            let stream_fut = handler(state, args);
+            async move {
+                drive_stream(stream_fut.await, &tx).await
+            }
+        });
+    }
+
+    /// Check if a handler is a streaming handler
+    pub fn is_streaming(&self, name: &str) -> bool {
+        self.streaming_handlers.contains_key(name)
+    }
+
+    /// Call a streaming handler by name.
+    ///
+    /// Creates a bounded channel, passes the sender to the handler,
+    /// and returns `(receiver, completion_future)`. The completion future
+    /// resolves with the handler's final result.
+    ///
+    /// Note: the returned future borrows `self`. For use in contexts where
+    /// a `'static` future is needed (e.g., `tokio::spawn`), use
+    /// `spawn_streaming_handler` instead.
+    #[allow(clippy::type_complexity)]
+    pub fn call_streaming_handler(
+        &self,
+        name: &str,
+        args: &str,
+    ) -> Result<
+        (
+            StreamReceiver,
+            Pin<Box<dyn Future<Output = Result<String, String>> + Send + '_>>,
+        ),
+        String,
+    > {
+        let handler = self
+            .streaming_handlers
+            .get(name)
+            .ok_or_else(|| format!("Streaming handler '{}' not found", name))?;
+
+        let (tx, rx) = StreamSender::channel();
+        let fut = handler.call_streaming(args, tx);
+        Ok((rx, fut))
+    }
+
+    /// Spawn a streaming handler as a tokio task.
+    ///
+    /// Like `call_streaming_handler` but returns a `'static` receiver and
+    /// `JoinHandle`, suitable for use with `tokio::spawn`.
+    #[allow(clippy::type_complexity)]
+    pub fn spawn_streaming_handler(
+        self: &Arc<Self>,
+        name: &str,
+        args: &str,
+    ) -> Result<
+        (
+            StreamReceiver,
+            tokio::task::JoinHandle<Result<String, String>>,
+        ),
+        String,
+    > {
+        if !self.streaming_handlers.contains_key(name) {
+            return Err(format!("Streaming handler '{}' not found", name));
+        }
+
+        let router = self.clone();
+        let name = name.to_string();
+        let args = args.to_string();
+
+        let (tx, rx) = StreamSender::channel();
+
+        let handle = tokio::spawn(async move {
+            let handler = router
+                .streaming_handlers
+                .get(&name)
+                .expect("handler verified to exist");
+            handler.call_streaming(&args, tx).await
+        });
+
+        Ok((rx, handle))
     }
 
     // ─── TypeScript codegen metadata ────────────────────────────────────
@@ -411,13 +632,30 @@ impl Router {
         args: Vec<TsField>,
         returns: TsType,
     ) {
-        debug_assert!(
+        assert!(
             self.handlers.contains_key(name),
             "describe_handler: handler '{}' not registered",
             name
         );
         self.handler_metas
-            .insert(name.to_string(), HandlerMeta { args, returns });
+            .insert(name.to_string(), HandlerMeta::new(args, returns));
+    }
+
+    /// Attach type metadata to a streaming handler for TypeScript client generation
+    pub fn describe_streaming_handler(
+        &mut self,
+        name: &str,
+        args: Vec<TsField>,
+        item_type: TsType,
+        final_type: TsType,
+    ) {
+        assert!(
+            self.streaming_handlers.contains_key(name),
+            "describe_streaming_handler: streaming handler '{}' not registered",
+            name
+        );
+        self.handler_metas
+            .insert(name.to_string(), HandlerMeta::streaming(args, item_type, final_type));
     }
 
     /// Generate a complete TypeScript client module from all described handlers
@@ -488,12 +726,14 @@ impl Router {
         }
     }
 
-    /// List all registered handler names
+    /// List all registered handler names (both request/response and streaming)
     ///
     /// Returns a vector of all handler names that have been registered
     /// with this router. Used by MCP server for tool discovery.
     pub fn list_handlers(&self) -> Vec<String> {
-        self.handlers.keys().cloned().collect()
+        let mut names: Vec<String> = self.handlers.keys().cloned().collect();
+        names.extend(self.streaming_handlers.keys().cloned());
+        names
     }
 
     /// Call a handler by name with request data (JSON args)
@@ -1379,5 +1619,278 @@ mod tests {
             .await
             .unwrap();
         assert!(streaming_response.contains("server_streaming"));
+    }
+
+    // ===== Streaming handler registration tests =====
+
+    #[tokio::test]
+    async fn test_register_streaming_handler() {
+        let mut router = Router::new();
+        router.register_streaming("stream_data", |tx: StreamSender| async move {
+            tx.send("item".to_string()).await.ok();
+            "done".to_string()
+        });
+        assert!(router.is_streaming("stream_data"));
+        assert!(!router.is_streaming("nonexistent"));
+    }
+
+    #[tokio::test]
+    async fn test_register_streaming_with_args() {
+        #[derive(serde::Deserialize)]
+        struct Input {
+            count: usize,
+        }
+
+        let mut router = Router::new();
+        router.register_streaming_with_args("stream_items", |args: Input, tx: StreamSender| async move {
+            for i in 0..args.count {
+                tx.send(format!("item-{i}")).await.ok();
+            }
+            "done".to_string()
+        });
+        assert!(router.is_streaming("stream_items"));
+    }
+
+    #[tokio::test]
+    async fn test_streaming_handler_not_in_regular_handlers() {
+        let mut router = Router::new();
+        router.register_streaming("stream", |_tx: StreamSender| async move {
+            "done".to_string()
+        });
+        // Streaming handlers are NOT in the regular handlers map
+        assert_eq!(router.handlers_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_list_handlers_includes_streaming() {
+        let mut router = Router::new();
+        router.register("regular", || async { "ok".to_string() });
+        router.register_streaming("stream", |_tx: StreamSender| async move {
+            "ok".to_string()
+        });
+
+        let handlers = router.list_handlers();
+        assert_eq!(handlers.len(), 2);
+        assert!(handlers.contains(&"regular".to_string()));
+        assert!(handlers.contains(&"stream".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_call_streaming_handler() {
+        let mut router = Router::new();
+        router.register_streaming("stream", |tx: StreamSender| async move {
+            tx.send("a".to_string()).await.ok();
+            tx.send("b".to_string()).await.ok();
+            "final".to_string()
+        });
+
+        let (mut rx, fut) = router.call_streaming_handler("stream", "{}").unwrap();
+        let result = fut.await;
+
+        assert_eq!(result, Ok("final".to_string()));
+        assert_eq!(rx.recv().await, Some("a".to_string()));
+        assert_eq!(rx.recv().await, Some("b".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_call_streaming_handler_with_args() {
+        #[derive(serde::Deserialize)]
+        struct Input {
+            n: usize,
+        }
+
+        let mut router = Router::new();
+        router.register_streaming_with_args("count", |args: Input, tx: StreamSender| async move {
+            for i in 0..args.n {
+                tx.send(format!("{i}")).await.ok();
+            }
+            format!("counted to {}", args.n)
+        });
+
+        let (mut rx, fut) = router.call_streaming_handler("count", r#"{"n":3}"#).unwrap();
+        let result = fut.await;
+
+        assert_eq!(result, Ok("counted to 3".to_string()));
+        assert_eq!(rx.recv().await, Some("0".to_string()));
+        assert_eq!(rx.recv().await, Some("1".to_string()));
+        assert_eq!(rx.recv().await, Some("2".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_call_streaming_handler_not_found() {
+        let router = Router::new();
+        let result = router.call_streaming_handler("missing", "{}");
+        assert!(result.is_err());
+        match result {
+            Err(e) => assert!(e.contains("not found")),
+            Ok(_) => panic!("expected error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_is_streaming_false_for_regular() {
+        let mut router = Router::new();
+        router.register("regular", || async { "ok".to_string() });
+        assert!(!router.is_streaming("regular"));
+    }
+
+    #[tokio::test]
+    async fn test_mixed_router() {
+        let mut router = Router::new();
+        router.register("get_user", || async { "user".to_string() });
+        router.register_streaming("stream_updates", |tx: StreamSender| async move {
+            tx.send("update".to_string()).await.ok();
+            "done".to_string()
+        });
+
+        // Regular handler works
+        let result = router.execute("get_user").await;
+        assert_eq!(result, Ok("user".to_string()));
+
+        // Streaming handler works
+        let (mut rx, fut) = router.call_streaming_handler("stream_updates", "{}").unwrap();
+        let result = fut.await;
+        assert_eq!(result, Ok("done".to_string()));
+        assert_eq!(rx.recv().await, Some("update".to_string()));
+
+        // Regular handler not found in streaming
+        assert!(!router.is_streaming("get_user"));
+        assert!(router.call_streaming_handler("get_user", "{}").is_err());
+    }
+
+    #[tokio::test]
+    async fn test_register_streaming_with_state() {
+        struct AppState {
+            prefix: String,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct Input {
+            name: String,
+        }
+
+        let mut router = Router::new().with_state(AppState {
+            prefix: "Hello".to_string(),
+        });
+        router.register_streaming_with_state::<AppState, Input, _, _, _>(
+            "greet_stream",
+            |state: State<Arc<AppState>>, args: Input, tx: StreamSender| async move {
+                tx.send(format!("{} {}", state.prefix, args.name))
+                    .await
+                    .ok();
+                "done".to_string()
+            },
+        );
+
+        let (mut rx, fut) = router
+            .call_streaming_handler("greet_stream", r#"{"name":"Alice"}"#)
+            .unwrap();
+        let result = fut.await;
+
+        assert_eq!(result, Ok("done".to_string()));
+        assert_eq!(rx.recv().await, Some("Hello Alice".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_streaming_with_state_only() {
+        struct AppState {
+            items: Vec<String>,
+        }
+
+        let mut router = Router::new().with_state(AppState {
+            items: vec!["x".to_string(), "y".to_string()],
+        });
+        router.register_streaming_with_state_only::<AppState, _, _, _>(
+            "list_stream",
+            |state: State<Arc<AppState>>, tx: StreamSender| async move {
+                for item in &state.items {
+                    tx.send(item.clone()).await.ok();
+                }
+                format!("listed {}", state.items.len())
+            },
+        );
+
+        let (mut rx, fut) = router
+            .call_streaming_handler("list_stream", "{}")
+            .unwrap();
+        let result = fut.await;
+
+        assert_eq!(result, Ok("listed 2".to_string()));
+        assert_eq!(rx.recv().await, Some("x".to_string()));
+        assert_eq!(rx.recv().await, Some("y".to_string()));
+    }
+
+    // ===== Stream return adapter tests =====
+
+    #[tokio::test]
+    async fn test_register_stream_no_args() {
+        let mut router = Router::new();
+        router.register_stream("items", || async {
+            tokio_stream::iter(vec!["a".to_string(), "b".to_string(), "c".to_string()])
+        });
+
+        assert!(router.is_streaming("items"));
+
+        let (mut rx, fut) = router.call_streaming_handler("items", "{}").unwrap();
+        let _result = fut.await;
+
+        assert_eq!(rx.recv().await, Some("a".to_string()));
+        assert_eq!(rx.recv().await, Some("b".to_string()));
+        assert_eq!(rx.recv().await, Some("c".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_stream_with_args() {
+        #[derive(serde::Deserialize)]
+        struct Input {
+            count: usize,
+        }
+
+        let mut router = Router::new();
+        router.register_stream_with_args("counting", |args: Input| async move {
+            tokio_stream::iter((0..args.count).map(|i| format!("{i}")))
+        });
+
+        assert!(router.is_streaming("counting"));
+
+        let (mut rx, fut) = router
+            .call_streaming_handler("counting", r#"{"count":3}"#)
+            .unwrap();
+        let _result = fut.await;
+
+        assert_eq!(rx.recv().await, Some("0".to_string()));
+        assert_eq!(rx.recv().await, Some("1".to_string()));
+        assert_eq!(rx.recv().await, Some("2".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_stream_with_state() {
+        struct AppState {
+            items: Vec<String>,
+        }
+
+        let mut router = Router::new().with_state(AppState {
+            items: vec!["x".to_string(), "y".to_string()],
+        });
+        router.register_stream_with_state::<AppState, serde_json::Value, _, _, _, _>(
+            "state_stream",
+            |state: State<Arc<AppState>>, _args: serde_json::Value| {
+                let items = state.items.clone();
+                async move { tokio_stream::iter(items) }
+            },
+        );
+
+        assert!(router.is_streaming("state_stream"));
+    }
+
+    #[tokio::test]
+    async fn test_stream_adapter_shows_in_is_streaming() {
+        let mut router = Router::new();
+        router.register_stream("my_stream", || async {
+            tokio_stream::iter(vec!["done".to_string()])
+        });
+
+        assert!(router.is_streaming("my_stream"));
+        assert!(!router.is_streaming("nonexistent"));
     }
 }

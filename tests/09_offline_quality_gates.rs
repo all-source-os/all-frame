@@ -214,11 +214,12 @@ async fn qg_off_3_tauri_unknown_handler_error() {
 /// Quality gate: TauriServer types are serializable (required by Tauri IPC).
 #[test]
 fn qg_off_3_tauri_types_serializable() {
-    use allframe_tauri::{CallResponse, HandlerInfo, TauriServerError};
+    use allframe_tauri::{CallResponse, HandlerInfo, HandlerKind, TauriServerError};
 
     let info = HandlerInfo {
         name: "test".to_string(),
         description: "A test handler".to_string(),
+        kind: HandlerKind::RequestResponse,
     };
     let json = serde_json::to_string(&info).unwrap();
     assert!(json.contains("test"));

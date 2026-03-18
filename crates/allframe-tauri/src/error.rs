@@ -15,4 +15,8 @@ pub enum TauriServerError {
     /// Handler execution failed
     #[error("Execution failed: {0}")]
     ExecutionFailed(String),
+
+    /// Attempted to call a non-streaming handler as streaming
+    #[error("Not a streaming handler: {0}")]
+    NotStreamingHandler(String),
 }

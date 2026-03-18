@@ -17,15 +17,37 @@ struct RetryConfig {
 
 /// Implementation of the `#[retry]` attribute macro.
 ///
-/// **⚠️ DEPRECATED**: This macro uses the old architecture that violates Clean
-/// Architecture principles. Consider migrating to the new resilience system for
-/// better testability and maintainability.
+/// **⚠️ DEPRECATED since 0.1.13**: This macro uses the old architecture that
+/// violates Clean Architecture principles by coupling resilience logic to
+/// function definitions.
 ///
-/// For migration guidance, see: https://docs.allframe.rs/guides/MIGRATION_GUIDE.html
+/// ## Migration Guide
 ///
-/// Wraps an async function with retry logic using the new Clean Architecture
-/// approach. The macro now uses ResilienceOrchestrator internally while
-/// maintaining backward compatibility.
+/// Replace `#[retry]` with the Clean Architecture resilience system:
+///
+/// **Before (deprecated):**
+/// ```ignore
+/// #[retry(max_retries = 3, initial_interval_ms = 500)]
+/// async fn fetch_data() -> Result<Data, Error> { /* ... */ }
+/// ```
+///
+/// **After (new architecture):**
+/// ```ignore
+/// use allframe_core::application::resilience::{ResilienceOrchestrator, DefaultResilienceOrchestrator};
+/// use allframe_core::domain::resilience::{ResiliencePolicy, BackoffStrategy};
+///
+/// let orchestrator = DefaultResilienceOrchestrator::new();
+/// let policy = ResiliencePolicy::Retry {
+///     max_attempts: 3,
+///     backoff: BackoffStrategy::Exponential {
+///         initial_delay: Duration::from_millis(500),
+///         multiplier: 2.0,
+///         max_delay: Some(Duration::from_secs(30)),
+///         jitter: true,
+///     },
+/// };
+/// let result = orchestrator.execute_with_policy(policy, || fetch_data()).await;
+/// ```
 pub fn retry_impl(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     let config = parse_retry_attr(attr)?;
     let func: ItemFn = parse2(item)?;
@@ -143,7 +165,12 @@ struct CircuitBreakerConfig {
 
 /// Implementation of the `#[circuit_breaker]` attribute macro.
 ///
-/// Wraps a function with circuit breaker logic.
+/// **⚠️ DEPRECATED since 0.1.13**: Use the Clean Architecture resilience system instead.
+///
+/// **Migration**: Replace `#[circuit_breaker(threshold = 5)]` with
+/// `ResiliencePolicy::CircuitBreaker { failure_threshold: 5, .. }` passed to
+/// `ResilienceOrchestrator::execute_with_policy()`. See `#[retry]` docs for
+/// a full migration example.
 pub fn circuit_breaker_impl(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     let config = parse_circuit_breaker_attr(attr)?;
     let func: ItemFn = parse2(item)?;
@@ -251,7 +278,12 @@ struct RateLimitConfig {
 
 /// Implementation of the `#[rate_limited]` attribute macro.
 ///
-/// Wraps a function with rate limiting logic.
+/// **⚠️ DEPRECATED since 0.1.13**: Use the Clean Architecture resilience system instead.
+///
+/// **Migration**: Replace `#[rate_limited(max_per_second = 100)]` with
+/// `ResiliencePolicy::RateLimited { max_requests: 100, window: Duration::from_secs(1) }`
+/// passed to `ResilienceOrchestrator::execute_with_policy()`. See `#[retry]` docs
+/// for a full migration example.
 pub fn rate_limited_impl(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     let config = parse_rate_limit_attr(attr)?;
     let func: ItemFn = parse2(item)?;

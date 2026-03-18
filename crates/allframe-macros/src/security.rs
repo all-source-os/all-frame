@@ -115,13 +115,114 @@ fn generate_format_fields(input: &DeriveInput) -> syn::Result<TokenStream> {
                 Ok(quote! { #format_lit })
             }
         },
-        Data::Enum(_) => {
-            // For enums, just use Debug formatting with *** for sensitive fields
-            Err(syn::Error::new_spanned(
-                input,
-                "Obfuscate derive is not yet supported for enums. Please implement Obfuscate \
-                 manually.",
-            ))
+        Data::Enum(data) => {
+            // For enums, generate match arms that obfuscate #[sensitive] fields per variant
+            let match_arms = data.variants.iter().map(|variant| {
+                let variant_name = &variant.ident;
+                let variant_str = variant_name.to_string();
+
+                match &variant.fields {
+                    Fields::Named(fields) => {
+                        let field_names: Vec<_> = fields
+                            .named
+                            .iter()
+                            .map(|f| f.ident.as_ref().unwrap())
+                            .collect();
+
+                        let mut format_parts = vec![format!("{}::{} {{{{ ", name_str, variant_str)];
+                        let mut format_args = Vec::<proc_macro2::TokenStream>::new();
+                        let mut first = true;
+
+                        for field in &fields.named {
+                            let field_name = field.ident.as_ref().unwrap();
+                            let field_name_str = field_name.to_string();
+                            let is_sensitive = field
+                                .attrs
+                                .iter()
+                                .any(|attr| attr.path().is_ident("sensitive"));
+
+                            if !first {
+                                format_parts.push(", ".to_string());
+                            }
+                            first = false;
+
+                            if is_sensitive {
+                                format_parts.push(format!("{}: ***", field_name_str));
+                            } else {
+                                format_parts.push(format!("{}: {{:?}}", field_name_str));
+                                format_args.push(quote! { #field_name });
+                            }
+                        }
+
+                        format_parts.push(" }}".to_string());
+                        let format_str = format_parts.join("");
+                        let format_lit =
+                            LitStr::new(&format_str, proc_macro2::Span::call_site());
+
+                        quote! {
+                            #name::#variant_name { #(#field_names),* } => {
+                                format!(#format_lit, #(#format_args),*)
+                            }
+                        }
+                    }
+                    Fields::Unnamed(fields) => {
+                        let bindings: Vec<_> = (0..fields.unnamed.len())
+                            .map(|i| {
+                                Ident::new(&format!("_f{}", i), proc_macro2::Span::call_site())
+                            })
+                            .collect();
+
+                        let mut format_parts =
+                            vec![format!("{}::{}(", name_str, variant_str)];
+                        let mut format_args = Vec::<proc_macro2::TokenStream>::new();
+
+                        for (i, field) in fields.unnamed.iter().enumerate() {
+                            let is_sensitive = field
+                                .attrs
+                                .iter()
+                                .any(|attr| attr.path().is_ident("sensitive"));
+                            let binding = &bindings[i];
+
+                            if i > 0 {
+                                format_parts.push(", ".to_string());
+                            }
+
+                            if is_sensitive {
+                                format_parts.push("***".to_string());
+                            } else {
+                                format_parts.push("{:?}".to_string());
+                                format_args.push(quote! { #binding });
+                            }
+                        }
+
+                        format_parts.push(")".to_string());
+                        let format_str = format_parts.join("");
+                        let format_lit =
+                            LitStr::new(&format_str, proc_macro2::Span::call_site());
+
+                        quote! {
+                            #name::#variant_name(#(#bindings),*) => {
+                                format!(#format_lit, #(#format_args),*)
+                            }
+                        }
+                    }
+                    Fields::Unit => {
+                        let variant_full = format!("{}::{}", name_str, variant_str);
+                        let lit = LitStr::new(&variant_full, proc_macro2::Span::call_site());
+                        quote! {
+                            #name::#variant_name => #lit.to_string()
+                        }
+                    }
+                }
+            });
+
+            let format_lit = LitStr::new(&name_str, proc_macro2::Span::call_site());
+            let _ = format_lit; // suppress unused warning
+            Ok(quote! {
+                match self {
+                    #(#match_arms,)*
+                }
+            })
         }
         Data::Union(_) => Err(syn::Error::new_spanned(
             input,
@@ -180,15 +281,43 @@ mod tests {
     }
 
     #[test]
-    fn test_obfuscate_enum_not_supported() {
+    fn test_obfuscate_enum_unit_variants() {
         let input: TokenStream = quote! {
-            enum MyEnum {
-                A,
-                B,
+            enum Status {
+                Active,
+                Inactive,
             }
         };
 
         let result = obfuscate_impl(input);
-        assert!(result.is_err());
+        assert!(result.is_ok(), "Enum Obfuscate should work: {:?}", result.err());
+        let output = result.unwrap().to_string();
+        assert!(output.contains("Obfuscate"));
+        assert!(output.contains("Active"));
+        assert!(output.contains("Inactive"));
+    }
+
+    #[test]
+    fn test_obfuscate_enum_with_sensitive_fields() {
+        let input: TokenStream = quote! {
+            enum Credential {
+                Password {
+                    username: String,
+                    #[sensitive]
+                    password: String,
+                },
+                Token {
+                    #[sensitive]
+                    value: String,
+                },
+                None,
+            }
+        };
+
+        let result = obfuscate_impl(input);
+        assert!(result.is_ok(), "Enum with sensitive fields should work: {:?}", result.err());
+        let output = result.unwrap().to_string();
+        assert!(output.contains("***"), "Should obfuscate sensitive fields");
+        assert!(output.contains("username"), "Should show non-sensitive fields");
     }
 }

@@ -451,7 +451,22 @@ fn compute_initialization_order(fields: &[FieldInfo]) -> Result<(Vec<FieldInfo>,
     Ok((result, forward_graph))
 }
 
-/// Find dependencies for a given field by analyzing type relationships
+/// Find dependencies for a given field by analyzing type name relationships.
+///
+/// **Heuristic detection**: This function uses string-based type name matching
+/// to infer dependencies. It recognizes patterns like:
+/// - A type containing "service" depends on a prior type containing "repository"
+/// - A type containing "repository" depends on a prior type containing "database"
+/// - A type containing "controller" depends on a prior type containing "service"
+/// - Types sharing a common 4-character prefix are considered related
+///
+/// **Limitations**: This heuristic can produce false positives (e.g., two unrelated
+/// types that happen to share a prefix) or miss legitimate dependencies between
+/// types with non-standard names.
+///
+/// **When to use explicit `#[depends(...)]`**: If the heuristic doesn't correctly
+/// detect your dependencies, use the `#[depends(field_name)]` attribute on fields
+/// to explicitly declare dependency relationships.
 fn find_dependencies<'a>(
     ty: &Type,
     _field_name: &str,

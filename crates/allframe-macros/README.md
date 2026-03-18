@@ -22,8 +22,8 @@ allframe-core = { version = "0.1", features = ["di", "cqrs", "otel"] }
 ### `#[di_container]`
 Compile-time dependency injection container.
 
-### `#[api]`
-API handler generation and routing.
+### `#[api_handler]`
+API handler generation with automatic OpenAPI schema.
 
 ### `#[command]`, `#[event]`, `#[query]`
 CQRS command, event, and query markers.

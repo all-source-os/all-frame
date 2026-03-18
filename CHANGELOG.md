@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.21] - 2026-03-18
+
+### Added
+- **Async Boot Lifecycle** ([#42](https://github.com/all-source-os/all-frame/issues/42)) — New `BootBuilder` and `BootContext` for running async initialization inside Tauri 2's synchronous `setup()` closure. Handles the "no Tokio reactor on macOS main thread" problem once, correctly, for all apps.
+  - **`allframe_tauri::builder(router)`** — Entry point returning a `BootBuilder` for configuring async boot
+  - **`.on_boot(steps, closure)`** — Sets an async boot closure that receives a `BootContext` for state injection and progress reporting
+  - **`BootContext::inject_state(state)`** — Injects state into the Router's shared map during boot; handlers resolve it lazily at call time
+  - **`BootContext::emit_progress(label)`** — Emits `allframe:boot-progress` Tauri events (`{ step, total, label }`) for frontend splash screens
+  - **`BootContext::data_dir()`** — Convenience for resolving the app data directory
+  - **`BootProgress`** — Serializable progress event payload
+  - **`BootError`** — Serializable error type (`Failed`, `DataDir`, `Runtime`)
+  - Internally creates an ephemeral `tokio::runtime::Builder::new_current_thread()` runtime for `block_on` during setup
+  - Fully backward compatible: `init(router)` and `init_with_state(router, state)` unchanged
+  - **`boot_lifecycle` example** — Runnable example demonstrating the full boot-then-dispatch pattern without a Tauri runtime
+- **`Router::shared_states()`** — Public accessor for the shared state map (`SharedStateMap`), enabling `BootContext` to inject state into the same map handlers read from
+- **Deferred state resolution** ([#51](https://github.com/all-source-os/all-frame/issues/51)) — Handler state is now resolved at call time, not registration time. Handlers can be registered before their state type is injected (e.g., via `inject_state` during boot). `SharedStateMap` (`Arc<RwLock<HashMap<TypeId, Arc<dyn Any>>>>`) replaces the previous `Arc<dyn Any>` per-handler pattern.
+- **CQRS macro trait implementations** — `#[command]`, `#[query]`, and `#[event]` macros now generate real `Command`, `Query`, `EventTypeName`, and `Event` trait implementations instead of placeholder comments.
+- **QueryBus + Query/QueryHandler traits** — New `query_bus` module in `allframe-core` mirrors `CommandBus` for the read side of CQRS. Includes `QueryBus`, `Query`, `QueryHandler`, `QueryError`, and `QueryResult`.
+- **Architecture layer enforcement** — `#[domain]`, `#[repository]`, `#[use_case]`, and `#[handler]` macros now detect and reject invalid cross-layer field dependencies at compile time using type-name heuristics.
+- **`#[derive(Obfuscate)]` enum support** — The Obfuscate derive macro now supports enums with named fields, unnamed fields, and unit variants. Per-variant `#[sensitive]` field obfuscation.
+- **Saga macro improvements** — `#[saga_step]` generates metadata constants (`STEP_NAME`, `STEP_TIMEOUT`, `STEP_REQUIRES_COMPENSATION`) instead of `todo!()` trait methods. `#[saga]` strips `#[inject]`/`#[saga_data]` attributes from output. `#[saga_workflow]` generates `Default::default()` step constructors.
+- **Forge integration tests** — 12 new integration tests covering all 9 archetypes, missing config error handling, and project name validation.
+
+### Fixed
+- **Gateway template edition** — Fixed `edition = "2024"` (non-existent) to `edition = "2021"` in forge gateway template. Generated gateway projects now compile.
+- **MSRV consistency** — Aligned `rust-version` across all 9 forge archetype templates to `"1.89"` (matching workspace MSRV). Basic template was missing `rust-version` entirely.
+- **Forge error handling** — Replaced `.expect()` panics in `scaffolding.rs` with proper `anyhow` error returns for missing gateway/BFF config.
+
+### Removed
+- **Unused Tera dependency** — Removed `tera` from `allframe-forge` Cargo.toml (was listed but never imported).
+- **Unused CLI parameters** — Removed `--brokers` and `--all-features` from `allframe ignite` (were accepted but silently ignored).
+- **Unimplemented `forge` subcommand** — Removed `allframe forge` CLI command that always returned an error.
+
+### Documentation
+- **Resilience migration guide** — Added detailed migration examples to `#[retry]`, `#[circuit_breaker]`, and `#[rate_limited]` deprecation notices showing the Clean Architecture replacement.
+- **DI heuristic documentation** — Documented the type-name heuristic used for automatic dependency detection in `#[di_container]`, including when to use explicit `#[depends(...)]`.
+- **Fixed macro README** — Changed `#[api]` to `#[api_handler]` in allframe-macros README.
+
+---
+
 ## [0.1.20] - 2026-03-18
 
 ### Fixed

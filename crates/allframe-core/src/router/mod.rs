@@ -245,6 +245,15 @@ impl Router {
         map.insert(id, Arc::new(state));
     }
 
+    /// Returns a handle to the shared state map.
+    ///
+    /// This is the same `Arc` used internally, so state injected through
+    /// the returned handle is visible to handlers at call time. Used by
+    /// `BootContext` to inject state during async boot.
+    pub fn shared_states(&self) -> SharedStateMap {
+        self.states.clone()
+    }
+
     /// Register a handler with a name (zero-arg, backward compatible)
     pub fn register<F, Fut>(&mut self, name: &str, handler: F)
     where

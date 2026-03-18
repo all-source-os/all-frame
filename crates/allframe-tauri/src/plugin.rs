@@ -13,13 +13,13 @@ use crate::server::TauriServer;
 use crate::types::{CallResponse, HandlerInfo, StreamStartResponse};
 
 /// Managed state for tracking active streams (for cancellation).
-struct ActiveStreams {
+pub(crate) struct ActiveStreams {
     /// Maps stream_id -> JoinHandle abort handle
     handles: Mutex<HashMap<String, tokio::task::AbortHandle>>,
 }
 
 impl ActiveStreams {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             handles: Mutex::new(HashMap::new()),
         }
@@ -28,7 +28,7 @@ impl ActiveStreams {
 
 /// List all registered AllFrame handlers.
 #[tauri::command]
-async fn allframe_list(
+pub(crate) async fn allframe_list(
     server: tauri::State<'_, TauriServer>,
 ) -> Result<Vec<HandlerInfo>, TauriServerError> {
     Ok(server.list_handlers().to_vec())
@@ -36,7 +36,7 @@ async fn allframe_list(
 
 /// Call a handler by name with JSON arguments.
 #[tauri::command]
-async fn allframe_call(
+pub(crate) async fn allframe_call(
     handler: String,
     args: serde_json::Value,
     server: tauri::State<'_, TauriServer>,
@@ -51,7 +51,7 @@ async fn allframe_call(
 /// - `allframe:stream:{handler}:{stream_id}:complete` — final result
 /// - `allframe:stream:{handler}:{stream_id}:error` — handler error
 #[tauri::command]
-async fn allframe_stream<R: Runtime>(
+pub(crate) async fn allframe_stream<R: Runtime>(
     handler: String,
     args: serde_json::Value,
     app: tauri::AppHandle<R>,
@@ -108,7 +108,7 @@ async fn allframe_stream<R: Runtime>(
 
 /// Cancel an active stream by stream_id.
 #[tauri::command]
-async fn allframe_stream_cancel<R: Runtime>(
+pub(crate) async fn allframe_stream_cancel<R: Runtime>(
     stream_id: String,
     app: tauri::AppHandle<R>,
     active: tauri::State<'_, Arc<ActiveStreams>>,
@@ -164,6 +164,22 @@ async fn allframe_stream_cancel<R: Runtime>(
 /// }
 /// ```
 pub fn init<R: Runtime>(router: Router) -> TauriPlugin<R> {
+    build_plugin(move |app| {
+        let mut router = router;
+        router.inject_state(app.app_handle().clone());
+        app.manage(TauriServer::new(router));
+        app.manage(Arc::new(ActiveStreams::new()));
+        Ok(())
+    })
+}
+
+/// Internal helper: creates the plugin with invoke_handler and a custom setup closure.
+/// Used by both `init()` and `BootBuilder::build()`.
+pub(crate) fn build_plugin<R, F>(setup: F) -> TauriPlugin<R>
+where
+    R: Runtime,
+    F: FnOnce(&tauri::AppHandle<R>) -> Result<(), Box<dyn std::error::Error>> + Send + 'static,
+{
     PluginBuilder::new("allframe")
         .invoke_handler(tauri::generate_handler![
             allframe_list,
@@ -172,10 +188,7 @@ pub fn init<R: Runtime>(router: Router) -> TauriPlugin<R> {
             allframe_stream_cancel,
         ])
         .setup(move |app, _api| {
-            let mut router = router;
-            router.inject_state(app.app_handle().clone());
-            app.manage(TauriServer::new(router));
-            app.manage(Arc::new(ActiveStreams::new()));
+            setup(app.app_handle())?;
             Ok(())
         })
         .build()
@@ -213,4 +226,29 @@ pub fn init_with_state<R: Runtime, S: Send + Sync + 'static>(
 ) -> TauriPlugin<R> {
     let router = router.with_state(state);
     init(router)
+}
+
+/// Create a [`BootBuilder`](crate::boot::BootBuilder) for configuring
+/// an async boot phase before the app renders.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// tauri::Builder::default()
+///     .plugin(
+///         allframe_tauri::builder(router)
+///             .on_boot(2, |ctx| async move {
+///                 let store = open_store(&ctx.data_dir()?).await
+///                     .map_err(|e| BootError::Failed(e.to_string()))?;
+///                 ctx.inject_state(store);
+///                 ctx.emit_progress("Store ready");
+///                 Ok(())
+///             })
+///             .build(),
+///     )
+///     .run(tauri::generate_context!())
+///     .unwrap();
+/// ```
+pub fn builder<R: Runtime>(router: Router) -> crate::boot::BootBuilder<R> {
+    crate::boot::BootBuilder::new(router)
 }

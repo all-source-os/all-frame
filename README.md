@@ -80,16 +80,39 @@ async fn create_user(input: CreateUserInput) -> Result<User, Error> {
 
 ### CQRS + Event Sourcing
 
-85% average boilerplate reduction with `CommandBus`, `ProjectionRegistry`, event versioning with auto-upcasting, and saga orchestration with automatic compensation. Pluggable backends: in-memory, SQLite, AllSource.
+85% average boilerplate reduction with `CommandBus`, `QueryBus`, `ProjectionRegistry`, event versioning with auto-upcasting, and saga orchestration with automatic compensation. Pluggable backends: in-memory, SQLite, AllSource.
+
+`#[command]`, `#[query]`, and `#[event]` macros generate real trait implementations at compile time:
 
 ```rust
+#[command]
+struct CreateUser { user_id: String, email: String }
+
+#[event]
+#[derive(Clone, Serialize, Deserialize)]
+enum UserEvent {
+    Created { user_id: String, email: String },
+}
+
 #[command_handler]
-async fn create_user(cmd: CreateUserCommand) -> CommandResult<UserEvent> {
+async fn create_user(cmd: CreateUser) -> CommandResult<UserEvent> {
     Ok(vec![UserEvent::Created { user_id: cmd.user_id, email: cmd.email }])
 }
 ```
 
 [Read the CQRS announcement](docs/announcements/CQRS_INFRASTRUCTURE_COMPLETE.md)
+
+### Clean Architecture Enforcement
+
+Layer dependency rules enforced at compile time via `#[domain]`, `#[repository]`, `#[use_case]`, and `#[handler]` macros. Domain types that reference repository or handler types produce clear compile errors:
+
+```rust
+#[domain]
+struct User { id: String, email: String }  // No upper-layer deps allowed
+
+#[use_case]
+struct GetUser { repo: Arc<dyn UserRepository> }  // Can depend on repositories
+```
 
 ### Compile-Time DI
 
@@ -104,15 +127,23 @@ struct AppContainer {
 
 ### Resilience Patterns
 
-Retry with exponential backoff, circuit breaker (per-resource with `KeyedCircuitBreaker`), rate limiting (token bucket, Redis-backed for distributed), adaptive retry, and retry budgets. Available as both builder API and attribute macros:
+Retry with exponential backoff, circuit breaker (per-resource with `KeyedCircuitBreaker`), rate limiting (token bucket, Redis-backed for distributed), adaptive retry, and retry budgets. Use the Clean Architecture `ResilienceOrchestrator` API:
 
 ```rust
-#[retry(max_retries = 3, initial_interval_ms = 100)]
-async fn fetch_user(id: &str) -> Result<User, Error> { /* ... */ }
-
-#[circuit_breaker(failure_threshold = 5, timeout_secs = 30)]
-async fn call_payment() -> Result<Payment, Error> { /* ... */ }
+let orchestrator = DefaultResilienceOrchestrator::new();
+let policy = ResiliencePolicy::Retry {
+    max_attempts: 3,
+    backoff: BackoffStrategy::Exponential {
+        initial_delay: Duration::from_millis(100),
+        multiplier: 2.0,
+        max_delay: Some(Duration::from_secs(30)),
+        jitter: true,
+    },
+};
+let result = orchestrator.execute_with_policy(policy, || fetch_user(id)).await;
 ```
+
+> **Note**: The `#[retry]`, `#[circuit_breaker]`, and `#[rate_limited]` attribute macros are deprecated since 0.1.13. See the [migration guide](docs/guides/RESILIENCE_ARCHITECTURE.md) for the new Clean Architecture approach.
 
 ### MCP Server (LLM Tool Calling)
 

@@ -220,33 +220,3 @@ fn ignite_creates_project_with_zero_warnings() {
     );
 }
 
-#[test]
-fn ignite_creates_project_with_all_feature_flags() {
-    let temp_dir = TempDir::new().expect("Failed to create temp directory");
-    let project_path = temp_dir.path().join("featured");
-
-    // Run `allframe ignite featured --all-features`
-    Command::cargo_bin("allframe")
-        .expect("Failed to find allframe binary")
-        .arg("ignite")
-        .arg(&project_path)
-        .arg("--all-features")
-        .current_dir(temp_dir.path())
-        .assert()
-        .success();
-
-    // Verify Cargo.toml exists and has required dependencies
-    let cargo_toml = project_path.join("Cargo.toml");
-    let cargo_content = fs::read_to_string(&cargo_toml).expect("Failed to read Cargo.toml");
-
-    // For now, just verify it has the basic dependencies
-    // Feature flags will be added once allframe is published to crates.io
-    assert!(
-        cargo_content.contains("tokio"),
-        "Cargo.toml should contain tokio dependency"
-    );
-    assert!(
-        cargo_content.contains("serde"),
-        "Cargo.toml should contain serde dependency"
-    );
-}

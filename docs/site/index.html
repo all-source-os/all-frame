@@ -260,7 +260,7 @@
                     </div>
                     <div class="feature-card">
                         <h3>CQRS + Event Sourcing</h3>
-                        <p>CommandBus, ProjectionRegistry, event versioning, and saga orchestration. 85% average boilerplate reduction with pluggable backends.</p>
+                        <p>CommandBus, QueryBus, ProjectionRegistry, event versioning, and saga orchestration. <code>#[command]</code>, <code>#[query]</code>, <code>#[event]</code> generate real trait impls. 85% boilerplate reduction.</p>
                     </div>
                     <div class="feature-card">
                         <h3>Compile-Time DI</h3>
@@ -292,7 +292,7 @@
                     </div>
                     <div class="feature-card">
                         <h3>Tauri Desktop</h3>
-                        <p><code>#[tauri_compat]</code> for mechanical migration. Typed returns, TypeScript codegen, in-process handler dispatch.</p>
+                        <p><code>#[tauri_compat]</code> for mechanical migration. Async boot lifecycle with progress events. Typed returns, TypeScript codegen, in-process dispatch.</p>
                     </div>
                     <div class="feature-card">
                         <h3>Contract Testing</h3>
@@ -300,7 +300,11 @@
                     </div>
                     <div class="feature-card">
                         <h3>Security Utilities</h3>
-                        <p>URL/credential obfuscation, <code>Sensitive&lt;T&gt;</code> wrapper, <code>#[derive(Obfuscate)]</code> with <code>#[sensitive]</code> fields, header redaction.</p>
+                        <p>URL/credential obfuscation, <code>Sensitive&lt;T&gt;</code> wrapper, <code>#[derive(Obfuscate)]</code> with <code>#[sensitive]</code> fields on structs and enums, header redaction.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Architecture Enforcement</h3>
+                        <p>Compile-time Clean Architecture layer checks. <code>#[domain]</code>, <code>#[repository]</code>, <code>#[use_case]</code>, <code>#[handler]</code> macros reject invalid cross-layer dependencies.</p>
                     </div>
                     <div class="feature-card">
                         <h3>Graceful Shutdown</h3>
@@ -414,6 +418,13 @@
                         <tr>
                             <td>Contract testing</td>
                             <td class="check">Yes</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>Architecture enforcement</td>
+                            <td class="check">Compile-time</td>
                             <td class="cross">-</td>
                             <td class="cross">-</td>
                             <td class="cross">-</td>

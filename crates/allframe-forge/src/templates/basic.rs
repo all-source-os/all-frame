@@ -33,6 +33,7 @@ pub fn cargo_toml(project_name: &str) -> String {
 name = "{}"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.89"
 
 [dependencies]
 tokio = {{ version = "1", features = ["full"] }}

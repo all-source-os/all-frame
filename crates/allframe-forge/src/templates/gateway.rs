@@ -18,8 +18,8 @@ pub fn cargo_toml(config: &ProjectConfig) -> String {
         r#"[package]
 name = "{name}"
 version = "0.1.0"
-edition = "2024"
-rust-version = "1.86"
+edition = "2021"
+rust-version = "1.89"
 description = "{display_name}"
 
 [dependencies]
@@ -1984,5 +1984,26 @@ mod tests {
         assert_eq!(to_pascal_case("kraken"), "Kraken");
         assert_eq!(to_pascal_case("my_exchange"), "MyExchange");
         assert_eq!(to_pascal_case("api_gateway_service"), "ApiGatewayService");
+    }
+
+    #[test]
+    fn test_gateway_cargo_toml_edition_and_msrv() {
+        use crate::config::{GatewayConfig, ProjectConfig};
+
+        let mut config = ProjectConfig::default();
+        config.name = "test-gateway".to_string();
+        config.gateway = Some(GatewayConfig::default());
+
+        let output = cargo_toml(&config);
+        assert!(
+            output.contains(r#"edition = "2021""#),
+            "Gateway Cargo.toml must use edition 2021, got: {}",
+            output.lines().find(|l| l.contains("edition")).unwrap_or("(not found)")
+        );
+        assert!(
+            output.contains(r#"rust-version = "1.89""#),
+            "Gateway Cargo.toml must use rust-version 1.89, got: {}",
+            output.lines().find(|l| l.contains("rust-version")).unwrap_or("(not found)")
+        );
     }
 }

@@ -20,8 +20,8 @@ LLM-powered desktop apps (local assistants, knowledge bases, IDE extensions) nee
 
 ```toml
 [dependencies]
-allframe-tauri = "0.1.20"
-allframe-core = { version = "0.1.20", features = ["router"] }
+allframe-tauri = "0.1.21"
+allframe-core = { version = "0.1.21", features = ["router"] }
 tauri = { version = "2", features = ["wry"] }
 ```
 
@@ -42,6 +42,43 @@ fn main() {
         .unwrap();
 }
 ```
+
+### Async Boot Lifecycle
+
+Apps that need async initialization (event stores, projections, command buses) before the UI renders can use `builder()` with `on_boot()`:
+
+```rust
+use allframe_core::router::Router;
+use allframe_tauri::{builder, BootError};
+
+fn main() {
+    let mut router = Router::new();
+    // Handlers can be registered before state is injected
+    router.register_with_state_only::<MyDb, _, _>("query", |db| async move {
+        db.query_all().await
+    });
+
+    tauri::Builder::default()
+        .plugin(
+            builder(router)
+                .on_boot(2, |ctx| async move {
+                    let db = MyDb::open(&ctx.data_dir()?).await
+                        .map_err(|e| BootError::Failed(e.to_string()))?;
+                    ctx.inject_state(db);
+                    ctx.emit_progress("Database ready");
+
+                    // ... more init steps
+                    ctx.emit_progress("Projections rebuilt");
+                    Ok(())
+                })
+                .build(),
+        )
+        .run(tauri::generate_context!())
+        .unwrap();
+}
+```
+
+This handles the "no Tokio reactor on macOS main thread" problem internally. Progress events are emitted as `allframe:boot-progress` for frontend splash screens. See the [`boot_lifecycle` example](examples/boot_lifecycle.rs) for a runnable demo.
 
 ### 2. Permissions (Required for Tauri 2)
 
@@ -105,6 +142,11 @@ assert_eq!(result.result, "results");
 |------|-------------|
 | `TauriServer` | In-process handler dispatcher (no Tauri runtime needed) |
 | `init(router)` | Creates a Tauri plugin from an AllFrame Router |
+| `builder(router)` | Creates a `BootBuilder` for configuring async boot lifecycle |
+| `BootBuilder` | Builder with `.on_boot(steps, closure)` for async initialization |
+| `BootContext` | Boot closure context: `inject_state()`, `emit_progress()`, `data_dir()` |
+| `BootError` | Boot error type (`Failed`, `DataDir`, `Runtime`) |
+| `BootProgress` | Progress event payload (`{ step, total, label }`) |
 | `CallResponse` | Handler result wrapper (`{ result: String }`) |
 | `HandlerInfo` | Handler metadata (`{ name, description, kind }`) |
 | `HandlerKind` | `RequestResponse` or `Streaming` |
@@ -124,8 +166,8 @@ Combine with AllFrame's offline features for a fully self-contained desktop app:
 
 ```toml
 [dependencies]
-allframe-core = { version = "0.1.20", features = ["offline"] }
-allframe-tauri = "0.1.20"
+allframe-core = { version = "0.1.21", features = ["offline"] }
+allframe-tauri = "0.1.21"
 ```
 
 This gives you:

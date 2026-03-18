@@ -55,6 +55,7 @@
 //! # }
 //! ```
 
+pub mod boot;
 pub mod commands;
 pub mod error;
 pub mod plugin;
@@ -62,8 +63,9 @@ pub mod server;
 pub mod types;
 
 pub use allframe_core::router::StreamReceiver;
+pub use boot::{BootBuilder, BootContext, BootError, BootProgress};
 pub use error::TauriServerError;
-pub use plugin::{init, init_with_state};
+pub use plugin::{builder, init, init_with_state};
 pub use server::TauriServer;
 pub use types::{CallResponse, HandlerInfo, HandlerKind, StreamStartResponse};
 

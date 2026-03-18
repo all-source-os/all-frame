@@ -236,7 +236,9 @@ pub fn generate_gateway_files(project_path: &Path, config: &ProjectConfig) -> Re
     fs::write(project_path.join("Dockerfile"), gateway::dockerfile(config))?;
 
     // Protocol buffers
-    let gateway_config = config.gateway.as_ref().expect("Gateway config required");
+    let gateway_config = config.gateway.as_ref().ok_or_else(|| {
+        anyhow::anyhow!("Gateway config required for gateway archetype")
+    })?;
     fs::write(
         project_path.join(format!("proto/{}.proto", gateway_config.service_name)),
         gateway::proto_file(config),
@@ -691,7 +693,9 @@ pub fn create_bff_structure(project_path: &Path) -> Result<()> {
 /// # Errors
 /// Returns an error if any file write operation fails
 pub fn generate_bff_files(project_path: &Path, config: &ProjectConfig) -> Result<()> {
-    let bff_config = config.bff.as_ref().expect("BFF config required");
+    let bff_config = config.bff.as_ref().ok_or_else(|| {
+        anyhow::anyhow!("BFF config required for bff archetype")
+    })?;
 
     // Root files
     fs::write(project_path.join("Cargo.toml"), bff::cargo_toml(config))?;

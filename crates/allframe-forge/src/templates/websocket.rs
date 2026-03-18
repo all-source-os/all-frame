@@ -28,7 +28,7 @@ pub fn cargo_toml(config: &ProjectConfig) -> String {
 name = "{name}"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.89"
 description = "{display_name}"
 
 [dependencies]

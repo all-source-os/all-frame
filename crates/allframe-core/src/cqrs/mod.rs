@@ -8,6 +8,7 @@ pub mod allsource_backend;
 pub mod backend;
 pub mod command_bus;
 pub mod event_versioning;
+pub mod query_bus;
 pub mod memory_backend;
 pub mod projection_registry;
 pub mod saga;
@@ -166,6 +167,7 @@ pub use allsource_core::SchemaRegistry;
 pub use backend::*;
 pub use command_bus::*;
 pub use event_versioning::*;
+pub use query_bus::*;
 pub use memory_backend::*;
 pub use projection_registry::*;
 pub use saga::{

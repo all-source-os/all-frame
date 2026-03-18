@@ -186,23 +186,11 @@ enum Commands {
         #[arg(long)]
         group_id: Option<String>,
 
-        /// Kafka broker addresses (for consumer archetype)
-        #[arg(long)]
-        brokers: Option<String>,
-
-        /// Enable all features
-        #[arg(long)]
-        all_features: bool,
     },
     /// Saga generation and management commands
     Saga {
         #[command(subcommand)]
         command: SagaCommands,
-    },
-    /// Generate code from LLM prompts (coming soon)
-    Forge {
-        /// The prompt for code generation
-        prompt: String,
     },
 }
 
@@ -223,16 +211,11 @@ pub fn run() -> anyhow::Result<()> {
             service_name,
             api_base_url,
             group_id,
-            brokers: _,
-            all_features: _,
         } => {
             ignite_project(&name, archetype, service_name, api_base_url, group_id)?;
         }
         Commands::Saga { command } => {
             handle_saga_command(command)?;
-        }
-        Commands::Forge { prompt } => {
-            forge_code(&prompt)?;
         }
     }
 
@@ -850,7 +833,3 @@ impl {} {{
     Ok(())
 }
 
-/// Generate code from LLM prompts (not yet implemented)
-fn forge_code(_prompt: &str) -> anyhow::Result<()> {
-    anyhow::bail!("allframe forge is not yet implemented")
-}

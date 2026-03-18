@@ -3,15 +3,42 @@
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::{
-    any::Any,
+    any::{Any, TypeId},
+    collections::HashMap,
     fmt,
     future::Future,
     ops::Deref,
     pin::Pin,
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
+
+/// Shared, type-keyed state map used by stateful handlers.
+///
+/// Wrapped in `Arc<RwLock<…>>` so that handlers registered before a state
+/// type is injected (e.g., Tauri's `AppHandle`) can still resolve it at
+/// call time.
+pub type SharedStateMap = Arc<RwLock<HashMap<TypeId, Arc<dyn Any + Send + Sync>>>>;
+
+/// Resolve a typed state from the shared map, returning an error string on failure.
+fn resolve_state<S: Send + Sync + 'static>(
+    states: &SharedStateMap,
+) -> Result<Arc<S>, String> {
+    let map = states.read().map_err(|e| format!("State lock poisoned: {e}"))?;
+    let any = map
+        .get(&TypeId::of::<S>())
+        .ok_or_else(|| {
+            format!(
+                "State not found: {}. Was with_state::<{0}>() or inject_state::<{0}>() called?",
+                std::any::type_name::<S>()
+            )
+        })?
+        .clone();
+    any.downcast::<S>().map_err(|_| {
+        format!("State type mismatch: expected {}", std::any::type_name::<S>())
+    })
+}
 
 // ─── Output conversion trait ────────────────────────────────────────────────
 
@@ -395,7 +422,7 @@ where
     R: IntoHandlerResult,
 {
     func: F,
-    state: Arc<dyn Any + Send + Sync>,
+    states: SharedStateMap,
     _marker: std::marker::PhantomData<(fn() -> S, fn() -> T, fn() -> R)>,
 }
 
@@ -408,10 +435,10 @@ where
     R: IntoHandlerResult,
 {
     /// Create a new handler with state injection and typed args
-    pub fn new(func: F, state: Arc<dyn Any + Send + Sync>) -> Self {
+    pub fn new(func: F, states: SharedStateMap) -> Self {
         Self {
             func,
-            state,
+            states,
             _marker: std::marker::PhantomData,
         }
     }
@@ -426,15 +453,9 @@ where
     R: IntoHandlerResult + 'static,
 {
     fn call(&self, args: &str) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + '_>> {
-        let state_arc = match self.state.clone().downcast::<S>() {
+        let state_arc = match resolve_state::<S>(&self.states) {
             Ok(s) => s,
-            Err(_) => {
-                let msg = format!(
-                    "State type mismatch: expected {}",
-                    std::any::type_name::<S>()
-                );
-                return Box::pin(async move { Err(msg) });
-            }
+            Err(msg) => return Box::pin(async move { Err(msg) }),
         };
 
         let parsed: Result<T, _> = serde_json::from_str(args);
@@ -460,7 +481,7 @@ where
     R: IntoHandlerResult,
 {
     func: F,
-    state: Arc<dyn Any + Send + Sync>,
+    states: SharedStateMap,
     _marker: std::marker::PhantomData<(fn() -> S, fn() -> R)>,
 }
 
@@ -472,10 +493,10 @@ where
     R: IntoHandlerResult,
 {
     /// Create a new handler with state injection only
-    pub fn new(func: F, state: Arc<dyn Any + Send + Sync>) -> Self {
+    pub fn new(func: F, states: SharedStateMap) -> Self {
         Self {
             func,
-            state,
+            states,
             _marker: std::marker::PhantomData,
         }
     }
@@ -489,15 +510,9 @@ where
     R: IntoHandlerResult + 'static,
 {
     fn call(&self, _args: &str) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + '_>> {
-        let state_arc = match self.state.clone().downcast::<S>() {
+        let state_arc = match resolve_state::<S>(&self.states) {
             Ok(s) => s,
-            Err(_) => {
-                let msg = format!(
-                    "State type mismatch: expected {}",
-                    std::any::type_name::<S>()
-                );
-                return Box::pin(async move { Err(msg) });
-            }
+            Err(msg) => return Box::pin(async move { Err(msg) }),
         };
 
         let fut = (self.func)(State(state_arc));
@@ -632,7 +647,7 @@ where
     R: IntoHandlerResult,
 {
     func: F,
-    state: Arc<dyn Any + Send + Sync>,
+    states: SharedStateMap,
     _marker: std::marker::PhantomData<(fn() -> S, fn() -> T, fn() -> R)>,
 }
 
@@ -645,10 +660,10 @@ where
     R: IntoHandlerResult,
 {
     /// Create a new streaming handler with state and typed args
-    pub fn new(func: F, state: Arc<dyn Any + Send + Sync>) -> Self {
+    pub fn new(func: F, states: SharedStateMap) -> Self {
         Self {
             func,
-            state,
+            states,
             _marker: std::marker::PhantomData,
         }
     }
@@ -667,15 +682,9 @@ where
         args: &str,
         tx: StreamSender,
     ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + '_>> {
-        let state_arc = match self.state.clone().downcast::<S>() {
+        let state_arc = match resolve_state::<S>(&self.states) {
             Ok(s) => s,
-            Err(_) => {
-                let msg = format!(
-                    "State type mismatch: expected {}",
-                    std::any::type_name::<S>()
-                );
-                return Box::pin(async move { Err(msg) });
-            }
+            Err(msg) => return Box::pin(async move { Err(msg) }),
         };
 
         let parsed: Result<T, _> = serde_json::from_str(args);
@@ -701,7 +710,7 @@ where
     R: IntoHandlerResult,
 {
     func: F,
-    state: Arc<dyn Any + Send + Sync>,
+    states: SharedStateMap,
     _marker: std::marker::PhantomData<(fn() -> S, fn() -> R)>,
 }
 
@@ -713,10 +722,10 @@ where
     R: IntoHandlerResult,
 {
     /// Create a new streaming handler with state only
-    pub fn new(func: F, state: Arc<dyn Any + Send + Sync>) -> Self {
+    pub fn new(func: F, states: SharedStateMap) -> Self {
         Self {
             func,
-            state,
+            states,
             _marker: std::marker::PhantomData,
         }
     }
@@ -734,15 +743,9 @@ where
         _args: &str,
         tx: StreamSender,
     ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + '_>> {
-        let state_arc = match self.state.clone().downcast::<S>() {
+        let state_arc = match resolve_state::<S>(&self.states) {
             Ok(s) => s,
-            Err(_) => {
-                let msg = format!(
-                    "State type mismatch: expected {}",
-                    std::any::type_name::<S>()
-                );
-                return Box::pin(async move { Err(msg) });
-            }
+            Err(msg) => return Box::pin(async move { Err(msg) }),
         };
 
         let fut = (self.func)(State(state_arc), tx);
@@ -753,6 +756,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Helper: wrap a single state value into a SharedStateMap for tests.
+    fn state_map<S: Send + Sync + 'static>(value: S) -> SharedStateMap {
+        let mut map = HashMap::new();
+        map.insert(TypeId::of::<S>(), Arc::new(value) as Arc<dyn Any + Send + Sync>);
+        Arc::new(RwLock::new(map))
+    }
 
     // ─── String return (backwards compat) ───────────────────────────────
 
@@ -828,7 +838,7 @@ mod tests {
             name: String,
         }
 
-        let state: Arc<dyn Any + Send + Sync> = Arc::new(AppState {
+        let states = state_map(AppState {
             greeting: "Hi".to_string(),
         });
 
@@ -836,7 +846,7 @@ mod tests {
             |state: State<Arc<AppState>>, args: Input| async move {
                 format!("{} {}", state.greeting, args.name)
             },
-            state,
+            states,
         );
 
         let result = handler.call(r#"{"name":"Bob"}"#).await;
@@ -849,13 +859,13 @@ mod tests {
             value: i32,
         }
 
-        let state: Arc<dyn Any + Send + Sync> = Arc::new(AppState { value: 42 });
+        let states = state_map(AppState { value: 42 });
 
         let handler = HandlerWithStateOnly::new(
             |state: State<Arc<AppState>>| async move {
                 format!("value={}", state.value)
             },
-            state,
+            states,
         );
 
         let result = handler.call("{}").await;
@@ -871,13 +881,13 @@ mod tests {
             _x: i32,
         }
 
-        let state: Arc<dyn Any + Send + Sync> = Arc::new(AppState);
+        let states = state_map(AppState);
 
         let handler = HandlerWithState::new(
             |_state: State<Arc<AppState>>, _args: Input| async move {
                 "unreachable".to_string()
             },
-            state,
+            states,
         );
 
         let result = handler.call("bad").await;
@@ -964,7 +974,7 @@ mod tests {
             message: String,
         }
 
-        let state: Arc<dyn Any + Send + Sync> = Arc::new(AppState {
+        let states = state_map(AppState {
             prefix: "Hi".to_string(),
         });
 
@@ -974,7 +984,7 @@ mod tests {
                     message: format!("{} {}", state.prefix, args.name),
                 })
             },
-            state,
+            states,
         );
 
         let result = handler.call(r#"{"name":"Charlie"}"#).await;
@@ -992,7 +1002,7 @@ mod tests {
             version: String,
         }
 
-        let state: Arc<dyn Any + Send + Sync> = Arc::new(AppState {
+        let states = state_map(AppState {
             version: "1.0".to_string(),
         });
 
@@ -1002,7 +1012,7 @@ mod tests {
                     version: state.version.clone(),
                 })
             },
-            state,
+            states,
         );
 
         let result = handler.call("{}").await;
@@ -1096,7 +1106,7 @@ mod tests {
             accepted: bool,
         }
 
-        let state: Arc<dyn Any + Send + Sync> = Arc::new(AppState { threshold: 10 });
+        let states = state_map(AppState { threshold: 10 });
 
         let handler = HandlerWithState::new(
             |state: State<Arc<AppState>>, args: Input| async move {
@@ -1106,7 +1116,7 @@ mod tests {
                     Err("below threshold".to_string())
                 }
             },
-            state,
+            states,
         );
 
         let ok_result = handler.call(r#"{"value":15}"#).await;
@@ -1127,7 +1137,7 @@ mod tests {
             ok: bool,
         }
 
-        let state: Arc<dyn Any + Send + Sync> = Arc::new(AppState { ready: true });
+        let states = state_map(AppState { ready: true });
 
         let handler = HandlerWithStateOnly::new(
             |state: State<Arc<AppState>>| async move {
@@ -1137,7 +1147,7 @@ mod tests {
                     Err("not ready".to_string())
                 }
             },
-            state,
+            states,
         );
 
         let result = handler.call("{}").await;
@@ -1446,7 +1456,7 @@ mod tests {
             name: String,
         }
 
-        let state: Arc<dyn Any + Send + Sync> = Arc::new(AppState {
+        let states = state_map(AppState {
             prefix: "Hi".to_string(),
         });
 
@@ -1457,7 +1467,7 @@ mod tests {
                     .ok();
                 "done".to_string()
             },
-            state,
+            states,
         );
 
         let (tx, mut rx) = StreamSender::channel();
@@ -1473,7 +1483,7 @@ mod tests {
             items: Vec<String>,
         }
 
-        let state: Arc<dyn Any + Send + Sync> = Arc::new(AppState {
+        let states = state_map(AppState {
             items: vec!["a".to_string(), "b".to_string()],
         });
 
@@ -1484,7 +1494,7 @@ mod tests {
                 }
                 format!("sent {}", state.items.len())
             },
-            state,
+            states,
         );
 
         let (tx, mut rx) = StreamSender::channel();
@@ -1500,19 +1510,19 @@ mod tests {
         struct WrongState;
         struct AppState;
 
-        let state: Arc<dyn Any + Send + Sync> = Arc::new(WrongState);
+        let states = state_map(WrongState);
 
         let handler = StreamingHandlerWithStateOnly::new(
             |_state: State<Arc<AppState>>, _tx: StreamSender| async move {
                 "unreachable".to_string()
             },
-            state,
+            states,
         );
 
         let (tx, _rx) = StreamSender::channel();
         let result = handler.call_streaming("{}", tx).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("State type mismatch"));
+        assert!(result.unwrap_err().contains("State not found"));
     }
 
     #[tokio::test]

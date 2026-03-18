@@ -140,11 +140,22 @@ async fn allframe_stream_cancel<R: Runtime>(
 /// # Example
 ///
 /// ```rust,ignore
-/// use allframe_core::router::Router;
+/// use allframe_core::router::{Router, State};
+/// use std::sync::Arc;
+/// use tauri::AppHandle;
 ///
 /// fn main() {
 ///     let mut router = Router::new();
 ///     router.register("greet", || async { "Hello!".to_string() });
+///
+///     // AppHandle<tauri::Wry> is auto-injected — handlers can request it:
+///     router.register_with_state_only::<AppHandle<tauri::Wry>, _, _>(
+///         "send_notification",
+///         |app: State<Arc<AppHandle<tauri::Wry>>>| async move {
+///             // app.emit("event", &payload).unwrap();
+///             "sent".to_string()
+///         },
+///     );
 ///
 ///     tauri::Builder::default()
 ///         .plugin(allframe_tauri::init(router))

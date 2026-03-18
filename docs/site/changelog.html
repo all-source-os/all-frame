@@ -14,75 +14,16 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://all-source-os.github.io/all-frame/changelog.html">
 
+    <link rel="stylesheet" href="style.css">
     <style>
-        :root {
-            --primary: #f74c00;
-            --primary-dark: #d94400;
-            --bg: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --text: #e6edf3;
-            --text-muted: #8b949e;
-            --border: #30363d;
-            --green: #3fb950;
-            --blue: #58a6ff;
-            --purple: #a371f7;
-            --yellow: #d29922;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-        }
-
-        a { color: var(--blue); text-decoration: none; }
-        a:hover { text-decoration: underline; }
-
-        .container { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
-
-        header {
-            border-bottom: 1px solid var(--border);
-            padding: 16px 0;
-            position: sticky;
-            top: 0;
-            background: var(--bg);
-            z-index: 100;
-        }
-
-        nav { display: flex; justify-content: space-between; align-items: center; }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .logo span { color: var(--primary); }
-
-        .nav-links { display: flex; gap: 24px; align-items: center; }
-        .nav-links a { color: var(--text-muted); font-size: 0.95rem; }
-        .nav-links a:hover { color: var(--text); text-decoration: none; }
-
+        .container { max-width: 1000px; }
         .page-header { padding: 48px 0 32px; border-bottom: 1px solid var(--border); }
         .page-header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 8px; }
         .page-header p { color: var(--text-muted); font-size: 1.1rem; }
 
         .timeline { padding: 40px 0; }
 
-        .release {
-            display: flex;
-            gap: 32px;
-            position: relative;
-            padding-bottom: 48px;
-        }
-
+        .release { display: flex; gap: 32px; position: relative; padding-bottom: 48px; }
         .release:last-child { padding-bottom: 0; }
 
         .release-meta {
@@ -99,20 +40,17 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 56px;
+            min-width: 56px;
             height: 40px;
             background: var(--bg-secondary);
             border: 1px solid var(--border);
             border-radius: 8px;
             font-weight: 700;
             font-size: 0.9rem;
+            padding: 0 10px;
         }
 
-        .release-content {
-            flex: 1;
-            position: relative;
-            padding-left: 32px;
-        }
+        .release-content { flex: 1; position: relative; padding-left: 32px; }
 
         .release-content::before {
             content: '';
@@ -138,24 +76,7 @@
         }
 
         .release-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 12px; }
-
         .release-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-
-        .tag {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 12px;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        .tag.new { background: rgba(63, 185, 80, 0.15); border-color: var(--green); color: var(--green); }
-        .tag.breaking { background: rgba(247, 76, 0, 0.15); border-color: var(--primary); color: var(--primary); }
-        .tag.feature { background: rgba(88, 166, 255, 0.15); border-color: var(--blue); color: var(--blue); }
-        .tag.fix { background: rgba(163, 113, 247, 0.15); border-color: var(--purple); color: var(--purple); }
 
         .section { margin-bottom: 24px; }
 
@@ -190,42 +111,21 @@
 
         .section li strong { color: var(--text); }
 
-        .code-inline {
-            background: var(--bg-tertiary);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 0.85em;
-        }
-
-        footer {
-            padding: 40px 0;
-            border-top: 1px solid var(--border);
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-
-        footer .links { display: flex; gap: 24px; justify-content: center; margin-bottom: 16px; }
-
         @media (max-width: 768px) {
             .release { flex-direction: column; gap: 16px; }
             .release-meta { width: 100%; position: static; display: flex; align-items: center; gap: 16px; }
             .release-content { padding-left: 0; }
             .release-content::before, .release-content::after { display: none; }
-            .nav-links { display: none; }
         }
     </style>
 </head>
 <body>
     <header>
         <nav class="container">
-            <a href="index.html" class="logo">
-                <span>All</span>Frame
-            </a>
+            <a href="index.html" class="logo"><span>All</span>Frame</a>
             <div class="nav-links">
                 <a href="index.html">Home</a>
-                <a href="https://docs.rs/allframe">Docs</a>
+                <a href="https://docs.rs/allframe">API Docs</a>
                 <a href="https://github.com/all-source-os/all-frame">GitHub</a>
                 <a href="https://crates.io/crates/allframe">crates.io</a>
             </div>
@@ -236,7 +136,7 @@
         <div class="page-header">
             <div class="container">
                 <h1>Changelog</h1>
-                <p>Track all releases, features, and improvements to AllFrame.</p>
+                <p>All notable changes to AllFrame. See <a href="https://github.com/all-source-os/all-frame/releases">GitHub Releases</a> for full details.</p>
             </div>
         </div>
 
@@ -256,15 +156,73 @@
                             <span class="tag feature">Streaming</span>
                             <span class="tag feature">Tauri</span>
                         </div>
-                        <ul>
-                            <li><strong>Streaming Handlers</strong> - StreamSender with bounded channel backpressure, CancellationToken auto-cancel on receiver drop, both callback and impl Stream patterns</li>
-                            <li><strong>Tauri IPC Bridge</strong> - allframe_stream / allframe_stream_cancel commands with per-stream UUID event channels and ActiveStreams cancellation tracking</li>
-                            <li><strong>TypeScript Streaming Codegen</strong> - StreamObserver, StreamSubscription interfaces, callStreamHandler helper with auto-listener-cleanup on complete/error</li>
-                            <li><strong>RxJS Adapter</strong> - toObservable() with lazy import("rxjs") - zero hard dependency</li>
-                            <li><strong>#[tauri_compat(streaming)]</strong> - Macro variant for streaming handler migration, generates args struct excluding StreamSender params</li>
-                            <li><strong>HandlerKind enum</strong> - allframe_list reports request_response vs streaming for each handler</li>
-                            <li><strong>register_stream*</strong> - Bridge futures::Stream to channel-based StreamSender with proper error handling</li>
-                        </ul>
+                        <div class="section">
+                            <h3 class="section-title">Added</h3>
+                            <ul>
+                                <li><strong>Streaming Handlers</strong> -- <code>StreamSender</code> with bounded channel backpressure, <code>CancellationToken</code> auto-cancelled on receiver drop, both callback and <code>impl Stream</code> patterns</li>
+                                <li><strong>Tauri IPC Bridge</strong> -- <code>allframe_stream</code> / <code>allframe_stream_cancel</code> commands with per-stream UUID event channels and <code>ActiveStreams</code> cancellation tracking</li>
+                                <li><strong>TypeScript Streaming Codegen</strong> -- <code>StreamObserver</code>, <code>StreamSubscription</code> interfaces, <code>callStreamHandler</code> helper with auto-cleanup</li>
+                                <li><strong>RxJS Adapter</strong> -- <code>toObservable()</code> with lazy <code>import("rxjs")</code>, zero hard dependency</li>
+                                <li><strong><code>#[tauri_compat(streaming)]</code></strong> -- Macro variant for streaming handler migration</li>
+                                <li><strong><code>HandlerKind</code> enum</strong> -- <code>allframe_list</code> reports request_response vs streaming for each handler</li>
+                                <li><strong><code>register_stream*</code></strong> -- Bridge <code>futures::Stream</code> to channel-based <code>StreamSender</code></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- v0.1.18 -->
+                <div class="release">
+                    <div class="release-meta">
+                        <div class="release-date">March 2026</div>
+                        <div class="release-version">0.1.18</div>
+                    </div>
+                    <div class="release-content">
+                        <h2 class="release-title">Tauri Migration Ergonomics</h2>
+                        <div class="release-tags">
+                            <span class="tag new">New</span>
+                            <span class="tag feature">Tauri</span>
+                        </div>
+                        <div class="section">
+                            <h3 class="section-title">Added</h3>
+                            <ul>
+                                <li><strong><code>#[tauri_compat]</code> macro</strong> -- Keep function signatures, swap the attribute for mechanical migration from Tauri</li>
+                                <li><strong>Typed return values</strong> -- Handlers return <code>impl Serialize</code>, framework serializes via <code>IntoHandlerResult</code> trait</li>
+                                <li><strong>TypeScript client codegen</strong> -- Auto-generate typed TS functions from handler registrations</li>
+                                <li><strong><code>IntoHandlerResult</code> trait</strong> -- Extensible handler return types (<code>String</code>, <code>Json&lt;T&gt;</code>, <code>Result&lt;T, E&gt;</code>)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- v0.1.15 - v0.1.17 -->
+                <div class="release">
+                    <div class="release-meta">
+                        <div class="release-date">Feb - Mar 2026</div>
+                        <div class="release-version">0.1.15-17</div>
+                    </div>
+                    <div class="release-content">
+                        <h2 class="release-title">Offline-First Architecture</h2>
+                        <div class="release-tags">
+                            <span class="tag new">New</span>
+                            <span class="tag feature">Offline</span>
+                            <span class="tag feature">Desktop</span>
+                        </div>
+                        <div class="section">
+                            <h3 class="section-title">Added</h3>
+                            <ul>
+                                <li><strong>SQLite event store backend</strong> -- WAL mode, zero network deps</li>
+                                <li><strong>Offline circuit breaker</strong> -- Operation queuing and replay</li>
+                                <li><strong>Store-and-forward pattern</strong> -- Intermittent connectivity support</li>
+                                <li><strong>Bidirectional projection sync</strong> -- Pluggable conflict resolution</li>
+                                <li><strong>Lazy DI initialization</strong> -- Concurrent warm-up</li>
+                                <li><strong>Saga compensation</strong> -- File snapshots and SQLite savepoints</li>
+                                <li><strong>Embedded MCP server</strong> -- Local-only LLM tool dispatch</li>
+                                <li><strong><code>allframe-tauri</code> crate</strong> -- Tauri 2.x desktop integration</li>
+                                <li><strong><code>offline</code> feature flag</strong> -- Zero network dependencies verified by CI</li>
+                                <li><strong>Typed handler args and DI state injection</strong></li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
@@ -279,36 +237,21 @@
                         <div class="release-tags">
                             <span class="tag new">New</span>
                             <span class="tag fix">Fixed</span>
-                            <span class="tag feature">CQRS</span>
                         </div>
-
                         <div class="section">
                             <h3 class="section-title">Added</h3>
                             <ul>
-                                <li><strong>MCP Server Debuggability</strong> - Production-ready stdio transport with comprehensive debugging</li>
+                                <li><strong>MCP Server Debuggability</strong> -- Production-ready stdio transport with comprehensive debugging</li>
                                 <li><strong>Environment Variables for MCP Debugging</strong></li>
-                                <li><strong>Claude Code Setup Guide</strong> - Comprehensive documentation for Claude Code CLI</li>
+                                <li><strong>Claude Code Setup Guide</strong> -- Comprehensive documentation for Claude Code CLI</li>
                             </ul>
                         </div>
-
                         <div class="section">
                             <h3 class="section-title">Fixed</h3>
                             <ul>
-                                <li><strong>AllSource Core Re-enabled</strong> - <code class="code-inline">cqrs-allsource</code> features now work</li>
+                                <li><strong>AllSource Core Re-enabled</strong> -- <code>cqrs-allsource</code> features now work</li>
                             </ul>
                         </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Documentation</h3>
-                            <ul>
-                                <li>Added "Quick Start with Claude Code (CLI)" section to MCP README</li>
-                                <li>Added debugging section with environment variables table</li>
-                                <li>Added <code class="code-inline">StdioTransport</code> and <code class="code-inline">StdioConfig</code> to API Overview</li>
-                                <li>Updated <code class="code-inline">ALLSOURCE_CORE_ISSUES.md</code> to mark issue as resolved</li>
-                                <li>Added social media content for MCP launch (<code class="code-inline">docs/social/</code>)</li>
-                            </ul>
-                        </div>
-
                     </div>
                 </div>
 
@@ -322,30 +265,25 @@
                         <h2 class="release-title">Protocol-Agnostic Routing Complete</h2>
                         <div class="release-tags">
                             <span class="tag new">New</span>
-                            <span class="tag feature">Changed</span>
                             <span class="tag feature">Authentication</span>
                         </div>
-
                         <div class="section">
                             <h3 class="section-title">Added</h3>
                             <ul>
-                                <li><strong>Protocol-Agnostic Routing Complete</strong> - Full multi-protocol support</li>
-                                <li><strong>MCP Server (Zero-Bloat)</strong> - Separate crate for LLM tool integration</li>
-                                <li><strong><code class="code-inline">KeyedCircuitBreaker<K></code></strong> - Generic keyed circuit breaker for per-resource isolation</li>
-                                <li><strong><code class="code-inline">resilience-redis</code> Feature</strong> - Redis-backed distributed rate limiting</li>
-                                <li><strong>Layered Authentication</strong> - Zero-bloat, feature-gated auth infrastructure</li>
+                                <li><strong>Protocol-Agnostic Routing Complete</strong> -- Full multi-protocol support across 5 phases</li>
+                                <li><strong>MCP Server (Zero-Bloat)</strong> -- Separate crate for LLM tool integration</li>
+                                <li><strong><code>KeyedCircuitBreaker&lt;K&gt;</code></strong> -- Generic keyed circuit breaker for per-resource isolation</li>
+                                <li><strong><code>resilience-redis</code> feature</strong> -- Redis-backed distributed rate limiting</li>
+                                <li><strong>Layered Authentication</strong> -- Zero-bloat, feature-gated auth infrastructure (JWT, Axum, gRPC)</li>
                             </ul>
                         </div>
-
                         <div class="section">
                             <h3 class="section-title">Changed</h3>
                             <ul>
-                                <li>Updated workspace version to 0.1.9</li>
                                 <li>Total test count now 455+ (was 361+)</li>
-                                <li><strong>Upgraded <code class="code-inline">thiserror</code> from 1.0 to 2.0</strong> - Resolves version conflicts with downstream crates</li>
+                                <li>Upgraded <code>thiserror</code> from 1.0 to 2.0</li>
                             </ul>
                         </div>
-
                     </div>
                 </div>
 
@@ -359,24 +297,14 @@
                         <h2 class="release-title">Graceful Shutdown Utilities</h2>
                         <div class="release-tags">
                             <span class="tag new">New</span>
-                            <span class="tag feature">Production-Ready</span>
                         </div>
-
                         <div class="section">
                             <h3 class="section-title">Added</h3>
                             <ul>
-                                <li><strong>Graceful Shutdown Utilities</strong> - Production-ready shutdown handling</li>
+                                <li><strong>Graceful Shutdown Utilities</strong> -- <code>ShutdownAwareTaskSpawner</code>, <code>GracefulShutdownExt</code>, <code>ShutdownExt</code> trait</li>
+                                <li><strong>Examples</strong> -- <code>graceful_shutdown.rs</code> and <code>shutdown_patterns.rs</code> with 5 common patterns</li>
                             </ul>
                         </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Documentation</h3>
-                            <ul>
-                                <li>Added <code class="code-inline">graceful_shutdown.rs</code> example</li>
-                                <li>Added <code class="code-inline">shutdown_patterns.rs</code> with 5 common patterns</li>
-                            </ul>
-                        </div>
-
                     </div>
                 </div>
 
@@ -387,267 +315,77 @@
                         <div class="release-version">0.1.7</div>
                     </div>
                     <div class="release-content">
-                        <h2 class="release-title">Comprehensive Resilience Module</h2>
+                        <h2 class="release-title">Resilience and Security Modules</h2>
                         <div class="release-tags">
                             <span class="tag new">New</span>
-                            <span class="tag feature">Changed</span>
                             <span class="tag feature">Resilience</span>
                         </div>
-
                         <div class="section">
                             <h3 class="section-title">Added</h3>
                             <ul>
-                                <li><strong>Comprehensive Resilience Module</strong> (<code class="code-inline">resilience</code> feature) - ~1,000+ lines replacing kraken-gateway code</li>
-                                <li><strong>Security Module</strong> (<code class="code-inline">security</code> feature) - Safe logging utilities</li>
-                                <li><strong>New Procedural Macros</strong> (allframe-macros)</li>
-                                <li><strong>New Feature Flags for Reduced Dependencies</strong> - Modular feature flags</li>
+                                <li><strong>Resilience module</strong> -- RetryExecutor, CircuitBreaker, RateLimiter, AdaptiveRetry, RetryBudget (~1,000+ lines)</li>
+                                <li><strong>Security module</strong> -- URL/credential obfuscation, <code>Sensitive&lt;T&gt;</code>, <code>#[derive(Obfuscate)]</code></li>
+                                <li><strong>Proc macros</strong> -- <code>#[retry]</code>, <code>#[circuit_breaker]</code>, <code>#[rate_limited]</code></li>
                             </ul>
                         </div>
-
                         <div class="section">
                             <h3 class="section-title">Changed</h3>
                             <ul>
-                                <li><strong><code class="code-inline">health</code> feature now optional</strong> - <code class="code-inline">hyper</code> and <code class="code-inline">hyper-util</code> gated behind <code class="code-inline">health</code> feature (still in default)</li>
-                                <li><strong>CQRS feature flags</strong> - Added <code class="code-inline">cqrs-allsource</code>, <code class="code-inline">cqrs-postgres</code>, <code class="code-inline">cqrs-rocksdb</code> for AllSource backends</li>
-                                <li><strong>Legacy alias</strong> - <code class="code-inline">grpc-tls</code> is now deprecated, use <code class="code-inline">router-grpc-tls</code> instead</li>
+                                <li><code>health</code> feature now optional (hyper/hyper-util gated behind it)</li>
+                                <li>Added <code>cqrs-allsource</code>, <code>cqrs-postgres</code>, <code>cqrs-rocksdb</code> feature flags</li>
+                                <li><code>grpc-tls</code> deprecated in favor of <code>router-grpc-tls</code></li>
                             </ul>
                         </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Documentation</h3>
-                            <ul>
-                                <li>Updated FEATURE_FLAGS.md with comprehensive documentation for all new features</li>
-                            </ul>
-                        </div>
-
                     </div>
                 </div>
 
-                <!-- v0.1.6 -->
+                <!-- v0.1.3 - v0.1.6 -->
                 <div class="release">
                     <div class="release-meta">
-                        <div class="release-date">December 06, 2025</div>
-                        <div class="release-version">0.1.6</div>
+                        <div class="release-date">Dec 05-06, 2025</div>
+                        <div class="release-version">0.1.3-6</div>
                     </div>
                     <div class="release-content">
-                        <h2 class="release-title">Version 0.1.6</h2>
+                        <h2 class="release-title">Initial crates.io Publishing</h2>
                         <div class="release-tags">
-                            <span class="tag feature">Changed</span>
-                            <span class="tag fix">Fixed</span>
+                            <span class="tag new">New</span>
                             <span class="tag feature">CQRS</span>
                         </div>
-
                         <div class="section">
-                            <h3 class="section-title">Changed</h3>
+                            <h3 class="section-title">Highlights</h3>
                             <ul>
-                                <li><strong>allsource-core upgraded to 0.7.0</strong> - Updated CQRS backend to use latest allsource-core API</li>
+                                <li><strong>First crates.io publish</strong> -- <code>cargo install allframe</code> now works</li>
+                                <li><strong>Scalar UI integration</strong> -- Modern OpenAPI 3.1 docs (10x smaller than Swagger)</li>
+                                <li><strong>Binary size monitoring</strong> -- All binaries under 2MB, CI-enforced</li>
+                                <li><strong>GraphiQL playground</strong> -- Interactive GraphQL documentation</li>
+                                <li><strong>Contract testing</strong> -- Automatic test generation from router</li>
+                                <li><strong>CQRS Phases 1-5 complete</strong> -- CommandBus (90% reduction), ProjectionRegistry (90%), Event Versioning (95%), Saga Orchestration (75%)</li>
+                                <li><strong>Zero-warning templates</strong> -- <code>allframe ignite</code> generates clean projects</li>
+                                <li><strong>allsource-core upgrade</strong> -- Updated CQRS backend, fixed event trait bounds</li>
                             </ul>
                         </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Fixed</h3>
-                            <ul>
-                                <li><strong>Event trait bounds</strong> - Added <code class="code-inline">Serialize + DeserializeOwned</code> bounds for proper event serialization</li>
-                            </ul>
-                        </div>
-
                     </div>
                 </div>
 
-                <!-- v0.1.5 -->
+                <!-- Pre-0.1.3 -->
                 <div class="release">
                     <div class="release-meta">
-                        <div class="release-date">December 06, 2025</div>
-                        <div class="release-version">0.1.5</div>
+                        <div class="release-date">2024 - Nov 2025</div>
+                        <div class="release-version">0.1.0-2</div>
                     </div>
                     <div class="release-content">
-                        <h2 class="release-title">Zero-warning templates</h2>
+                        <h2 class="release-title">Foundation</h2>
                         <div class="release-tags">
-                            <span class="tag new">New</span>
-                            <span class="tag fix">Fixed</span>
+                            <span class="tag feature">Core</span>
                         </div>
-
                         <div class="section">
-                            <h3 class="section-title">Added</h3>
+                            <h3 class="section-title">Milestones</h3>
                             <ul>
-                                <li><strong>Zero-warning templates</strong> - <code class="code-inline">allframe ignite</code> now generates projects that compile with zero warnings</li>
-                                <li><strong>Working Clean Architecture example</strong> - Generated projects include functional Greeter example</li>
-                                <li><strong>Unit tests in templates</strong> - Generated projects include passing tests demonstrating mocking</li>
-                                <li><strong>New integration test</strong> - <code class="code-inline">ignite_creates_project_with_zero_warnings</code> verifies builds with <code class="code-inline">-D warnings</code></li>
+                                <li><strong>v0.1</strong> -- <code>allframe ignite</code> CLI + project scaffolding</li>
+                                <li><strong>v0.2</strong> -- Compile-time DI + Auto OpenAPI 3.1</li>
+                                <li><strong>v0.3</strong> -- OpenTelemetry tracing support</li>
                             </ul>
                         </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Fixed</h3>
-                            <ul>
-                                <li><strong>Clippy warnings</strong> - Fixed derive for Default, collapsible str::replace calls</li>
-                                <li><strong>Template unused imports</strong> - Removed unused <code class="code-inline">pub use</code> re-exports from module files</li>
-                            </ul>
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- v0.1.4 -->
-                <div class="release">
-                    <div class="release-meta">
-                        <div class="release-date">December 06, 2025</div>
-                        <div class="release-version">0.1.4</div>
-                    </div>
-                    <div class="release-content">
-                        <h2 class="release-title">CLI binary in root crate</h2>
-                        <div class="release-tags">
-                            <span class="tag new">New</span>
-                            <span class="tag fix">Fixed</span>
-                            <span class="tag feature">Multi-Protocol</span>
-                        </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Added</h3>
-                            <ul>
-                                <li><strong>CLI binary in root crate</strong> - <code class="code-inline">cargo install allframe</code> now works correctly</li>
-                            </ul>
-                        </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Fixed</h3>
-                            <ul>
-                                <li><strong>Graceful shutdown utilities</strong> - Added <code class="code-inline">GracefulShutdown</code> and <code class="code-inline">ShutdownSignal</code> types</li>
-                                <li><strong><code class="code-inline">#[derive(GrpcError)]</code> macro</strong> - Automatic tonic::Status conversion</li>
-                                <li><strong>Enhanced <code class="code-inline">#[traced]</code> macro</strong> - Configuration options (name, skip, ret, err, level)</li>
-                            </ul>
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- v0.1.3 -->
-                <div class="release">
-                    <div class="release-meta">
-                        <div class="release-date">December 05, 2025</div>
-                        <div class="release-version">0.1.3</div>
-                    </div>
-                    <div class="release-content">
-                        <h2 class="release-title">Initial crates.io publishing</h2>
-                        <div class="release-tags">
-                            <span class="tag new">New</span>
-                            <span class="tag feature">Resilience</span>
-                        </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Added</h3>
-                            <ul>
-                                <li>Initial crates.io publishing</li>
-                                <li>allframe-forge CLI for project scaffolding</li>
-                                <li>allframe-mcp for MCP server integration</li>
-                            </ul>
-                        </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Added - Scalar Integration (2025-12-01)</h3>
-                            <ul>
-                                <li><strong>Scalar UI Integration</strong> - Modern OpenAPI 3.1 documentation interface</li>
-                                <li><code class="code-inline">OpenApiServer</code> struct for server configuration</li>
-                                <li><code class="code-inline">OpenApiGenerator::with_server()</code> method for adding server endpoints</li>
-                                <li><code class="code-inline">ScalarConfig</code> for comprehensive UI customization</li>
-                                <li><code class="code-inline">scalar_html()</code> function for generating documentation HTML</li>
-                                <li>New <code class="code-inline">scalar_docs.rs</code> example (175 lines)</li>
-                                <li>Updated <code class="code-inline">default_features.rs</code> to showcase server configuration</li>
-                                <li>Updated <code class="code-inline">all_features.rs</code> to demonstrate complete Scalar integration</li>
-                                <li>Comprehensive Scalar Documentation Guide (<code class="code-inline">docs/guides/SCALAR_DOCUMENTATION.md</code>) - 500+ lines</li>
-                                <li>Scalar Integration Complete report (<code class="code-inline">docs/phases/SCALAR_INTEGRATION_COMPLETE.md</code>)</li>
-                            </ul>
-                        </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Added - Binary Size Monitoring (2025-12-01)</h3>
-                            <ul>
-                                <li><strong>GitHub Actions CI/CD Workflow</strong> for binary size tracking</li>
-                                <li><code class="code-inline">scripts/check_size.sh</code> for local size verification</li>
-                                <li><code class="code-inline">cargo-make</code> task integration (<code class="code-inline">cargo make check-size</code>)</li>
-                                <li><code class="code-inline">cargo-bloat</code> analysis for size optimization</li>
-                                <li><strong>All binaries under 2MB</strong> (target was 2-8MB)</li>
-                                <li>Exceeded all targets with significant headroom</li>
-                                <li>Zero-cost abstractions working perfectly</li>
-                                <li>Binary Size Monitoring Complete report (<code class="code-inline">docs/phases/BINARY_SIZE_MONITORING_COMPLETE.md</code>)</li>
-                            </ul>
-                        </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Updated</h3>
-                            <ul>
-                                <li>Added Scalar Integration announcement in "What is AllFrame?" section</li>
-                                <li>Updated "Current Status" to reflect Scalar completion (133 tests passing)</li>
-                                <li>Added comprehensive Scalar code example in "Core Features"</li>
-                                <li>Added "Scalar API Documentation" section to documentation index</li>
-                                <li>Updated roadmap to show Track A (Scalar) and Track B (Binary Size) as complete</li>
-                                <li>Removed generic Swagger UI references in favor of Scalar</li>
-                                <li><code class="code-inline">default_features.rs</code>: Now demonstrates server configuration and output</li>
-                                <li><code class="code-inline">all_features.rs</code>: Now showcases complete Scalar integration with all features</li>
-                            </ul>
-                        </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Completed - CQRS Infrastructure (Nov 2025)</h3>
-                            <ul>
-                                <li><strong>Phases 1-5</strong> complete with 85% average boilerplate reduction</li>
-                                <li>CommandBus (90% reduction)</li>
-                                <li>ProjectionRegistry (90% reduction)</li>
-                                <li>Event Versioning with auto-upcasting (95% reduction)</li>
-                                <li>Saga Orchestration with automatic compensation (75% reduction)</li>
-                                <li>AllSource backend integration</li>
-                            </ul>
-                        </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Completed - Core Features (2024-2025)</h3>
-                            <ul>
-                                <li><strong>v0.3</strong>: OpenTelemetry tracing support</li>
-                                <li><strong>v0.2</strong>: Compile-time DI + Auto OpenAPI 3.1</li>
-                                <li><strong>v0.1</strong>: <code class="code-inline">allframe ignite</code> CLI + project scaffolding</li>
-                                <li><strong>v0.0</strong>: Repository setup, documentation migration</li>
-                            </ul>
-                        </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Test Coverage</h3>
-                            <ul>
-                                <li><strong>Total Tests</strong>: 455+ passing</li>
-                                <li><strong>CQRS Tests</strong>: 72</li>
-                                <li><strong>Router/Protocol Tests</strong>: 78</li>
-                                <li><strong>Scalar/OpenAPI Tests</strong>: 42</li>
-                                <li><strong>MCP Tests</strong>: 37</li>
-                                <li><strong>Resilience/Security Tests</strong>: 55</li>
-                                <li><strong>Graceful Shutdown Tests</strong>: 17</li>
-                                <li><strong>Other Tests</strong>: 154</li>
-                                <li><strong>Coverage</strong>: 100% (TDD-enforced)</li>
-                            </ul>
-                        </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Binary Sizes (Release builds)</h3>
-                            <ul>
-                                <li>Minimal (no features): 1.89MB</li>
-                                <li>Default features: 1.89MB</li>
-                                <li>All features: 1.89MB</li>
-                            </ul>
-                        </div>
-
-                        <div class="section">
-                            <h3 class="section-title">Documentation</h3>
-                            <ul>
-                                <li><strong>Total Documentation</strong>: 4,000+ lines</li>
-                                <li>Scalar guides: 675+ lines</li>
-                                <li>GraphQL guides: 600+ lines</li>
-                                <li>CQRS guides: 1,000+ lines</li>
-                                <li>Routing guides: 500+ lines</li>
-                                <li>Project documentation: 1,200+ lines</li>
-                                <li><strong>Repository</strong>: https://github.com/all-source-os/all-frame</li>
-                                <li><strong>Documentation</strong>: https://github.com/all-source-os/all-frame/tree/main/docs</li>
-                                <li><strong>Twitter Thread</strong>: See <code class="code-inline">docs/announcements/TWITTER_THREAD_2025_12_01.md</code></li>
-                            </ul>
-                        </div>
-
                     </div>
                 </div>
 
@@ -660,12 +398,11 @@
             <div class="links">
                 <a href="index.html">Home</a>
                 <a href="https://github.com/all-source-os/all-frame">GitHub</a>
-                <a href="https://docs.rs/allframe">Docs</a>
+                <a href="https://docs.rs/allframe">API Docs</a>
                 <a href="https://crates.io/crates/allframe">crates.io</a>
             </div>
-            <p>AllFrame - One frame. Infinite transformations. Built with TDD, from day zero.</p>
+            <p>AllFrame -- One frame. Infinite transformations. Built with TDD, from day zero.</p>
         </div>
     </footer>
 </body>
 </html>
-

@@ -3,148 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AllFrame - Complete Rust Web Framework with HTTP/2 Server</title>
+    <title>AllFrame - The Composable Rust API Framework</title>
     <meta name="description" content="AllFrame is a complete Rust web framework with built-in HTTP/2 server. REST, GraphQL, and gRPC from one codebase. Compile-time DI, CQRS, TDD from day zero.">
-    <meta name="keywords" content="rust, web framework, http server, tdd, cqrs, event sourcing, api, graphql, grpc, rest, hyper">
+    <meta name="keywords" content="rust, web framework, http server, tdd, cqrs, event sourcing, api, graphql, grpc, rest, hyper, mcp">
     <link rel="canonical" href="https://all-source-os.github.io/all-frame">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="AllFrame - Complete Rust Web Framework with HTTP/2 Server">
-    <meta property="og:description" content="Complete Rust web framework with built-in HTTP/2 server. REST, GraphQL, gRPC. TDD from day zero.">
+    <meta property="og:title" content="AllFrame - The Composable Rust API Framework">
+    <meta property="og:description" content="Complete Rust web framework with built-in HTTP/2 server. REST, GraphQL, gRPC from one codebase. TDD from day zero.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://all-source-os.github.io/all-frame">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="AllFrame - Complete Rust Web Framework with HTTP/2 Server">
-    <meta name="twitter:description" content="Complete Rust web framework with built-in HTTP/2 server. REST, GraphQL, gRPC. TDD from day zero.">
+    <meta name="twitter:title" content="AllFrame - The Composable Rust API Framework">
+    <meta name="twitter:description" content="Complete Rust web framework with built-in HTTP/2 server. REST, GraphQL, gRPC from one codebase. TDD from day zero.">
 
+    <link rel="stylesheet" href="style.css">
     <style>
-        :root {
-            --primary: #f74c00;
-            --primary-dark: #d94400;
-            --bg: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --text: #e6edf3;
-            --text-muted: #8b949e;
-            --border: #30363d;
-            --green: #3fb950;
-            --blue: #58a6ff;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-        }
-
-        a {
-            color: var(--blue);
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-
-        /* Header */
-        header {
-            border-bottom: 1px solid var(--border);
-            padding: 16px 0;
-            position: sticky;
-            top: 0;
-            background: var(--bg);
-            z-index: 100;
-        }
-
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .logo span {
-            color: var(--primary);
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 24px;
-            align-items: center;
-        }
-
-        .nav-links a {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-
-        .nav-links a:hover {
-            color: var(--text);
-            text-decoration: none;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-weight: 500;
-            font-size: 0.95rem;
-            transition: all 0.2s;
-            border: none;
-            cursor: pointer;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-            text-decoration: none;
-        }
-
-        .btn-secondary {
-            background: var(--bg-tertiary);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: var(--border);
-            text-decoration: none;
-        }
-
-        /* Hero */
-        .hero {
-            padding: 80px 0;
-            text-align: center;
-        }
+        /* ---- Hero ---- */
+        .hero { padding: 80px 0; text-align: center; }
 
         .hero h1 {
             font-size: 3.5rem;
@@ -156,11 +34,7 @@
             background-clip: text;
         }
 
-        .hero .tagline {
-            font-size: 1.5rem;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-        }
+        .hero .tagline { font-size: 1.5rem; color: var(--text-muted); margin-bottom: 12px; }
 
         .hero .subtitle {
             font-size: 1.1rem;
@@ -171,13 +45,9 @@
             margin-right: auto;
         }
 
-        .hero-buttons {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
+        .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
 
+        /* ---- Live badges ---- */
         .badges {
             display: flex;
             gap: 8px;
@@ -186,23 +56,9 @@
             margin-top: 32px;
         }
 
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 12px;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
+        .badges img { height: 20px; }
 
-        .badge.green {
-            border-color: var(--green);
-            color: var(--green);
-        }
-
-        /* Code Block */
+        /* ---- Code Block ---- */
         .code-block {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
@@ -216,25 +72,32 @@
             overflow-x: auto;
         }
 
-        .code-block .comment {
-            color: var(--text-muted);
+        .code-block .comment { color: var(--text-muted); }
+        .code-block .command { color: var(--green); }
+
+        /* ---- Crates ---- */
+        .crates { padding: 60px 0; border-top: 1px solid var(--border); }
+        .crates h2 { text-align: center; font-size: 2rem; margin-bottom: 32px; }
+
+        .crates-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
         }
 
-        .code-block .command {
-            color: var(--green);
+        .crates-table th, .crates-table td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
         }
 
-        /* Features */
-        .features {
-            padding: 80px 0;
-            border-top: 1px solid var(--border);
-        }
+        .crates-table th { color: var(--text-muted); font-weight: 500; }
+        .crates-table td:first-child a { font-weight: 600; }
+        .crates-table td img { height: 18px; vertical-align: middle; }
 
-        .features h2 {
-            text-align: center;
-            font-size: 2rem;
-            margin-bottom: 48px;
-        }
+        /* ---- Features ---- */
+        .features { padding: 80px 0; border-top: 1px solid var(--border); }
+        .features h2 { text-align: center; font-size: 2rem; margin-bottom: 48px; }
 
         .feature-grid {
             display: grid;
@@ -250,85 +113,12 @@
             transition: border-color 0.2s;
         }
 
-        .feature-card:hover {
-            border-color: var(--primary);
-        }
+        .feature-card:hover { border-color: var(--primary); }
+        .feature-card h3 { font-size: 1.1rem; margin-bottom: 8px; }
+        .feature-card p { color: var(--text-muted); font-size: 0.95rem; }
 
-        .feature-card h3 {
-            font-size: 1.1rem;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .feature-card p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-
-        .feature-card .tag {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-            background: var(--green);
-            color: var(--bg);
-            border-radius: 4px;
-            font-weight: 600;
-        }
-
-        /* Comparison */
-        .comparison {
-            padding: 80px 0;
-            border-top: 1px solid var(--border);
-        }
-
-        .comparison h2 {
-            text-align: center;
-            font-size: 2rem;
-            margin-bottom: 48px;
-        }
-
-        .comparison-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.95rem;
-        }
-
-        .comparison-table th,
-        .comparison-table td {
-            padding: 16px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .comparison-table th {
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        .comparison-table th:first-child,
-        .comparison-table td:first-child {
-            font-weight: 600;
-        }
-
-        .comparison-table .check {
-            color: var(--green);
-        }
-
-        .comparison-table .cross {
-            color: var(--text-muted);
-        }
-
-        .comparison-table .partial {
-            color: #d29922;
-        }
-
-        /* Stats */
-        .stats {
-            padding: 60px 0;
-            border-top: 1px solid var(--border);
-            background: var(--bg-secondary);
-        }
+        /* ---- Stats ---- */
+        .stats { padding: 60px 0; border-top: 1px solid var(--border); background: var(--bg-secondary); }
 
         .stats-grid {
             display: grid;
@@ -337,91 +127,35 @@
             text-align: center;
         }
 
-        .stat h3 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
+        .stat h3 { font-size: 2.5rem; font-weight: 700; color: var(--primary); }
+        .stat p { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
 
-        .stat p {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-top: 4px;
-        }
+        /* ---- Comparison ---- */
+        .comparison { padding: 80px 0; border-top: 1px solid var(--border); }
+        .comparison h2 { text-align: center; font-size: 2rem; margin-bottom: 48px; }
 
-        /* CTA */
-        .cta {
-            padding: 80px 0;
-            text-align: center;
-            border-top: 1px solid var(--border);
-        }
+        /* ---- CTA ---- */
+        .cta { padding: 80px 0; text-align: center; border-top: 1px solid var(--border); }
+        .cta h2 { font-size: 2rem; margin-bottom: 16px; }
+        .cta p { color: var(--text-muted); margin-bottom: 32px; max-width: 600px; margin-left: auto; margin-right: auto; }
 
-        .cta h2 {
-            font-size: 2rem;
-            margin-bottom: 16px;
-        }
-
-        .cta p {
-            color: var(--text-muted);
-            margin-bottom: 32px;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* Footer */
-        footer {
-            padding: 40px 0;
-            border-top: 1px solid var(--border);
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-
-        footer .links {
-            display: flex;
-            gap: 24px;
-            justify-content: center;
-            margin-bottom: 16px;
-        }
-
-        /* Responsive */
+        /* ---- Responsive ---- */
         @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-
-            .hero .tagline {
-                font-size: 1.2rem;
-            }
-
-            .nav-links {
-                display: none;
-            }
-
-            .comparison-table {
-                font-size: 0.8rem;
-            }
-
-            .comparison-table th,
-            .comparison-table td {
-                padding: 8px;
-            }
+            .hero h1 { font-size: 2.5rem; }
+            .hero .tagline { font-size: 1.2rem; }
         }
     </style>
 </head>
 <body>
     <header>
         <nav class="container">
-            <div class="logo">
-                <span>All</span>Frame
-            </div>
+            <div class="logo"><span>All</span>Frame</div>
             <div class="nav-links">
-                <a href="https://docs.rs/allframe">Docs</a>
+                <a href="https://docs.rs/allframe">API Docs</a>
                 <a href="changelog.html">Changelog</a>
+                <a href="https://github.com/all-source-os/all-frame/blob/main/docs/current/ROADMAP.md">Roadmap</a>
                 <a href="https://github.com/all-source-os/all-frame">GitHub</a>
-                <a href="https://crates.io/crates/allframe" class="btn btn-primary">
-                    <svg width="16" height="16" viewBox="0 0 512 512" fill="currentColor"><path d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"/></svg>
+                <a href="https://crates.io/crates/allframe" class="btn btn-primary btn-sm">
                     crates.io
                 </a>
             </div>
@@ -432,10 +166,10 @@
         <section class="hero">
             <div class="container">
                 <h1>AllFrame</h1>
-                <p class="tagline">Complete Rust Web Framework with Built-in HTTP/2 Server</p>
+                <p class="tagline">The Composable Rust API Framework</p>
                 <p class="subtitle">
-                    REST, GraphQL, and gRPC from one codebase. TDD from day zero.<br>
-                    Evolving from framework to <strong>cloud-native microservice architecture generator</strong>.
+                    Write your handler once, expose it via REST, GraphQL, and gRPC.
+                    Built-in HTTP/2 server, compile-time DI, CQRS, and MCP -- all TDD from day zero.
                 </p>
                 <div class="hero-buttons">
                     <a href="https://github.com/all-source-os/all-frame" class="btn btn-primary">
@@ -459,78 +193,122 @@
                 </div>
 
                 <div class="badges">
-                    <span class="badge green">v0.1.18</span>
-                    <span class="badge green">100% TDD</span>
-                    <span class="badge green">455+ Tests</span>
-                    <span class="badge green">CQRS Complete</span>
-                    <span class="badge green">Protocol-Agnostic</span>
-                    <span class="badge green">Zero Runtime Deps</span>
-                    <span class="badge green">Multi-Protocol</span>
-                    <span class="badge">Rust 1.86+</span>
-                    <span class="badge">MIT / Apache 2.0</span>
+                    <a href="https://crates.io/crates/allframe"><img src="https://img.shields.io/crates/v/allframe.svg" alt="crates.io version"></a>
+                    <a href="https://crates.io/crates/allframe"><img src="https://img.shields.io/crates/d/allframe.svg" alt="downloads"></a>
+                    <a href="https://docs.rs/allframe"><img src="https://img.shields.io/docsrs/allframe" alt="docs.rs"></a>
+                    <a href="https://github.com/all-source-os/all-frame/actions"><img src="https://img.shields.io/github/actions/workflow/status/all-source-os/all-frame/offline-quality-gates.yml?branch=main&label=CI" alt="CI"></a>
+                    <a href="https://github.com/all-source-os/all-frame"><img src="https://img.shields.io/crates/l/allframe.svg" alt="license"></a>
+                    <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/MSRV-1.89-orange.svg" alt="MSRV"></a>
                 </div>
+            </div>
+        </section>
+
+        <section class="crates">
+            <div class="container">
+                <h2>Composable Crates</h2>
+                <table class="crates-table">
+                    <thead>
+                        <tr>
+                            <th>Crate</th>
+                            <th>Description</th>
+                            <th>Version</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><a href="https://crates.io/crates/allframe">allframe</a></td>
+                            <td>Re-exports core + CLI (<code>allframe ignite</code>)</td>
+                            <td><img src="https://img.shields.io/crates/v/allframe.svg?label=" alt="version"></td>
+                        </tr>
+                        <tr>
+                            <td><a href="https://crates.io/crates/allframe-core">allframe-core</a></td>
+                            <td>Router, CQRS, DI, resilience, auth, security</td>
+                            <td><img src="https://img.shields.io/crates/v/allframe-core.svg?label=" alt="version"></td>
+                        </tr>
+                        <tr>
+                            <td><a href="https://crates.io/crates/allframe-macros">allframe-macros</a></td>
+                            <td>Proc macros: <code>#[handler]</code>, <code>#[di_container]</code>, <code>#[retry]</code>, ...</td>
+                            <td><img src="https://img.shields.io/crates/v/allframe-macros.svg?label=" alt="version"></td>
+                        </tr>
+                        <tr>
+                            <td><a href="https://crates.io/crates/allframe-forge">allframe-forge</a></td>
+                            <td>Project scaffolding and code generation</td>
+                            <td><img src="https://img.shields.io/crates/v/allframe-forge.svg?label=" alt="version"></td>
+                        </tr>
+                        <tr>
+                            <td><a href="https://crates.io/crates/allframe-mcp">allframe-mcp</a></td>
+                            <td>MCP server -- expose handlers as LLM tools</td>
+                            <td><img src="https://img.shields.io/crates/v/allframe-mcp.svg?label=" alt="version"></td>
+                        </tr>
+                        <tr>
+                            <td><a href="https://crates.io/crates/allframe-tauri">allframe-tauri</a></td>
+                            <td>Tauri 2.x plugin for offline-first desktop apps</td>
+                            <td><img src="https://img.shields.io/crates/v/allframe-tauri.svg?label=" alt="version"></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </section>
 
         <section class="features">
             <div class="container">
-                <h2>Why AllFrame?</h2>
+                <h2>Features</h2>
                 <div class="feature-grid">
                     <div class="feature-card">
-                        <h3>Compile-Time DI</h3>
-                        <p>Dependency injection resolved entirely at compile time. Zero runtime overhead, zero reflection magic.</p>
-                    </div>
-                    <div class="feature-card">
-                        <h3>Protocol-Agnostic <span class="tag">NEW</span></h3>
-                        <p>Write once, expose via REST, GraphQL, and gRPC. Single handler, multiple protocols, automatic schema generation.</p>
+                        <h3>Protocol-Agnostic Routing</h3>
+                        <p>Write once, expose via REST, GraphQL, and gRPC. Automatic schema generation for OpenAPI 3.1, GraphQL SDL, and .proto files.</p>
                     </div>
                     <div class="feature-card">
                         <h3>CQRS + Event Sourcing</h3>
-                        <p>Production-ready infrastructure with 85% average boilerplate reduction. CommandBus, Projections, Sagas included.</p>
+                        <p>CommandBus, ProjectionRegistry, event versioning, and saga orchestration. 85% average boilerplate reduction with pluggable backends.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>Beautiful API Docs</h3>
-                        <p>Scalar UI for REST (10x smaller than Swagger), GraphiQL for GraphQL, interactive gRPC explorer. All built-in.</p>
+                        <h3>Compile-Time DI</h3>
+                        <p>Dependency injection resolved entirely at compile time. Zero runtime overhead, zero reflection.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>MCP Server <span class="tag">ZERO BLOAT</span></h3>
-                        <p>Expose your API as LLM-callable tools. Separate crate means 100% zero overhead when not used.</p>
+                        <h3>Streaming Handlers</h3>
+                        <p>StreamSender with bounded backpressure and cooperative cancellation. Tauri IPC bridge, TypeScript codegen, and RxJS adapter.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>Zero Runtime Deps</h3>
-                        <p>Only Tokio, Hyper, and std. No hidden bloat, no dependency hell. Binaries under 2MB.</p>
+                        <h3>MCP Server</h3>
+                        <p>Expose handlers as LLM-callable tools via Model Context Protocol. Separate crate for 100% zero overhead when not used.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>CLI Ready</h3>
-                        <p>cargo install allframe, then allframe ignite my-api. Zero-warning templates with Clean Architecture scaffolding.</p>
+                        <h3>Resilience Patterns</h3>
+                        <p>Retry with exponential backoff, circuit breakers (keyed per-resource), rate limiting (Redis-backed for distributed). Attribute macros included.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>Resilience Patterns <span class="tag">NEW</span></h3>
-                        <p>Production-ready retry with backoff, circuit breakers, rate limiting. KeyedCircuitBreaker, Redis rate limiting. Attribute macros for zero-config resilience.</p>
+                        <h3>Layered Authentication</h3>
+                        <p>Protocol-agnostic auth: JWT validation (HS256, RS256, EdDSA), Axum extractors, gRPC interceptors, type-safe claims.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>Layered Authentication <span class="tag">NEW</span></h3>
-                        <p>Protocol-agnostic auth with zero-bloat feature flags. Core traits, JWT (HS256/RS256/EdDSA), Axum extractors, gRPC interceptors.</p>
+                        <h3>API Documentation</h3>
+                        <p>Auto-generated interactive docs: Scalar UI for REST (10x smaller than Swagger), GraphiQL 3.0 for GraphQL, gRPC Explorer.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>Security Utilities <span class="tag">NEW</span></h3>
-                        <p>Safe logging with credential obfuscation. #[derive(Obfuscate)] for structs, Sensitive&lt;T&gt; wrapper for secrets.</p>
+                        <h3>Offline-First</h3>
+                        <p>SQLite event store, offline circuit breaker, store-and-forward, bidirectional sync. Zero network deps enforced by CI.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>Graceful Shutdown <span class="tag">NEW</span></h3>
-                        <p>Production-ready shutdown utilities. ShutdownAwareTaskSpawner for named tasks, GracefulShutdownExt for cleanup orchestration.</p>
+                        <h3>Tauri Desktop</h3>
+                        <p><code>#[tauri_compat]</code> for mechanical migration. Typed returns, TypeScript codegen, in-process handler dispatch.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>Tauri Migration</h3>
-                        <p>#[tauri_compat] macro, typed returns (impl Serialize), and auto-generated TypeScript client. Migration from Tauri is now mechanical.</p>
+                        <h3>Contract Testing</h3>
+                        <p>Automatic test generation from router, schema validation, breaking change detection, and coverage reporting.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>Streaming Handlers <span class="tag">NEW</span></h3>
-                        <p>Send incremental updates during handler execution. StreamSender with backpressure, CancellationToken, Tauri IPC bridge, TypeScript codegen, and RxJS adapter.</p>
+                        <h3>Security Utilities</h3>
+                        <p>URL/credential obfuscation, <code>Sensitive&lt;T&gt;</code> wrapper, <code>#[derive(Obfuscate)]</code> with <code>#[sensitive]</code> fields, header redaction.</p>
                     </div>
                     <div class="feature-card">
-                        <h3>Cloud-Native Vision</h3>
-                        <p>Roadmap to v1.0: Generate complete microservice architectures from declarative config. Multi-cloud IaC with Terraform/Pulumi.</p>
+                        <h3>Graceful Shutdown</h3>
+                        <p>Named task spawning with automatic cancellation, cleanup orchestration with error handling, cancellable futures.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>CLI Scaffolding</h3>
+                        <p><code>allframe ignite my-api</code> creates Clean Architecture projects with zero warnings. Handlers, commands, and queries generators.</p>
                     </div>
                 </div>
             </div>
@@ -539,10 +317,6 @@
         <section class="stats">
             <div class="container">
                 <div class="stats-grid">
-                    <div class="stat">
-                        <h3>v0.1.20</h3>
-                        <p>Latest Version</p>
-                    </div>
                     <div class="stat">
                         <h3>100%</h3>
                         <p>TDD Coverage</p>
@@ -559,6 +333,10 @@
                         <h3>&lt;2MB</h3>
                         <p>Binary Size</p>
                     </div>
+                    <div class="stat">
+                        <h3>6</h3>
+                        <p>Composable Crates</p>
+                    </div>
                 </div>
             </div>
         </section>
@@ -569,7 +347,7 @@
                 <table class="comparison-table">
                     <thead>
                         <tr>
-                            <th>Feature</th>
+                            <th></th>
                             <th>AllFrame</th>
                             <th>Actix</th>
                             <th>Axum</th>
@@ -578,8 +356,15 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td>TDD-First</td>
-                            <td class="check">100%</td>
+                            <td>Protocol-agnostic handlers</td>
+                            <td class="check">Yes</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>Built-in CQRS + Event Sourcing</td>
+                            <td class="check">Yes</td>
                             <td class="cross">-</td>
                             <td class="cross">-</td>
                             <td class="cross">-</td>
@@ -599,52 +384,45 @@
                             <td class="partial">Manual</td>
                         </tr>
                         <tr>
-                            <td>CQRS + Event Sourcing</td>
-                            <td class="check">Built-in</td>
-                            <td class="cross">-</td>
-                            <td class="cross">-</td>
-                            <td class="cross">-</td>
-                        </tr>
-                        <tr>
-                            <td>Protocol-agnostic</td>
-                            <td class="check">Yes</td>
-                            <td class="cross">-</td>
-                            <td class="cross">-</td>
-                            <td class="cross">-</td>
-                        </tr>
-                        <tr>
-                            <td>Resilience Patterns</td>
+                            <td>Resilience patterns</td>
                             <td class="check">Built-in</td>
                             <td class="partial">External</td>
                             <td class="partial">External</td>
                             <td class="cross">-</td>
                         </tr>
                         <tr>
-                            <td>Layered Auth</td>
-                            <td class="check">Protocol-agnostic</td>
-                            <td class="partial">External</td>
-                            <td class="partial">External</td>
-                            <td class="partial">External</td>
-                        </tr>
-                        <tr>
-                            <td>Safe Logging</td>
-                            <td class="check">Built-in</td>
+                            <td>MCP server (LLM tools)</td>
+                            <td class="check">Zero bloat</td>
                             <td class="cross">-</td>
                             <td class="cross">-</td>
                             <td class="cross">-</td>
                         </tr>
                         <tr>
-                            <td>MCP Server</td>
-                            <td class="check">Zero Bloat</td>
-                            <td class="cross">-</td>
-                            <td class="cross">-</td>
-                            <td class="cross">-</td>
-                        </tr>
-                        <tr>
-                            <td>Zero runtime deps</td>
+                            <td>Streaming handlers</td>
                             <td class="check">Yes</td>
                             <td class="cross">-</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>Offline-first / Tauri</td>
                             <td class="check">Yes</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>Contract testing</td>
+                            <td class="check">Yes</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
+                        </tr>
+                        <tr>
+                            <td>TDD from day zero</td>
+                            <td class="check">100%</td>
+                            <td class="cross">-</td>
+                            <td class="cross">-</td>
                             <td class="cross">-</td>
                         </tr>
                     </tbody>
@@ -657,14 +435,13 @@
                 <h2>Ready to build?</h2>
                 <p>
                     AllFrame is open source under MIT and Apache 2.0 licenses.
-                    Join us in building the most developer-friendly Rust API framework.
                 </p>
                 <div class="hero-buttons">
                     <a href="https://github.com/all-source-os/all-frame" class="btn btn-primary">
                         Get Started
                     </a>
-                    <a href="https://github.com/all-source-os/all-frame/blob/main/CONTRIBUTING.md" class="btn btn-secondary">
-                        Contribute
+                    <a href="https://github.com/all-source-os/all-frame/discussions" class="btn btn-secondary">
+                        Join the Discussion
                     </a>
                 </div>
             </div>
@@ -675,12 +452,12 @@
         <div class="container">
             <div class="links">
                 <a href="https://github.com/all-source-os/all-frame">GitHub</a>
-                <a href="https://docs.rs/allframe">Docs</a>
+                <a href="https://docs.rs/allframe">API Docs</a>
                 <a href="changelog.html">Changelog</a>
                 <a href="https://crates.io/crates/allframe">crates.io</a>
                 <a href="https://github.com/all-source-os/all-frame/discussions">Discussions</a>
             </div>
-            <p>AllFrame - One frame. Infinite transformations. Built with TDD, from day zero.</p>
+            <p>AllFrame -- One frame. Infinite transformations. Built with TDD, from day zero.</p>
         </div>
     </footer>
 </body>

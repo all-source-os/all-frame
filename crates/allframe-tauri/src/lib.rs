@@ -479,6 +479,53 @@ mod tests {
         assert_eq!(response.result, "done");
     }
 
+    /// Tests the inject_state path that the Tauri plugin uses to inject AppHandle.
+    /// We simulate it with a plain struct since we can't construct AppHandle in tests.
+    #[tokio::test]
+    async fn test_inject_state_simulates_app_handle_injection() {
+        use allframe_core::router::State;
+        use std::sync::Arc;
+
+        // Simulates what plugin::init does: inject_state after router construction
+        struct FakeAppHandle {
+            app_name: String,
+        }
+        struct DbPool {
+            url: String,
+        }
+
+        let mut router = Router::new().with_state(DbPool {
+            url: "sqlite://db".to_string(),
+        });
+
+        // Register handler that needs the "app handle"
+        router.register_with_state_only::<FakeAppHandle, _, _>(
+            "emit_event",
+            |app: State<Arc<FakeAppHandle>>| async move {
+                format!("emitted from {}", app.app_name)
+            },
+        );
+
+        // Register handler that needs the db pool
+        router.register_with_state_only::<DbPool, _, _>(
+            "db_url",
+            |db: State<Arc<DbPool>>| async move { db.url.clone() },
+        );
+
+        // Simulate what the plugin setup closure does
+        router.inject_state(FakeAppHandle {
+            app_name: "MyTauriApp".to_string(),
+        });
+
+        let server = TauriServer::new(router);
+
+        let result = server.call_handler("emit_event", "{}").await.unwrap();
+        assert_eq!(result.result, "emitted from MyTauriApp");
+
+        let result = server.call_handler("db_url", "{}").await.unwrap();
+        assert_eq!(result.result, "sqlite://db");
+    }
+
     #[tokio::test]
     async fn test_tauri_compat_streaming_no_args() {
         use allframe_core::router::StreamSender;

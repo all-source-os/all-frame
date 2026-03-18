@@ -11,7 +11,7 @@
   <a href="https://github.com/all-source-os/all-frame/actions"><img src="https://img.shields.io/github/actions/workflow/status/all-source-os/all-frame/offline-quality-gates.yml?branch=main&label=CI" alt="CI"></a>
   <br>
   <a href="#license"><img src="https://img.shields.io/crates/l/allframe.svg" alt="license"></a>
-  <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/MSRV-1.86-orange.svg" alt="MSRV"></a>
+  <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/MSRV-1.89-orange.svg" alt="MSRV"></a>
   <a href="docs/PROJECT_STATUS.md"><img src="https://img.shields.io/badge/tests-500%2B%20passing-brightgreen.svg" alt="tests"></a>
   <a href="https://all-source-os.github.io/all-frame"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-blue" alt="project docs"></a>
 </p>

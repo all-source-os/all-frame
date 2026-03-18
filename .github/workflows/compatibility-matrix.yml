@@ -27,7 +27,7 @@ jobs:
           - stable
           - beta
           - nightly
-          - 1.86.0  # MSRV (Minimum Supported Rust Version - required for async-graphql 7.0.17)
+          - 1.89.0  # MSRV (Minimum Supported Rust Version - required for async-graphql 7.2.1)
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master

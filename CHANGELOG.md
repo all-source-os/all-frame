@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`permissions/default.toml`** — Default permission set granting all AllFrame commands. Consuming apps get full access by adding `"allframe:default"` to their capabilities.
 
 ### Changed
+- **MSRV bumped to 1.89** ([#54](https://github.com/all-source-os/all-frame/issues/54)) — Transitive dependencies (`async-graphql` 7.2.1, `darling` 0.23, `time` 0.3.47) now require rustc 1.88–1.89. Compatibility matrix CI updated.
+- **Multi-state Router** ([#51](https://github.com/all-source-os/all-frame/issues/51)) — `Router.state: Option<Arc<dyn Any>>` replaced with `Router.states: HashMap<TypeId, Arc<dyn Any>>`. `with_state()` can now be called multiple times with different types. New `inject_state(&mut self, state)` for late injection.
+- **AppHandle auto-injection** ([#51](https://github.com/all-source-os/all-frame/issues/51)) — `allframe_tauri::init()` automatically injects the Tauri `AppHandle<R>` as state during plugin setup. Handlers can access it via `State<Arc<AppHandle<R>>>`.
 - `allframe-tauri` now has `links = "allframe-tauri"` in Cargo.toml (required by `tauri-plugin` build system).
 - Added `tauri-plugin` as a build dependency.
 

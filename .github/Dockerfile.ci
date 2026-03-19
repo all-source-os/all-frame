@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     pkg-config \
+    git \
     libgtk-3-dev \
     libwebkit2gtk-4.1-dev \
     libappindicator3-dev \
@@ -21,11 +22,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     patchelf \
     libglib2.0-dev \
     libssl-dev \
+    bc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Rust via rustup
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Install Rust to a shared location accessible by any user.
+# GitHub Actions containers may run as non-root.
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
 
-# Pre-warm cargo registry
-RUN cargo --version && rustup component add clippy
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+    | sh -s -- -y --default-toolchain stable --no-modify-path \
+    && chmod -R a+rw $RUSTUP_HOME $CARGO_HOME
+
+RUN rustup component add clippy \
+    && cargo --version \
+    && rustc --version \
+    && clippy-driver --version

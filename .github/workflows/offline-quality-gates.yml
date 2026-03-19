@@ -101,21 +101,19 @@ jobs:
           FEATURES="${{ matrix.profile.features || '' }}"
           BANNED="${{ matrix.profile.banned }}"
 
+          # Capture only stdout (dependency tree). Stderr has "Adding"/"Locking"
+          # metadata lines that can false-match banned crate names.
           if [ -n "$FEATURES" ]; then
-            TREE=$(cargo tree -p "$PACKAGE" --no-default-features --features "$FEATURES" --prefix depth 2>&1)
+            TREE=$(cargo tree -p "$PACKAGE" --no-default-features --features "$FEATURES" 2>/dev/null)
           else
-            TREE=$(cargo tree -p "$PACKAGE" --prefix depth 2>&1)
+            TREE=$(cargo tree -p "$PACKAGE" 2>/dev/null)
           fi
 
-          # Only check actual dependency lines (start with a digit),
-          # not cargo metadata like "Adding", "Locking", "Downloading".
-          DEPS_ONLY=$(echo "$TREE" | grep -E '^[0-9]')
-
-          if echo "$DEPS_ONLY" | grep -qE "$BANNED"; then
+          if echo "$TREE" | grep -qE "$BANNED"; then
             echo "$TREE"
             echo ""
             echo "Matched:"
-            echo "$DEPS_ONLY" | grep -E "$BANNED"
+            echo "$TREE" | grep -E "$BANNED"
             echo ""
             echo "::error::Network dependencies found in ${{ matrix.profile.name }}!"
             exit 1
@@ -140,7 +138,7 @@ jobs:
 
       - name: Run offline quality gate tests
         run: >
-          cargo test -p allframe-core
+          cargo test -p allframe
           --test 09_offline_quality_gates
           --features "cqrs,di,resilience,security,openapi"
 

@@ -73,7 +73,7 @@ pub fn allframe_handler_impl(attr: TokenStream, item: TokenStream) -> Result<Tok
     // Validate: streaming handlers must be async (StreamSender requires .await)
     if streaming && func.sig.asyncness.is_none() {
         return Err(Error::new_spanned(
-            &func.sig.fn_token,
+            func.sig.fn_token,
             "#[allframe_handler(streaming)] functions must be async",
         ));
     }

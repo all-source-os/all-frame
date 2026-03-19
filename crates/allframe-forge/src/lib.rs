@@ -519,7 +519,7 @@ fn ignite_project(
 
 /// Convert a string to title case (e.g., "kraken" -> "Kraken")
 fn to_title_case(s: &str) -> String {
-    s.split(|c| c == '-' || c == '_')
+    s.split(['-', '_'])
         .map(|word| {
             let mut chars = word.chars();
             match chars.next() {

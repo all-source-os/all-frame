@@ -787,7 +787,7 @@ impl ForgeMcpServer {
         let path = uri.strip_prefix("saga://").ok_or("Invalid saga URI")?;
 
         let parts: Vec<&str> = path.split('/').collect();
-        let saga_name = parts.get(0).ok_or("Missing saga name")?;
+        let saga_name = parts.first().ok_or("Missing saga name")?;
 
         let saga_path = self
             .project_path

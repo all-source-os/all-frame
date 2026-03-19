@@ -308,7 +308,7 @@ impl ProjectAnalyzer {
 
             if path.is_dir() {
                 self.collect_rs_files(&path, files)?;
-            } else if path.extension().map_or(false, |e| e == "rs") {
+            } else if path.extension().is_some_and(|e| e == "rs") {
                 if let Ok(relative) = path.strip_prefix(&self.project_path) {
                     files.push(relative.display().to_string());
                 }

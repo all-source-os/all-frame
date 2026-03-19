@@ -51,7 +51,7 @@ impl McpServer {
         router
             .list_handlers()
             .iter()
-            .map(|name| McpTool::from_handler_name(name))
+            .map(McpTool::from_handler_name)
             .collect()
     }
 

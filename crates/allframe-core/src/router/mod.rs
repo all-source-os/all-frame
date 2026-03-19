@@ -63,6 +63,7 @@
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde_json::{Map, Value};
 use futures_core::Stream;
 use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc};
 
@@ -148,6 +149,76 @@ where
     "null".to_string()
 }
 
+/// Key transformation strategy applied to JSON args before deserialization.
+///
+/// When a frontend sends camelCase keys (e.g., Tauri 2 convention) but
+/// Rust handler structs use snake_case field names, the router can
+/// automatically transform keys to avoid `#[serde(rename_all)]` on
+/// every input struct.
+///
+/// # Example
+///
+/// ```rust
+/// use allframe_core::router::{Router, KeyTransform};
+///
+/// let router = Router::new()
+///     .with_key_transform(KeyTransform::CamelToSnake);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyTransform {
+    /// Convert camelCase keys to snake_case (e.g., `workflowId` → `workflow_id`).
+    CamelToSnake,
+}
+
+/// Convert a camelCase string to snake_case.
+fn camel_to_snake(s: &str) -> String {
+    let mut result = String::with_capacity(s.len() + 4);
+    for (i, ch) in s.chars().enumerate() {
+        if ch.is_ascii_uppercase() {
+            if i > 0 {
+                result.push('_');
+            }
+            result.push(ch.to_ascii_lowercase());
+        } else {
+            result.push(ch);
+        }
+    }
+    result
+}
+
+/// Recursively transform all object keys in a JSON value.
+fn transform_keys(value: Value, transform: KeyTransform) -> Value {
+    match value {
+        Value::Object(map) => {
+            let new_map: Map<String, Value> = map
+                .into_iter()
+                .map(|(k, v)| {
+                    let new_key = match transform {
+                        KeyTransform::CamelToSnake => camel_to_snake(&k),
+                    };
+                    (new_key, transform_keys(v, transform))
+                })
+                .collect();
+            Value::Object(new_map)
+        }
+        Value::Array(arr) => {
+            Value::Array(arr.into_iter().map(|v| transform_keys(v, transform)).collect())
+        }
+        other => other,
+    }
+}
+
+/// Apply a key transform to a JSON string, returning the transformed string.
+///
+/// If parsing fails, returns the original string unchanged (the handler's
+/// own deserialization will produce the appropriate error).
+fn apply_key_transform(args: &str, transform: KeyTransform) -> String {
+    match serde_json::from_str::<Value>(args) {
+        Ok(value) => transform_keys(value, transform).to_string(),
+        Err(_) => args.to_string(),
+    }
+}
+
 /// Router manages handler registration and protocol adapters
 ///
 /// The router allows you to register handlers once and expose them via
@@ -159,6 +230,7 @@ pub struct Router {
     routes: Vec<RouteMetadata>,
     states: SharedStateMap,
     handler_metas: HashMap<String, HandlerMeta>,
+    key_transform: Option<KeyTransform>,
     #[cfg(feature = "router")]
     #[allow(dead_code)]
     config: Option<RouterConfig>,
@@ -174,6 +246,7 @@ impl Router {
             routes: Vec::new(),
             states: Arc::new(std::sync::RwLock::new(HashMap::new())),
             handler_metas: HashMap::new(),
+            key_transform: None,
             #[cfg(feature = "router")]
             config: None,
         }
@@ -189,6 +262,7 @@ impl Router {
             routes: Vec::new(),
             states: Arc::new(std::sync::RwLock::new(HashMap::new())),
             handler_metas: HashMap::new(),
+            key_transform: None,
             config: Some(config.clone()),
         };
 
@@ -204,6 +278,27 @@ impl Router {
         }
 
         router
+    }
+
+    /// Set a key transformation applied to JSON args before deserialization.
+    ///
+    /// When enabled, all handler args are transformed before being passed
+    /// to `serde_json::from_str`. This is a single opt-in call that fixes
+    /// key naming mismatches for all handlers.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use allframe_core::router::{Router, KeyTransform};
+    ///
+    /// let router = Router::new()
+    ///     .with_key_transform(KeyTransform::CamelToSnake);
+    /// // Now `{"workflowId": "abc"}` is transformed to `{"workflow_id": "abc"}`
+    /// // before any handler deserializes it.
+    /// ```
+    pub fn with_key_transform(mut self, transform: KeyTransform) -> Self {
+        self.key_transform = Some(transform);
+        self
     }
 
     /// Add shared state for dependency injection (builder pattern).
@@ -581,6 +676,9 @@ impl Router {
             .get(name)
             .ok_or_else(|| format!("Streaming handler '{}' not found", name))?;
 
+        let transformed = self.maybe_transform_args(args);
+        let args = transformed.as_deref().unwrap_or(args);
+
         let (tx, rx) = StreamSender::channel();
         let fut = handler.call_streaming(args, tx);
         Ok((rx, fut))
@@ -608,7 +706,10 @@ impl Router {
 
         let router = self.clone();
         let name = name.to_string();
-        let args = args.to_string();
+        let args = match self.maybe_transform_args(args) {
+            Some(t) => t,
+            None => args.to_string(),
+        };
 
         let (tx, rx) = StreamSender::channel();
 
@@ -734,8 +835,21 @@ impl Router {
         self.execute_with_args(name, "{}").await
     }
 
+    /// Apply the configured key transform to args, if any.
+    fn maybe_transform_args(&self, args: &str) -> Option<String> {
+        self.key_transform.map(|t| apply_key_transform(args, t))
+    }
+
     /// Execute a handler by name with JSON args
     pub async fn execute_with_args(&self, name: &str, args: &str) -> Result<String, String> {
+        let transformed;
+        let args = match self.maybe_transform_args(args) {
+            Some(t) => {
+                transformed = t;
+                &transformed
+            }
+            None => args,
+        };
         match self.handlers.get(name) {
             Some(handler) => handler.call(args).await,
             None => Err(format!("Handler '{}' not found", name)),
@@ -2369,5 +2483,205 @@ mod tests {
         assert!(router.is_streaming("ticker"));
         assert!(router.is_streaming("state_stream"));
         assert!(router.is_streaming("state_search"));
+    }
+
+    // ─── KeyTransform tests ─────────────────────────────────────────────
+
+    #[test]
+    fn test_camel_to_snake_basic() {
+        assert_eq!(camel_to_snake("workflowId"), "workflow_id");
+        assert_eq!(camel_to_snake("actionLabel"), "action_label");
+        assert_eq!(camel_to_snake("simple"), "simple");
+        assert_eq!(camel_to_snake("alreadySnake"), "already_snake");
+        assert_eq!(camel_to_snake("ABC"), "a_b_c");
+    }
+
+    #[test]
+    fn test_camel_to_snake_single_char() {
+        assert_eq!(camel_to_snake("a"), "a");
+        assert_eq!(camel_to_snake("A"), "a");
+    }
+
+    #[test]
+    fn test_camel_to_snake_empty() {
+        assert_eq!(camel_to_snake(""), "");
+    }
+
+    #[test]
+    fn test_camel_to_snake_already_snake() {
+        assert_eq!(camel_to_snake("already_snake_case"), "already_snake_case");
+    }
+
+    #[test]
+    fn test_transform_keys_flat_object() {
+        let input: Value = serde_json::json!({
+            "workflowId": "abc",
+            "actionLabel": "run"
+        });
+        let result = transform_keys(input, KeyTransform::CamelToSnake);
+        assert_eq!(result, serde_json::json!({
+            "workflow_id": "abc",
+            "action_label": "run"
+        }));
+    }
+
+    #[test]
+    fn test_transform_keys_nested_object() {
+        let input: Value = serde_json::json!({
+            "outerKey": {
+                "innerKey": "value"
+            }
+        });
+        let result = transform_keys(input, KeyTransform::CamelToSnake);
+        assert_eq!(result, serde_json::json!({
+            "outer_key": {
+                "inner_key": "value"
+            }
+        }));
+    }
+
+    #[test]
+    fn test_transform_keys_array_of_objects() {
+        let input: Value = serde_json::json!([
+            {"firstName": "Alice"},
+            {"firstName": "Bob"}
+        ]);
+        let result = transform_keys(input, KeyTransform::CamelToSnake);
+        assert_eq!(result, serde_json::json!([
+            {"first_name": "Alice"},
+            {"first_name": "Bob"}
+        ]));
+    }
+
+    #[test]
+    fn test_transform_keys_primitive_passthrough() {
+        assert_eq!(transform_keys(Value::Null, KeyTransform::CamelToSnake), Value::Null);
+        assert_eq!(transform_keys(serde_json::json!(42), KeyTransform::CamelToSnake), serde_json::json!(42));
+        assert_eq!(transform_keys(serde_json::json!("hello"), KeyTransform::CamelToSnake), serde_json::json!("hello"));
+    }
+
+    #[tokio::test]
+    async fn test_router_with_key_transform_camel_to_snake() {
+        #[derive(serde::Deserialize)]
+        struct Input {
+            workflow_name: String,
+            is_active: bool,
+        }
+
+        let mut router = Router::new()
+            .with_key_transform(KeyTransform::CamelToSnake);
+        router.register_with_args("test", |args: Input| async move {
+            format!("{}:{}", args.workflow_name, args.is_active)
+        });
+
+        // camelCase keys should be transformed to snake_case
+        let result = router
+            .call_handler("test", r#"{"workflowName":"deploy","isActive":true}"#)
+            .await;
+        assert_eq!(result, Ok("deploy:true".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_router_with_key_transform_already_snake() {
+        #[derive(serde::Deserialize)]
+        struct Input {
+            workflow_name: String,
+        }
+
+        let mut router = Router::new()
+            .with_key_transform(KeyTransform::CamelToSnake);
+        router.register_with_args("test", |args: Input| async move {
+            args.workflow_name
+        });
+
+        // snake_case keys should pass through unchanged
+        let result = router
+            .call_handler("test", r#"{"workflow_name":"deploy"}"#)
+            .await;
+        assert_eq!(result, Ok("deploy".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_router_without_key_transform() {
+        #[derive(serde::Deserialize)]
+        struct Input {
+            workflow_name: String,
+        }
+
+        let mut router = Router::new(); // no key transform
+        router.register_with_args("test", |args: Input| async move {
+            args.workflow_name
+        });
+
+        // camelCase keys should fail without transform
+        let result = router
+            .call_handler("test", r#"{"workflowName":"deploy"}"#)
+            .await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to deserialize"));
+    }
+
+    #[tokio::test]
+    async fn test_router_key_transform_streaming_handler() {
+        #[derive(serde::Deserialize)]
+        struct Input {
+            item_count: usize,
+        }
+
+        let mut router = Router::new()
+            .with_key_transform(KeyTransform::CamelToSnake);
+        router.register_streaming_with_args("stream", |args: Input, tx: StreamSender| async move {
+            for i in 0..args.item_count {
+                tx.send(format!("{i}")).await.ok();
+            }
+            "done".to_string()
+        });
+
+        let (mut rx, fut) = router
+            .call_streaming_handler("stream", r#"{"itemCount":2}"#)
+            .unwrap();
+        let result = fut.await;
+
+        assert_eq!(result, Ok("done".to_string()));
+        assert_eq!(rx.recv().await, Some("0".to_string()));
+        assert_eq!(rx.recv().await, Some("1".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_router_key_transform_with_state() {
+        struct AppState {
+            prefix: String,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct Input {
+            user_name: String,
+        }
+
+        let mut router = Router::new()
+            .with_key_transform(KeyTransform::CamelToSnake)
+            .with_state(AppState { prefix: "Hello".to_string() });
+
+        router.register_with_state::<AppState, Input, _, _>(
+            "greet",
+            |state: State<Arc<AppState>>, args: Input| async move {
+                format!("{} {}", state.prefix, args.user_name)
+            },
+        );
+
+        let result = router
+            .call_handler("greet", r#"{"userName":"Alice"}"#)
+            .await;
+        assert_eq!(result, Ok("Hello Alice".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_router_key_transform_zero_arg_handler_unaffected() {
+        let mut router = Router::new()
+            .with_key_transform(KeyTransform::CamelToSnake);
+        router.register("health", || async { "ok".to_string() });
+
+        let result = router.call_handler("health", "{}").await;
+        assert_eq!(result, Ok("ok".to_string()));
     }
 }

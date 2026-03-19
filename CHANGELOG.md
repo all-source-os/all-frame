@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.24] - 2026-03-19
+
+### Fixed
+- **Resilience macro tests** — Updated `#[retry]` and `#[rate_limited]` proc-macro test assertions to match Clean Architecture output format, fixing 2 pre-existing test failures in `allframe-macros`.
+
+### Documentation
+- **Release skill** — Added `allframe-mcp` to publish order and test set, clarified handling of pre-existing test failures.
+
+---
+
 ## [0.1.23] - 2026-03-19
 
 ### Added

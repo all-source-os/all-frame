@@ -99,7 +99,7 @@
     // Discover handlers on load
     async function init() {
       try {
-        const handlers = await invoke("plugin:allframe|allframe_list");
+        const handlers = await invoke("plugin:allframe-tauri|allframe_list");
         const container = document.getElementById("handlers");
         container.innerHTML = handlers
           .map(h => `<span class="handler-tag">${h.name}</span>`)
@@ -118,7 +118,7 @@
       const output = document.getElementById("output");
       output.textContent = `Calling ${name}...`;
       try {
-        const result = await invoke("plugin:allframe|allframe_call", {
+        const result = await invoke("plugin:allframe-tauri|allframe_call", {
           handler: name,
           args: {}
         });

@@ -37,18 +37,18 @@ use serde::Serialize;
 use tauri::plugin::TauriPlugin;
 use tauri::{Emitter, Manager, Runtime};
 
-use crate::plugin::{build_plugin, ActiveStreams};
+use crate::plugin::{boot_progress_event, build_plugin, ActiveStreams};
 use crate::server::TauriServer;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-/// Progress event payload emitted during boot as `allframe:boot-progress`.
+/// Progress event payload emitted during boot as `allframe-tauri:boot-progress`.
 ///
 /// Frontend can listen for this to render a splash/loading screen:
 ///
 /// ```typescript
 /// import { listen } from "@tauri-apps/api/event";
-/// await listen("allframe:boot-progress", (e) => {
+/// await listen("allframe-tauri:boot-progress", (e) => {
 ///     // e.payload: { step: 2, total: 3, label: "Projections ready" }
 /// });
 /// ```
@@ -118,7 +118,7 @@ impl<R: Runtime> BootContext<R> {
     /// Emit a progress event to the frontend.
     ///
     /// Increments the internal step counter and emits an
-    /// `allframe:boot-progress` event with the step number, total, and label.
+    /// `allframe-tauri:boot-progress` event with the step number, total, and label.
     pub fn emit_progress(&self, label: &str) {
         let step = self.current_step.fetch_add(1, Ordering::Relaxed) + 1;
         let payload = BootProgress {
@@ -126,7 +126,7 @@ impl<R: Runtime> BootContext<R> {
             total: self.total_steps,
             label: label.to_string(),
         };
-        if let Err(_e) = self.app_handle.emit("allframe:boot-progress", &payload) {
+        if let Err(_e) = self.app_handle.emit(&boot_progress_event(), &payload) {
             #[cfg(debug_assertions)]
             eprintln!("allframe: failed to emit boot progress event: {_e}");
         }

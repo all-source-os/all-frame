@@ -1000,6 +1000,82 @@ impl Default for Router {
     }
 }
 
+/// Bulk-register handler functions with a Router.
+///
+/// Each function is referenced by path in the expansion, so the compiler
+/// sees it as used — eliminating false `dead_code` warnings that occur when
+/// handler functions are only referenced through closure-based registration.
+///
+/// # Syntax
+///
+/// ```rust,ignore
+/// use allframe_core::register_handlers;
+///
+/// register_handlers!(router, [
+///     // Basic handler (zero-arg, returns String)
+///     "health" => health_check,
+///
+///     // Handler with typed, deserializable args
+///     args "greet" => greet,
+///
+///     // Streaming handler (receives StreamSender)
+///     streaming "feed" => live_feed,
+///
+///     // Streaming handler with typed args
+///     streaming args "search" => search_stream,
+/// ]);
+/// ```
+///
+/// # Expands to
+///
+/// ```rust,ignore
+/// router.register("health", health_check);
+/// router.register_with_args("greet", greet);
+/// router.register_streaming("feed", live_feed);
+/// router.register_streaming_with_args("search", search_stream);
+/// ```
+///
+/// # Why this helps
+///
+/// When handler functions are defined in separate modules and only called via
+/// `router.register("name", || async { handler().await })`, the compiler
+/// cannot always trace the usage chain and reports `dead_code` warnings.
+/// This macro passes each function directly as a function item, making the
+/// reference visible to `rustc`'s dead-code analysis.
+#[macro_export]
+macro_rules! register_handlers {
+    ($router:expr, [ $($entry:tt)* ]) => {
+        $crate::register_handlers!(@entries $router, $($entry)*)
+    };
+
+    // Terminal case
+    (@entries $router:expr, ) => {};
+
+    // Basic: "name" => handler,
+    (@entries $router:expr, $name:literal => $handler:path, $($rest:tt)*) => {
+        $router.register($name, $handler);
+        $crate::register_handlers!(@entries $router, $($rest)*)
+    };
+
+    // With args: args "name" => handler,
+    (@entries $router:expr, args $name:literal => $handler:path, $($rest:tt)*) => {
+        $router.register_with_args($name, $handler);
+        $crate::register_handlers!(@entries $router, $($rest)*)
+    };
+
+    // Streaming: streaming "name" => handler,
+    (@entries $router:expr, streaming $name:literal => $handler:path, $($rest:tt)*) => {
+        $router.register_streaming($name, $handler);
+        $crate::register_handlers!(@entries $router, $($rest)*)
+    };
+
+    // Streaming with args: streaming args "name" => handler,
+    (@entries $router:expr, streaming args $name:literal => $handler:path, $($rest:tt)*) => {
+        $router.register_streaming_with_args($name, $handler);
+        $crate::register_handlers!(@entries $router, $($rest)*)
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2012,5 +2088,130 @@ mod tests {
 
         let result = router.call_handler("get", "{}").await;
         assert_eq!(result, Ok("second".to_string()));
+    }
+
+    // ─── register_handlers! macro tests ─────────────────────────────────
+
+    // Define handler functions at module scope so they're visible as paths
+    mod macro_test_handlers {
+        use super::StreamSender;
+
+        pub async fn health() -> String {
+            "ok".to_string()
+        }
+
+        pub async fn echo(args: EchoArgs) -> String {
+            args.message
+        }
+
+        #[derive(serde::Deserialize)]
+        pub struct EchoArgs {
+            pub message: String,
+        }
+
+        pub async fn ticker(tx: StreamSender) -> String {
+            tx.send("tick".to_string()).await.ok();
+            "done".to_string()
+        }
+
+        pub async fn search(args: SearchArgs, tx: StreamSender) -> String {
+            tx.send(format!("found:{}", args.query)).await.ok();
+            "complete".to_string()
+        }
+
+        #[derive(serde::Deserialize)]
+        pub struct SearchArgs {
+            pub query: String,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_basic() {
+        let mut router = Router::new();
+        register_handlers!(router, [
+            "health" => macro_test_handlers::health,
+        ]);
+        assert_eq!(router.handlers_count(), 1);
+        let result = router.call_handler("health", "{}").await;
+        assert_eq!(result, Ok("ok".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_with_args() {
+        let mut router = Router::new();
+        register_handlers!(router, [
+            args "echo" => macro_test_handlers::echo,
+        ]);
+        assert_eq!(router.handlers_count(), 1);
+        let result = router
+            .call_handler("echo", r#"{"message":"hello"}"#)
+            .await;
+        assert_eq!(result, Ok("hello".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_streaming() {
+        let mut router = Router::new();
+        register_handlers!(router, [
+            streaming "ticker" => macro_test_handlers::ticker,
+        ]);
+        assert!(router.is_streaming("ticker"));
+        let (mut rx, fut) = router.call_streaming_handler("ticker", "{}").unwrap();
+        let result = fut.await;
+        assert_eq!(result, Ok("done".to_string()));
+        assert_eq!(rx.recv().await, Some("tick".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_streaming_with_args() {
+        let mut router = Router::new();
+        register_handlers!(router, [
+            streaming args "search" => macro_test_handlers::search,
+        ]);
+        assert!(router.is_streaming("search"));
+        let (mut rx, fut) = router
+            .call_streaming_handler("search", r#"{"query":"rust"}"#)
+            .unwrap();
+        let result = fut.await;
+        assert_eq!(result, Ok("complete".to_string()));
+        assert_eq!(rx.recv().await, Some("found:rust".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_mixed() {
+        let mut router = Router::new();
+        register_handlers!(router, [
+            "health" => macro_test_handlers::health,
+            args "echo" => macro_test_handlers::echo,
+            streaming "ticker" => macro_test_handlers::ticker,
+            streaming args "search" => macro_test_handlers::search,
+        ]);
+
+        // All 4 registered (2 regular + 2 streaming)
+        assert_eq!(router.handlers_count(), 2);
+        assert_eq!(router.list_handlers().len(), 4);
+
+        // Regular handlers work
+        assert_eq!(
+            router.call_handler("health", "{}").await,
+            Ok("ok".to_string())
+        );
+        assert_eq!(
+            router
+                .call_handler("echo", r#"{"message":"hi"}"#)
+                .await,
+            Ok("hi".to_string())
+        );
+
+        // Streaming handlers work
+        assert!(router.is_streaming("ticker"));
+        assert!(router.is_streaming("search"));
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_empty() {
+        let router = Router::new();
+        register_handlers!(router, []);
+        assert_eq!(router.handlers_count(), 0);
     }
 }

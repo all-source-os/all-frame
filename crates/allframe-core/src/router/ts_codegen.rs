@@ -213,7 +213,7 @@ pub fn generate_ts_client(handler_metas: &HashMap<String, HandlerMeta>) -> Strin
     // Internal helper that unwraps CallResponse and parses JSON
     output.push_str("/** @internal Unwrap CallResponse and parse the JSON result. */\n");
     output.push_str("async function callHandler<T>(handler: string, args: Record<string, unknown> = {}): Promise<T> {\n");
-    output.push_str("  const response = await invoke<{ result: string }>(\"plugin:allframe|allframe_call\", { handler, args });\n");
+    output.push_str("  const response = await invoke<{ result: string }>(\"plugin:allframe-tauri|allframe_call\", { handler, args });\n");
     output.push_str("  return JSON.parse(response.result) as T;\n");
     output.push_str("}\n\n");
 
@@ -237,9 +237,9 @@ pub fn generate_ts_client(handler_metas: &HashMap<String, HandlerMeta>) -> Strin
         output.push_str("  args: Record<string, unknown>,\n");
         output.push_str("  observer: StreamObserver<T, F>,\n");
         output.push_str("): Promise<StreamSubscription> {\n");
-        output.push_str("  const { stream_id } = await invoke<{ stream_id: string }>(\"plugin:allframe|allframe_stream\", { handler, args });\n");
+        output.push_str("  const { stream_id } = await invoke<{ stream_id: string }>(\"plugin:allframe-tauri|allframe_stream\", { handler, args });\n");
         output.push_str("  const unlistens: UnlistenFn[] = [];\n");
-        output.push_str("  const eventBase = `allframe:stream:${handler}:${stream_id}`;\n");
+        output.push_str("  const eventBase = `allframe-tauri:stream:${handler}:${stream_id}`;\n");
         output.push_str("  const cleanup = () => unlistens.forEach(fn => fn());\n");
         output.push_str("  unlistens.push(await listen<string>(eventBase, (e) => observer.next(JSON.parse(e.payload) as T)));\n");
         output.push_str("  unlistens.push(await listen<string>(`${eventBase}:complete`, (e) => { cleanup(); observer.complete?.(JSON.parse(e.payload) as F); }));\n");
@@ -248,7 +248,7 @@ pub fn generate_ts_client(handler_metas: &HashMap<String, HandlerMeta>) -> Strin
         output.push_str("  return {\n");
         output.push_str("    unsubscribe: () => {\n");
         output.push_str("      cleanup();\n");
-        output.push_str("      invoke(\"plugin:allframe|allframe_stream_cancel\", { streamId: stream_id }).catch(() => {});\n");
+        output.push_str("      invoke(\"plugin:allframe-tauri|allframe_stream_cancel\", { streamId: stream_id }).catch(() => {});\n");
         output.push_str("    },\n");
         output.push_str("  };\n");
         output.push_str("}\n\n");

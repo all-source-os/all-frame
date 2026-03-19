@@ -34,10 +34,10 @@
 //! import { invoke } from "@tauri-apps/api/core";
 //!
 //! // List available handlers
-//! const handlers = await invoke("plugin:allframe|allframe_list");
+//! const handlers = await invoke("plugin:allframe-tauri|allframe_list");
 //!
 //! // Call a handler
-//! const result = await invoke("plugin:allframe|allframe_call", {
+//! const result = await invoke("plugin:allframe-tauri|allframe_call", {
 //!     handler: "get_user",
 //!     args: { id: 42 }
 //! });

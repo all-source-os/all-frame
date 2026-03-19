@@ -27,10 +27,10 @@
 //! import { invoke } from "@tauri-apps/api/core";
 //!
 //! // List available handlers
-//! const handlers = await invoke("plugin:allframe|allframe_list");
+//! const handlers = await invoke("plugin:allframe-tauri|allframe_list");
 //!
 //! // Call a handler
-//! const result = await invoke("plugin:allframe|allframe_call", {
+//! const result = await invoke("plugin:allframe-tauri|allframe_call", {
 //!     handler: "get_user",
 //!     args: { id: 42 }
 //! });
@@ -65,7 +65,7 @@ pub mod types;
 pub use allframe_core::router::StreamReceiver;
 pub use boot::{BootBuilder, BootContext, BootError, BootProgress};
 pub use error::TauriServerError;
-pub use plugin::{builder, init, init_with_state};
+pub use plugin::{builder, init, init_with_state, PLUGIN_NAME};
 pub use server::TauriServer;
 pub use types::{CallResponse, HandlerInfo, HandlerKind, StreamStartResponse};
 

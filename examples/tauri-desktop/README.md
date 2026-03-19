@@ -22,14 +22,14 @@ cargo tauri dev
 - **AllFrame Router** handlers registered as Tauri IPC commands
 - **No HTTP server** — all dispatch is in-process via `allframe_tauri::init(router)`
 - **Works fully offline** — zero network dependencies
-- **Frontend** discovers handlers via `plugin:allframe|allframe_list` and calls them via `plugin:allframe|allframe_call`
+- **Frontend** discovers handlers via `plugin:allframe-tauri|allframe_list` and calls them via `plugin:allframe-tauri|allframe_call`
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────┐
 │  Frontend (index.html)          │
-│  invoke("plugin:allframe|...")  │
+│  invoke("plugin:allframe-tauri|...")  │
 └──────────┬──────────────────────┘
            │ Tauri IPC (no HTTP)
 ┌──────────▼──────────────────────┐

@@ -12,6 +12,36 @@ use crate::error::TauriServerError;
 use crate::server::TauriServer;
 use crate::types::{CallResponse, HandlerInfo, StreamStartResponse};
 
+/// The plugin identifier used for Tauri 2 ACL resolution and IPC routing.
+///
+/// This **must** match the identifier that `tauri_plugin::Builder` in `build.rs`
+/// derives from the crate name (`allframe-tauri`). A mismatch causes:
+///
+/// ```text
+/// allframe.allframe_call not allowed. Plugin not found
+/// ```
+///
+/// Frontend invocations use this identifier:
+///
+/// ```typescript
+/// invoke("plugin:allframe-tauri|allframe_call", { handler: "greet", args: {} });
+/// ```
+pub const PLUGIN_NAME: &str = "allframe-tauri";
+
+/// Format a stream event name for a given handler and stream ID.
+///
+/// Returns `allframe-tauri:stream:{handler}:{stream_id}`.
+pub(crate) fn stream_event(handler: &str, stream_id: &str) -> String {
+    format!("{PLUGIN_NAME}:stream:{handler}:{stream_id}")
+}
+
+/// Format a boot-progress event name.
+///
+/// Returns `allframe-tauri:boot-progress`.
+pub(crate) fn boot_progress_event() -> String {
+    format!("{PLUGIN_NAME}:boot-progress")
+}
+
 /// Managed state for tracking active streams (for cancellation).
 pub(crate) struct ActiveStreams {
     /// Maps stream_id -> JoinHandle abort handle
@@ -47,9 +77,9 @@ pub(crate) async fn allframe_call(
 
 /// Start a streaming handler. Returns a stream_id immediately.
 /// Stream items are emitted as Tauri events:
-/// - `allframe:stream:{handler}:{stream_id}` — each item
-/// - `allframe:stream:{handler}:{stream_id}:complete` — final result
-/// - `allframe:stream:{handler}:{stream_id}:error` — handler error
+/// - `allframe-tauri:stream:{handler}:{stream_id}` — each item
+/// - `allframe-tauri:stream:{handler}:{stream_id}:complete` — final result
+/// - `allframe-tauri:stream:{handler}:{stream_id}:error` — handler error
 #[tauri::command]
 pub(crate) async fn allframe_stream<R: Runtime>(
     handler: String,
@@ -69,7 +99,7 @@ pub(crate) async fn allframe_stream<R: Runtime>(
     let active_inner: Arc<ActiveStreams> = (*active).clone();
 
     let task = tokio::spawn(async move {
-        let event_base = format!("allframe:stream:{}:{}", handler_name, sid);
+        let event_base = stream_event(&handler_name, &sid);
 
         // Forward stream items as events
         while let Some(item) = rx.recv().await {
@@ -120,7 +150,7 @@ pub(crate) async fn allframe_stream_cancel<R: Runtime>(
             // The stream's StreamReceiver will be dropped when the task is aborted,
             // which auto-cancels the CancellationToken.
             let _ = app.emit(
-                &format!("allframe:stream:unknown:{}:cancelled", stream_id),
+                &format!("{}:cancelled", stream_event("unknown", &stream_id)),
                 &(),
             );
             Ok(())
@@ -180,7 +210,7 @@ where
     R: Runtime,
     F: FnOnce(&tauri::AppHandle<R>) -> Result<(), Box<dyn std::error::Error>> + Send + 'static,
 {
-    PluginBuilder::new("allframe")
+    PluginBuilder::new(PLUGIN_NAME)
         .invoke_handler(tauri::generate_handler![
             allframe_list,
             allframe_call,
@@ -251,4 +281,74 @@ pub fn init_with_state<R: Runtime, S: Send + Sync + 'static>(
 /// ```
 pub fn builder<R: Runtime>(router: Router) -> crate::boot::BootBuilder<R> {
     crate::boot::BootBuilder::new(router)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ─── Plugin name identity ──────────────────────────────────────────
+
+    #[test]
+    fn plugin_name_matches_crate_name() {
+        // The Tauri 2 ACL system resolves permissions by the crate name
+        // (allframe-tauri). The runtime plugin name must match exactly.
+        assert_eq!(PLUGIN_NAME, "allframe-tauri");
+    }
+
+    #[test]
+    fn plugin_name_contains_hyphen() {
+        // Regression: the old value "allframe" (no hyphen) caused ACL
+        // mismatch because build.rs generates permissions under "allframe-tauri".
+        assert!(
+            PLUGIN_NAME.contains('-'),
+            "Plugin name must include hyphen to match crate-derived ACL identifier"
+        );
+    }
+
+    // ─── Event name formatting ─────────────────────────────────────────
+
+    #[test]
+    fn stream_event_uses_plugin_name_prefix() {
+        let event = stream_event("my_handler", "abc-123");
+        assert_eq!(event, "allframe-tauri:stream:my_handler:abc-123");
+    }
+
+    #[test]
+    fn stream_event_complete_suffix() {
+        let base = stream_event("handler", "id1");
+        let complete = format!("{base}:complete");
+        assert_eq!(complete, "allframe-tauri:stream:handler:id1:complete");
+    }
+
+    #[test]
+    fn stream_event_error_suffix() {
+        let base = stream_event("handler", "id1");
+        let error = format!("{base}:error");
+        assert_eq!(error, "allframe-tauri:stream:handler:id1:error");
+    }
+
+    #[test]
+    fn boot_progress_event_uses_plugin_name() {
+        assert_eq!(boot_progress_event(), "allframe-tauri:boot-progress");
+    }
+
+    #[test]
+    fn stream_event_does_not_use_old_prefix() {
+        // Regression: events previously used "allframe:" prefix
+        let event = stream_event("handler", "id");
+        assert!(
+            !event.starts_with("allframe:"),
+            "Event must not use the old 'allframe:' prefix (should be 'allframe-tauri:')"
+        );
+    }
+
+    #[test]
+    fn boot_progress_event_does_not_use_old_prefix() {
+        let event = boot_progress_event();
+        assert!(
+            !event.starts_with("allframe:"),
+            "Boot progress event must not use the old 'allframe:' prefix"
+        );
+    }
 }

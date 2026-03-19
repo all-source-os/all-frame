@@ -8,10 +8,10 @@
 //!
 //! ## Available Commands
 //!
-//! ### `plugin:allframe|allframe_list`
+//! ### `plugin:allframe-tauri|allframe_list`
 //! Returns a list of all registered handlers as `Vec<HandlerInfo>`.
 //!
-//! ### `plugin:allframe|allframe_call`
+//! ### `plugin:allframe-tauri|allframe_call`
 //! Calls a handler by name. Parameters:
 //! - `handler: String` — the handler name
 //! - `args: Value` — JSON arguments passed to the handler

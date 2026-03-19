@@ -5,6 +5,7 @@
 
 #![deny(warnings)]
 
+mod allframe_handler;
 mod api;
 mod arch;
 mod cqrs;
@@ -752,6 +753,52 @@ pub fn tauri_compat(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = proc_macro2::TokenStream::from(item);
 
     tauri_compat::tauri_compat_impl(attr, item)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+/// Mark a function as an AllFrame router handler.
+///
+/// This attribute suppresses `dead_code` warnings that occur because the Rust
+/// compiler cannot trace function usage through `router.register("name", handler_fn)`
+/// closure chains. It also validates the handler signature at compile time.
+///
+/// # Basic handler
+///
+/// ```ignore
+/// #[allframe_handler]
+/// async fn get_user() -> String {
+///     r#"{"name":"Alice"}"#.to_string()
+/// }
+///
+/// router.register("get_user", get_user);
+/// ```
+///
+/// # Streaming handler
+///
+/// ```ignore
+/// use allframe_core::router::StreamSender;
+///
+/// #[allframe_handler(streaming)]
+/// async fn stream_data(tx: StreamSender) -> String {
+///     tx.send("chunk".to_string()).await.ok();
+///     "done".to_string()
+/// }
+///
+/// router.register_streaming("stream_data", stream_data);
+/// ```
+///
+/// # Validation
+///
+/// - Function must be `async`
+/// - `streaming` handlers must have a `StreamSender` parameter
+/// - Non-streaming handlers must not have a `StreamSender` parameter
+#[proc_macro_attribute]
+pub fn allframe_handler(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = proc_macro2::TokenStream::from(attr);
+    let item = proc_macro2::TokenStream::from(item);
+
+    allframe_handler::allframe_handler_impl(attr, item)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }

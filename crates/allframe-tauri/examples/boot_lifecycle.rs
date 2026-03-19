@@ -58,14 +58,14 @@
 //! import { listen } from "@tauri-apps/api/event";
 //!
 //! // Show a splash screen while boot runs
-//! const unlisten = await listen("allframe:boot-progress", (event) => {
+//! const unlisten = await listen("allframe-tauri:boot-progress", (event) => {
 //!     const { step, total, label } = event.payload;
 //!     updateSplashScreen(`${label} (${step}/${total})`);
 //! });
 //!
 //! // Once boot completes, setup() returns and the window renders.
 //! // You can safely call handlers now.
-//! const notes = await invoke("plugin:allframe|allframe_call", {
+//! const notes = await invoke("plugin:allframe-tauri|allframe_call", {
 //!     handler: "query_notes",
 //!     args: {}
 //! });

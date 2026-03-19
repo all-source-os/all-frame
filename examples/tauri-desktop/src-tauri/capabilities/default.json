@@ -7,6 +7,6 @@
     "core:default",
     "core:event:default",
     "core:window:default",
-    "allframe:default"
+    "allframe-tauri:default"
   ]
 }

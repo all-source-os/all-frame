@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.22] - 2026-03-19
+
+### Fixed
+- **Tauri 2 plugin name mismatch** ([#56](https://github.com/all-source-os/all-frame/issues/56)) — `PluginBuilder::new("allframe")` did not match the `allframe-tauri` identifier that `tauri_plugin::Builder` in `build.rs` derives from the crate name. Tauri 2's ACL resolved permissions under `allframe-tauri:allow-*` but runtime checked against `allframe`, causing every IPC call to fail with `"allframe.allframe_call not allowed. Plugin not found"`. Fixed by aligning the plugin name to `allframe-tauri` via a `PLUGIN_NAME` constant.
+
+### Added
+- **`PLUGIN_NAME` constant** — Public `allframe_tauri::PLUGIN_NAME` (`"allframe-tauri"`) ensures the plugin identifier stays in sync with the crate-derived ACL name.
+- **`#[allframe_handler]` attribute macro** — Marks functions as AllFrame router handlers, suppressing false `dead_code` warnings the compiler emits because it cannot trace usage through `router.register("name", handler_fn)` closure chains. Also validates: function must be `async`; `streaming` handlers must have a `StreamSender` parameter; non-streaming handlers must not.
+- **`register_handlers!` macro** — Bulk-registers handler functions where each is referenced by path, making usage visible to `rustc`'s dead-code analysis. Supports `args`, `streaming`, and `streaming args` prefixes.
+
+### Changed
+- **Event name prefix** — Streaming events changed from `allframe:stream:*` to `allframe-tauri:stream:*` and boot progress from `allframe:boot-progress` to `allframe-tauri:boot-progress` to match the corrected plugin name.
+- **Frontend invoke pattern** — `plugin:allframe|*` → `plugin:allframe-tauri|*` in generated TypeScript client, examples, and documentation.
+- **Capability identifier** — `allframe:default` → `allframe-tauri:default` in permission grants.
+
+### Migration
+- **Capabilities:** Change `"allframe:default"` to `"allframe-tauri:default"` in `src-tauri/capabilities/*.json`
+- **Frontend:** Change `invoke("plugin:allframe|allframe_call", ...)` to `invoke("plugin:allframe-tauri|allframe_call", ...)`
+- **Event listeners:** Change `listen("allframe:boot-progress", ...)` to `listen("allframe-tauri:boot-progress", ...)`
+- **Stream events:** Change `allframe:stream:` prefix to `allframe-tauri:stream:`
+
+---
+
 ## [0.1.21] - 2026-03-18
 
 ### Added

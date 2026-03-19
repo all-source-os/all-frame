@@ -78,11 +78,11 @@ fn main() {
 }
 ```
 
-This handles the "no Tokio reactor on macOS main thread" problem internally. Progress events are emitted as `allframe:boot-progress` for frontend splash screens. See the [`boot_lifecycle` example](examples/boot_lifecycle.rs) for a runnable demo.
+This handles the "no Tokio reactor on macOS main thread" problem internally. Progress events are emitted as `allframe-tauri:boot-progress` for frontend splash screens. See the [`boot_lifecycle` example](examples/boot_lifecycle.rs) for a runnable demo.
 
 ### 2. Permissions (Required for Tauri 2)
 
-Add `"allframe:default"` to your app's capabilities. Create `src-tauri/capabilities/default.json`:
+Add `"allframe-tauri:default"` to your app's capabilities. Create `src-tauri/capabilities/default.json`:
 
 ```json
 {
@@ -91,7 +91,7 @@ Add `"allframe:default"` to your app's capabilities. Create `src-tauri/capabilit
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "allframe:default"
+    "allframe-tauri:default"
   ]
 }
 ```
@@ -100,8 +100,8 @@ This grants access to all AllFrame IPC commands (`allframe_list`, `allframe_call
 
 ```json
 "permissions": [
-  "allframe:allow-allframe-list",
-  "allframe:allow-allframe-call"
+  "allframe-tauri:allow-allframe-list",
+  "allframe-tauri:allow-allframe-call"
 ]
 ```
 
@@ -111,10 +111,10 @@ This grants access to all AllFrame IPC commands (`allframe_list`, `allframe_call
 import { invoke } from "@tauri-apps/api/core";
 
 // List available handlers
-const handlers = await invoke("plugin:allframe|allframe_list");
+const handlers = await invoke("plugin:allframe-tauri|allframe_list");
 
 // Call a handler
-const result = await invoke("plugin:allframe|allframe_call", {
+const result = await invoke("plugin:allframe-tauri|allframe_call", {
     handler: "get_user",
     args: { id: 42 }
 });

@@ -389,8 +389,8 @@ mod tests {
         let result = retry_impl(attr, item);
         assert!(result.is_ok());
         let output = result.unwrap().to_string();
-        assert!(output.contains("RetryExecutor"));
-        assert!(output.contains("RetryConfig"));
+        assert!(output.contains("ResilienceOrchestrator"));
+        assert!(output.contains("ResiliencePolicy"));
     }
 
     #[test]
@@ -420,6 +420,7 @@ mod tests {
         let result = rate_limited_impl(attr, item);
         assert!(result.is_ok());
         let output = result.unwrap().to_string();
-        assert!(output.contains("RateLimiter"));
+        assert!(output.contains("ResilienceOrchestrator"));
+        assert!(output.contains("RateLimit"));
     }
 }

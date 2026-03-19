@@ -11,6 +11,17 @@ on:
 permissions:
   contents: read
 
+env:
+  # Tauri 2 system dependencies required on Ubuntu for allframe-tauri and
+  # any workspace-level build that resolves it (e.g. workspace regression).
+  TAURI_LINUX_DEPS: >-
+    libgtk-3-dev
+    libwebkit2gtk-4.1-dev
+    libappindicator3-dev
+    librsvg2-dev
+    patchelf
+    libglib2.0-dev
+
 jobs:
   # Gate 1: Offline feature combinations compile
   offline-feature-matrix:
@@ -60,7 +71,7 @@ jobs:
 
   # Gate 2: allframe-tauri crate
   tauri-crate:
-    name: allframe-tauri
+    name: allframe-tauri (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -70,6 +81,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+
+      - name: Install Tauri system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y $TAURI_LINUX_DEPS
 
       - name: Check
         run: cargo check -p allframe-tauri
@@ -99,12 +116,19 @@ jobs:
 
           - name: "allframe-tauri"
             package: "allframe-tauri"
-            banned: "reqwest|redis|opentelemetry-otlp|tonic|hyper"
+            # hyper is a legitimate transitive dep of tauri (internal IPC, not network HTTP)
+            banned: "reqwest|redis|opentelemetry-otlp|tonic"
 
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+
+      - name: Install Tauri system dependencies (Linux)
+        if: matrix.profile.package == 'allframe-tauri'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y $TAURI_LINUX_DEPS
 
       - name: Validate no network deps (${{ matrix.profile.name }})
         run: |
@@ -113,14 +137,21 @@ jobs:
           BANNED="${{ matrix.profile.banned }}"
 
           if [ -n "$FEATURES" ]; then
-            TREE=$(cargo tree -p "$PACKAGE" --no-default-features --features "$FEATURES" 2>&1)
+            TREE=$(cargo tree -p "$PACKAGE" --no-default-features --features "$FEATURES" --prefix depth 2>&1)
           else
-            TREE=$(cargo tree -p "$PACKAGE" 2>&1)
+            TREE=$(cargo tree -p "$PACKAGE" --prefix depth 2>&1)
           fi
+
+          # Filter to only dependency lines (indented with digits), excluding
+          # cargo metadata lines like "Locking", "Adding", "Downloading" etc.
+          DEPS_ONLY=$(echo "$TREE" | grep -E '^[0-9]')
 
           echo "$TREE"
 
-          if echo "$TREE" | grep -E "$BANNED"; then
+          if echo "$DEPS_ONLY" | grep -qE "$BANNED"; then
+            echo ""
+            echo "Matched lines:"
+            echo "$DEPS_ONLY" | grep -E "$BANNED"
             echo ""
             echo "::error::Network dependencies found in ${{ matrix.profile.name }} build!"
             echo "The following crates should NOT appear: $BANNED"
@@ -132,7 +163,7 @@ jobs:
 
   # Gate 4: Offline quality gate integration tests
   offline-quality-gate-tests:
-    name: Quality Gate Tests
+    name: Quality Gate Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -143,9 +174,15 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
+      - name: Install Tauri system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y $TAURI_LINUX_DEPS
+
       - name: Run offline quality gate tests
         run: >
-          cargo test
+          cargo test -p allframe-core
           --test 09_offline_quality_gates
           --features "cqrs,di,resilience,security,openapi"
 
@@ -193,6 +230,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+
+      - name: Install Tauri system dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y $TAURI_LINUX_DEPS
 
       - name: Full workspace test
         run: cargo test

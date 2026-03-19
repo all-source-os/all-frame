@@ -91,6 +91,10 @@ trybuild = "1.0"
 name = "allframe"
 path = "src/bin/allframe.rs"
 
+[[example]]
+name = "offline_desktop"
+required-features = ["resilience", "cqrs-sqlite", "offline"]
+
 [features]
 default = ["di", "openapi", "router", "otel", "cqrs", "health"]
 di = ["allframe-core/di"]

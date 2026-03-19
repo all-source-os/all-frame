@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.25] - 2026-03-19
+
+### Added
+- **Router-level `KeyTransform`** ([#57](https://github.com/all-source-os/all-frame/issues/57)) — New `KeyTransform` enum and `Router::with_key_transform()` builder method that automatically converts JSON arg keys before handler deserialization. Supports `KeyTransform::CamelToSnake` to convert camelCase keys (Tauri 2 frontend convention) to snake_case (Rust struct fields), eliminating the need for `#[serde(rename_all = "camelCase")]` on every input struct. Applied to regular handlers, streaming handlers, and stateful handlers.
+
+---
+
 ## [0.1.24] - 2026-03-19
 
 ### Fixed

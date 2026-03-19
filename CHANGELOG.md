@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.23] - 2026-03-19
+
+### Added
+- **`register_handlers!` state variants** ([#56](https://github.com/all-source-os/all-frame/issues/56)) — Four new prefixes for bulk-registering handlers that receive injected state: `state`, `state args`, `state streaming`, and `state streaming args`. These expand to `register_with_state_only`, `register_with_state`, `register_streaming_with_state_only`, and `register_streaming_with_state` respectively.
+- **`#[allframe_handler]` sync support** ([#56](https://github.com/all-source-os/all-frame/issues/56)) — The attribute macro now accepts sync (non-async) functions. Only `#[allframe_handler(streaming)]` still requires async, since `StreamSender` needs `.await`.
+
+### Fixed
+- **Clippy lints for Rust 1.94** — Resolved `manual_pattern_char_comparison`, `get_first`, `redundant_closure`, and `needless_borrow` warnings across `allframe-forge`, `allframe-mcp`, and `allframe-macros`.
+- **`offline_desktop` example** — Gated behind required features to prevent build failures when features are not enabled.
+
+### Changed
+- **CI** — Use container image for Linux jobs, consolidate steps, fix rustup PATH and dependency tree false positives.
+
+---
+
 ## [0.1.22] - 2026-03-19
 
 ### Fixed

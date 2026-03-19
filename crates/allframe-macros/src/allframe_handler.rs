@@ -7,8 +7,8 @@
 //!    functions appear unused. This macro adds `#[allow(dead_code)]` to silence
 //!    that false positive without hiding real dead code elsewhere.
 //!
-//! 2. **Validates the handler signature** — Ensures the function is `async`,
-//!    and in streaming mode, that a `StreamSender` parameter is present.
+//! 2. **Validates the handler signature** — Both sync and async handlers are
+//!    supported. In streaming mode, a `StreamSender` parameter must be present.
 //!
 //! # Usage
 //!
@@ -18,6 +18,11 @@
 //! #[allframe_handler]
 //! async fn get_user(args: GetUserArgs) -> String {
 //!     format!(r#"{{"name":"Alice"}}"#)
+//! }
+//!
+//! #[allframe_handler]
+//! fn compute_hash(args: HashArgs) -> String {
+//!     format!(r#"{{"hash":"{}"}}"#, hash(&args.data))
 //! }
 //!
 //! #[allframe_handler(streaming)]
@@ -65,11 +70,11 @@ pub fn allframe_handler_impl(attr: TokenStream, item: TokenStream) -> Result<Tok
     let func: ItemFn = parse2(item)?;
     let streaming = is_streaming(&attr);
 
-    // Validate: must be async
-    if func.sig.asyncness.is_none() {
+    // Validate: streaming handlers must be async (StreamSender requires .await)
+    if streaming && func.sig.asyncness.is_none() {
         return Err(Error::new_spanned(
             &func.sig.fn_token,
-            "#[allframe_handler] functions must be async",
+            "#[allframe_handler(streaming)] functions must be async",
         ));
     }
 
@@ -154,13 +159,30 @@ mod tests {
     }
 
     #[test]
-    fn test_rejects_sync_function() {
+    fn test_allows_sync_function() {
         let input = quote! {
             fn sync_handler() -> String {
+                "ok".to_string()
+            }
+        };
+        let result = allframe_handler_impl(TokenStream::new(), input).unwrap();
+        let output = result.to_string();
+        assert!(
+            output.contains("allow (dead_code)") || output.contains("allow(dead_code)"),
+            "should add #[allow(dead_code)], got: {output}"
+        );
+        assert!(output.contains("fn sync_handler"));
+    }
+
+    #[test]
+    fn test_streaming_rejects_sync_function() {
+        let attr = quote! { streaming };
+        let input = quote! {
+            fn sync_stream(tx: StreamSender) -> String {
                 "no".to_string()
             }
         };
-        let result = allframe_handler_impl(TokenStream::new(), input);
+        let result = allframe_handler_impl(attr, input);
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(

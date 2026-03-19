@@ -1023,6 +1023,18 @@ impl Default for Router {
 ///
 ///     // Streaming handler with typed args
 ///     streaming args "search" => search_stream,
+///
+///     // State-only handler (receives State<Arc<S>>)
+///     state "get_status" => get_ollama_status,
+///
+///     // State with typed args
+///     state args "save_key" => save_api_key,
+///
+///     // State streaming (receives State<Arc<S>> + StreamSender)
+///     state streaming "stream_chat" => stream_chat,
+///
+///     // State streaming with typed args
+///     state streaming args "start_job" => start_orchestrator,
 /// ]);
 /// ```
 ///
@@ -1033,6 +1045,10 @@ impl Default for Router {
 /// router.register_with_args("greet", greet);
 /// router.register_streaming("feed", live_feed);
 /// router.register_streaming_with_args("search", search_stream);
+/// router.register_with_state_only("get_status", get_ollama_status);
+/// router.register_with_state("save_key", save_api_key);
+/// router.register_streaming_with_state_only("stream_chat", stream_chat);
+/// router.register_streaming_with_state("start_job", start_orchestrator);
 /// ```
 ///
 /// # Why this helps
@@ -1072,6 +1088,30 @@ macro_rules! register_handlers {
     // Streaming with args: streaming args "name" => handler,
     (@entries $router:expr, streaming args $name:literal => $handler:path, $($rest:tt)*) => {
         $router.register_streaming_with_args($name, $handler);
+        $crate::register_handlers!(@entries $router, $($rest)*)
+    };
+
+    // State only: state "name" => handler,
+    (@entries $router:expr, state $name:literal => $handler:path, $($rest:tt)*) => {
+        $router.register_with_state_only($name, $handler);
+        $crate::register_handlers!(@entries $router, $($rest)*)
+    };
+
+    // State with args: state args "name" => handler,
+    (@entries $router:expr, state args $name:literal => $handler:path, $($rest:tt)*) => {
+        $router.register_with_state($name, $handler);
+        $crate::register_handlers!(@entries $router, $($rest)*)
+    };
+
+    // State streaming: state streaming "name" => handler,
+    (@entries $router:expr, state streaming $name:literal => $handler:path, $($rest:tt)*) => {
+        $router.register_streaming_with_state_only($name, $handler);
+        $crate::register_handlers!(@entries $router, $($rest)*)
+    };
+
+    // State streaming with args: state streaming args "name" => handler,
+    (@entries $router:expr, state streaming args $name:literal => $handler:path, $($rest:tt)*) => {
+        $router.register_streaming_with_state($name, $handler);
         $crate::register_handlers!(@entries $router, $($rest)*)
     };
 }
@@ -2094,7 +2134,8 @@ mod tests {
 
     // Define handler functions at module scope so they're visible as paths
     mod macro_test_handlers {
-        use super::StreamSender;
+        use super::{State, StreamSender};
+        use std::sync::Arc;
 
         pub async fn health() -> String {
             "ok".to_string()
@@ -2122,6 +2163,34 @@ mod tests {
         #[derive(serde::Deserialize)]
         pub struct SearchArgs {
             pub query: String,
+        }
+
+        // State handler functions for register_handlers! state variants
+        pub async fn get_status(state: State<Arc<String>>) -> String {
+            format!("status:{}", *state)
+        }
+
+        pub async fn save_key(state: State<Arc<String>>, args: SaveArgs) -> String {
+            format!("{}:{}", *state, args.key)
+        }
+
+        #[derive(serde::Deserialize)]
+        pub struct SaveArgs {
+            pub key: String,
+        }
+
+        pub async fn state_stream(state: State<Arc<String>>, tx: StreamSender) -> String {
+            tx.send(format!("{}:chunk", *state)).await.ok();
+            "done".to_string()
+        }
+
+        pub async fn state_search(
+            state: State<Arc<String>>,
+            args: SearchArgs,
+            tx: StreamSender,
+        ) -> String {
+            tx.send(format!("{}:{}", *state, args.query)).await.ok();
+            "complete".to_string()
         }
     }
 
@@ -2213,5 +2282,92 @@ mod tests {
         let router = Router::new();
         register_handlers!(router, []);
         assert_eq!(router.handlers_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_state_only() {
+        let mut router = Router::new().with_state("active".to_string());
+        register_handlers!(router, [
+            state "get_status" => macro_test_handlers::get_status,
+        ]);
+        let result = router.call_handler("get_status", "{}").await;
+        assert_eq!(result, Ok("status:active".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_state_args() {
+        let mut router = Router::new().with_state("ns".to_string());
+        register_handlers!(router, [
+            state args "save_key" => macro_test_handlers::save_key,
+        ]);
+        let result = router
+            .call_handler("save_key", r#"{"key":"api_token"}"#)
+            .await;
+        assert_eq!(result, Ok("ns:api_token".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_state_streaming() {
+        let mut router = Router::new().with_state("ctx".to_string());
+        register_handlers!(router, [
+            state streaming "state_stream" => macro_test_handlers::state_stream,
+        ]);
+        assert!(router.is_streaming("state_stream"));
+        let (mut rx, fut) = router
+            .call_streaming_handler("state_stream", "{}")
+            .unwrap();
+        let result = fut.await;
+        assert_eq!(result, Ok("done".to_string()));
+        assert_eq!(rx.recv().await, Some("ctx:chunk".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_state_streaming_args() {
+        let mut router = Router::new().with_state("db".to_string());
+        register_handlers!(router, [
+            state streaming args "state_search" => macro_test_handlers::state_search,
+        ]);
+        assert!(router.is_streaming("state_search"));
+        let (mut rx, fut) = router
+            .call_streaming_handler("state_search", r#"{"query":"rust"}"#)
+            .unwrap();
+        let result = fut.await;
+        assert_eq!(result, Ok("complete".to_string()));
+        assert_eq!(rx.recv().await, Some("db:rust".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_mixed_with_state() {
+        let mut router = Router::new().with_state("app".to_string());
+        register_handlers!(router, [
+            "health" => macro_test_handlers::health,
+            args "echo" => macro_test_handlers::echo,
+            state "get_status" => macro_test_handlers::get_status,
+            state args "save_key" => macro_test_handlers::save_key,
+            streaming "ticker" => macro_test_handlers::ticker,
+            state streaming "state_stream" => macro_test_handlers::state_stream,
+            state streaming args "state_search" => macro_test_handlers::state_search,
+        ]);
+
+        // Regular handlers
+        assert_eq!(
+            router.call_handler("health", "{}").await,
+            Ok("ok".to_string())
+        );
+        assert_eq!(
+            router.call_handler("get_status", "{}").await,
+            Ok("status:app".to_string())
+        );
+        assert_eq!(
+            router
+                .call_handler("save_key", r#"{"key":"secret"}"#)
+                .await,
+            Ok("app:secret".to_string())
+        );
+
+        // Streaming handlers
+        assert!(router.is_streaming("ticker"));
+        assert!(router.is_streaming("state_stream"));
+        assert!(router.is_streaming("state_search"));
     }
 }

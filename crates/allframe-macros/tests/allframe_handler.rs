@@ -37,6 +37,28 @@ async fn test_public_handler() {
     assert_eq!(result, "public");
 }
 
+// ─── Sync handlers ─────────────────────────────────────────────────────
+
+#[allframe_handler]
+fn compute_sync() -> String {
+    "sync_result".to_string()
+}
+
+#[allframe_handler]
+fn sync_with_args(input: String) -> String {
+    format!("sync:{input}")
+}
+
+#[test]
+fn test_sync_handler() {
+    assert_eq!(compute_sync(), "sync_result");
+}
+
+#[test]
+fn test_sync_handler_with_args() {
+    assert_eq!(sync_with_args("hello".to_string()), "sync:hello");
+}
+
 // ─── Streaming handlers ─────────────────────────────────────────────────
 
 use allframe_core::router::StreamSender;

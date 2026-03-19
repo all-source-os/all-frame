@@ -39,8 +39,10 @@ git diff $(git describe --tags --abbrev=0)..HEAD --name-only | grep '^crates/' |
 Then `cargo test -p <crate>` for each. At minimum always run:
 
 ```
-cargo test -p allframe-core -p allframe-macros -p allframe-tauri
+cargo test -p allframe-core -p allframe-macros -p allframe-tauri -p allframe-mcp
 ```
+
+If specific test files fail, check whether they were modified since the last tag (`git log <tag>..HEAD -- <file>`). Pre-existing test failures in unchanged files should not block the release — note them in the release output but proceed. Only failures in changed code are blocking.
 
 ### 2c. Version sync
 
@@ -52,7 +54,7 @@ Run `bash .claude/skills/release/scripts/check_version_sync.sh` to verify all ve
 cargo clippy --workspace -- -D warnings
 ```
 
-If clippy or tests fail, fix the issues before continuing. Do not skip.
+If clippy or tests fail, fix the issues before continuing. Do not skip. Commit fixes in a separate commit before the release commit (e.g., `fix: resolve clippy lints for Rust X.Y`). This keeps the release commit clean (only version bump + CHANGELOG).
 
 ## Step 3: Determine New Version
 
@@ -110,7 +112,8 @@ Publish in dependency order (leaves first). Wait for each to be available before
 2. `cargo publish -p allframe-forge`
 3. `cargo publish -p allframe-core`
 4. `cargo publish -p allframe-tauri`
-5. `cargo publish -p allframe`
+5. `cargo publish -p allframe-mcp`
+6. `cargo publish -p allframe`
 
 If any publish fails, diagnose and fix before continuing. Common issues:
 - Version already exists → the version was not bumped

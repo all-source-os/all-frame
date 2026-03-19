@@ -6,7 +6,8 @@
 2. `allframe-forge` — no workspace dependencies
 3. `allframe-core` — depends on `allframe-macros` (optional)
 4. `allframe-tauri` — depends on `allframe-core`
-5. `allframe` — root crate, depends on `allframe-core` + `allframe-forge`
+5. `allframe-mcp` — depends on `allframe-core`
+6. `allframe` — root crate, depends on `allframe-core` + `allframe-forge`
 
 ## Version Locations (all must be in sync)
 

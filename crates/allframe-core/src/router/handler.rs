@@ -520,6 +520,128 @@ where
     }
 }
 
+// ─── Type-erased handler (eliminates per-handler monomorphization) ─────────
+//
+// Each generic handler struct (HandlerFn<F,Fut,R>, HandlerWithArgs<F,T,Fut,R>,
+// etc.) generates a distinct `impl Handler` per registration. At ~290+
+// handlers the cumulative trait-resolution depth triggers E0275 on macOS
+// where objc2::Retained's Deref blanket impl creates infinite recursion.
+//
+// ErasedHandler collapses ALL handlers into a single concrete type with ONE
+// `impl Handler`. The generic → erased conversion happens at registration
+// time via the `erase_*` constructors — same Box::pin on the hot path,
+// zero additional allocation at call time.
+
+/// Type-erased request handler.
+///
+/// Wraps a boxed closure that has already been monomorphized and type-erased
+/// by the `register_*` method. Only one `impl Handler` exists for this type,
+/// regardless of how many handlers are registered.
+pub(crate) struct ErasedHandler(
+    Box<
+        dyn Fn(&str) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+            + Send
+            + Sync,
+    >,
+);
+
+impl ErasedHandler {
+    /// Erase a zero-arg handler.
+    pub fn no_args<F, Fut, R>(handler: F) -> Self
+    where
+        F: Fn() -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        Self(Box::new(move |_args: &str| {
+            let fut = handler();
+            Box::pin(async move { fut.await.into_handler_result() })
+        }))
+    }
+
+    /// Erase a handler that accepts typed, deserialized arguments.
+    pub fn with_args<F, T, Fut, R>(handler: F) -> Self
+    where
+        F: Fn(T) -> Fut + Send + Sync + 'static,
+        T: DeserializeOwned + Send + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        Self(Box::new(move |args: &str| {
+            let parsed: Result<T, _> = serde_json::from_str(args);
+            match parsed {
+                Ok(value) => {
+                    let fut = handler(value);
+                    Box::pin(async move { fut.await.into_handler_result() })
+                }
+                Err(e) => Box::pin(async move {
+                    Err(format!("Failed to deserialize args: {e}"))
+                }),
+            }
+        }))
+    }
+
+    /// Erase a handler that receives injected state and typed args.
+    pub fn with_state<F, S, T, Fut, R>(handler: F, states: SharedStateMap) -> Self
+    where
+        F: Fn(State<Arc<S>>, T) -> Fut + Send + Sync + 'static,
+        S: Send + Sync + 'static,
+        T: DeserializeOwned + Send + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        Self(Box::new(move |args: &str| {
+            let state_arc = match resolve_state::<S>(&states) {
+                Ok(s) => s,
+                Err(msg) => {
+                    return Box::pin(async move { Err(msg) })
+                        as Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+                }
+            };
+            let parsed: Result<T, _> = serde_json::from_str(args);
+            match parsed {
+                Ok(value) => {
+                    let fut = handler(State(state_arc), value);
+                    Box::pin(async move { fut.await.into_handler_result() })
+                }
+                Err(e) => Box::pin(async move {
+                    Err(format!("Failed to deserialize args: {e}"))
+                }),
+            }
+        }))
+    }
+
+    /// Erase a handler that receives only injected state (no args).
+    pub fn with_state_only<F, S, Fut, R>(handler: F, states: SharedStateMap) -> Self
+    where
+        F: Fn(State<Arc<S>>) -> Fut + Send + Sync + 'static,
+        S: Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        Self(Box::new(move |_args: &str| {
+            let state_arc = match resolve_state::<S>(&states) {
+                Ok(s) => s,
+                Err(msg) => {
+                    return Box::pin(async move { Err(msg) })
+                        as Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+                }
+            };
+            let fut = handler(State(state_arc));
+            Box::pin(async move { fut.await.into_handler_result() })
+        }))
+    }
+}
+
+impl Handler for ErasedHandler {
+    fn call(
+        &self,
+        args: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + '_>> {
+        (self.0)(args)
+    }
+}
+
 // ─── Streaming handler trait ────────────────────────────────────────────────
 
 /// Trait for streaming handlers that send incremental updates during execution.
@@ -538,7 +660,116 @@ pub trait StreamHandler: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + '_>>;
 }
 
-// ─── Streaming handler structs (4 variants) ─────────────────────────────────
+// ─── Type-erased streaming handler ─────────────────────────────────────────
+
+/// Type-erased streaming handler — same principle as `ErasedHandler` (see #58).
+pub(crate) struct ErasedStreamHandler(
+    Box<
+        dyn Fn(&str, StreamSender) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+            + Send
+            + Sync,
+    >,
+);
+
+impl ErasedStreamHandler {
+    /// Erase a streaming handler with no args.
+    pub fn no_args<F, Fut, R>(handler: F) -> Self
+    where
+        F: Fn(StreamSender) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        Self(Box::new(move |_args: &str, tx: StreamSender| {
+            let fut = handler(tx);
+            Box::pin(async move { fut.await.into_handler_result() })
+        }))
+    }
+
+    /// Erase a streaming handler with typed args.
+    pub fn with_args<F, T, Fut, R>(handler: F) -> Self
+    where
+        F: Fn(T, StreamSender) -> Fut + Send + Sync + 'static,
+        T: DeserializeOwned + Send + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        Self(Box::new(move |args: &str, tx: StreamSender| {
+            let parsed: Result<T, _> = serde_json::from_str(args);
+            match parsed {
+                Ok(value) => {
+                    let fut = handler(value, tx);
+                    Box::pin(async move { fut.await.into_handler_result() })
+                }
+                Err(e) => Box::pin(async move {
+                    Err(format!("Failed to deserialize args: {e}"))
+                }),
+            }
+        }))
+    }
+
+    /// Erase a streaming handler with state + typed args.
+    pub fn with_state<F, S, T, Fut, R>(handler: F, states: SharedStateMap) -> Self
+    where
+        F: Fn(State<Arc<S>>, T, StreamSender) -> Fut + Send + Sync + 'static,
+        S: Send + Sync + 'static,
+        T: DeserializeOwned + Send + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        Self(Box::new(move |args: &str, tx: StreamSender| {
+            let state_arc = match resolve_state::<S>(&states) {
+                Ok(s) => s,
+                Err(msg) => {
+                    return Box::pin(async move { Err(msg) })
+                        as Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+                }
+            };
+            let parsed: Result<T, _> = serde_json::from_str(args);
+            match parsed {
+                Ok(value) => {
+                    let fut = handler(State(state_arc), value, tx);
+                    Box::pin(async move { fut.await.into_handler_result() })
+                }
+                Err(e) => Box::pin(async move {
+                    Err(format!("Failed to deserialize args: {e}"))
+                }),
+            }
+        }))
+    }
+
+    /// Erase a streaming handler with state only (no args).
+    pub fn with_state_only<F, S, Fut, R>(handler: F, states: SharedStateMap) -> Self
+    where
+        F: Fn(State<Arc<S>>, StreamSender) -> Fut + Send + Sync + 'static,
+        S: Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+        R: IntoHandlerResult + 'static,
+    {
+        Self(Box::new(move |_args: &str, tx: StreamSender| {
+            let state_arc = match resolve_state::<S>(&states) {
+                Ok(s) => s,
+                Err(msg) => {
+                    return Box::pin(async move { Err(msg) })
+                        as Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+                }
+            };
+            let fut = handler(State(state_arc), tx);
+            Box::pin(async move { fut.await.into_handler_result() })
+        }))
+    }
+}
+
+impl StreamHandler for ErasedStreamHandler {
+    fn call_streaming(
+        &self,
+        args: &str,
+        tx: StreamSender,
+    ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + '_>> {
+        (self.0)(args, tx)
+    }
+}
+
+// ─── Streaming handler structs (4 variants, kept for direct construction) ──
 
 /// Streaming handler with no arguments (receives only StreamSender)
 pub struct StreamingHandlerFn<F, Fut, R>

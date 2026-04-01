@@ -115,6 +115,7 @@ pub use handler::{
     StreamReceiver, StreamSender, StreamingHandlerFn, StreamingHandlerWithArgs,
     StreamingHandlerWithState, StreamingHandlerWithStateOnly, DEFAULT_STREAM_CAPACITY,
 };
+use handler::{ErasedHandler, ErasedStreamHandler};
 pub use metadata::RouteMetadata;
 pub use method::Method;
 pub use openapi::{OpenApiGenerator, OpenApiServer};
@@ -356,7 +357,7 @@ impl Router {
         Fut: Future<Output = String> + Send + 'static,
     {
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerFn::new(handler)));
+            .insert(name.to_string(), Box::new(ErasedHandler::no_args(handler)));
     }
 
     /// Register a handler that receives typed, deserialized args
@@ -367,7 +368,7 @@ impl Router {
         Fut: Future<Output = String> + Send + 'static,
     {
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerWithArgs::new(handler)));
+            .insert(name.to_string(), Box::new(ErasedHandler::with_args(handler)));
     }
 
     /// Register a handler that receives injected state and typed args
@@ -384,7 +385,7 @@ impl Router {
     {
         let state = self.states.clone();
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerWithState::new(handler, state)));
+            .insert(name.to_string(), Box::new(ErasedHandler::with_state(handler, state)));
     }
 
     /// Register a handler that receives only injected state (no args)
@@ -400,7 +401,7 @@ impl Router {
     {
         let state = self.states.clone();
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerWithStateOnly::new(handler, state)));
+            .insert(name.to_string(), Box::new(ErasedHandler::with_state_only(handler, state)));
     }
 
     // ─── Typed return registration (auto-serialize via Json wrapper) ─────
@@ -417,7 +418,7 @@ impl Router {
             async move { Json(fut.await) }
         };
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerFn::new(wrapped)));
+            .insert(name.to_string(), Box::new(ErasedHandler::no_args(wrapped)));
     }
 
     /// Register a handler that accepts typed args and returns `R: Serialize`
@@ -433,7 +434,7 @@ impl Router {
             async move { Json(fut.await) }
         };
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerWithArgs::new(wrapped)));
+            .insert(name.to_string(), Box::new(ErasedHandler::with_args(wrapped)));
     }
 
     /// Register a handler that receives state + typed args and returns `R: Serialize`
@@ -451,7 +452,7 @@ impl Router {
             async move { Json(fut.await) }
         };
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerWithState::new(wrapped, state)));
+            .insert(name.to_string(), Box::new(ErasedHandler::with_state(wrapped, state)));
     }
 
     /// Register a handler that receives state only and returns `R: Serialize`
@@ -468,7 +469,7 @@ impl Router {
             async move { Json(fut.await) }
         };
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerWithStateOnly::new(wrapped, state)));
+            .insert(name.to_string(), Box::new(ErasedHandler::with_state_only(wrapped, state)));
     }
 
     // ─── Result return registration ─────────────────────────────────────
@@ -485,7 +486,7 @@ impl Router {
         Fut: Future<Output = Result<R, E>> + Send + 'static,
     {
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerFn::new(handler)));
+            .insert(name.to_string(), Box::new(ErasedHandler::no_args(handler)));
     }
 
     /// Register a handler returning `Result<R, E>` with typed args
@@ -498,7 +499,7 @@ impl Router {
         Fut: Future<Output = Result<R, E>> + Send + 'static,
     {
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerWithArgs::new(handler)));
+            .insert(name.to_string(), Box::new(ErasedHandler::with_args(handler)));
     }
 
     /// Register a handler returning `Result<R, E>` with state + typed args
@@ -513,7 +514,7 @@ impl Router {
     {
         let state = self.states.clone();
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerWithState::new(handler, state)));
+            .insert(name.to_string(), Box::new(ErasedHandler::with_state(handler, state)));
     }
 
     /// Register a handler returning `Result<R, E>` with state only
@@ -527,7 +528,7 @@ impl Router {
     {
         let state = self.states.clone();
         self.handlers
-            .insert(name.to_string(), Box::new(HandlerWithStateOnly::new(handler, state)));
+            .insert(name.to_string(), Box::new(ErasedHandler::with_state_only(handler, state)));
     }
 
     /// Get the number of registered handlers (request/response only)
@@ -545,7 +546,7 @@ impl Router {
         R: IntoHandlerResult + 'static,
     {
         self.streaming_handlers
-            .insert(name.to_string(), Box::new(StreamingHandlerFn::new(handler)));
+            .insert(name.to_string(), Box::new(ErasedStreamHandler::no_args(handler)));
     }
 
     /// Register a streaming handler with typed args
@@ -557,7 +558,7 @@ impl Router {
         R: IntoHandlerResult + 'static,
     {
         self.streaming_handlers
-            .insert(name.to_string(), Box::new(StreamingHandlerWithArgs::new(handler)));
+            .insert(name.to_string(), Box::new(ErasedStreamHandler::with_args(handler)));
     }
 
     /// Register a streaming handler with state and typed args
@@ -571,7 +572,7 @@ impl Router {
     {
         let state = self.states.clone();
         self.streaming_handlers
-            .insert(name.to_string(), Box::new(StreamingHandlerWithState::new(handler, state)));
+            .insert(name.to_string(), Box::new(ErasedStreamHandler::with_state(handler, state)));
     }
 
     /// Register a streaming handler with state only (no args)
@@ -584,7 +585,7 @@ impl Router {
     {
         let state = self.states.clone();
         self.streaming_handlers
-            .insert(name.to_string(), Box::new(StreamingHandlerWithStateOnly::new(handler, state)));
+            .insert(name.to_string(), Box::new(ErasedStreamHandler::with_state_only(handler, state)));
     }
 
     /// Register a handler that returns a `Stream` of items (no args).

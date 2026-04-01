@@ -532,18 +532,16 @@ where
 // time via the `erase_*` constructors — same Box::pin on the hot path,
 // zero additional allocation at call time.
 
+/// Boxed closure signature shared by `ErasedHandler` and `ErasedStreamHandler`.
+type HandlerCallFn =
+    dyn Fn(&str) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>> + Send + Sync;
+
 /// Type-erased request handler.
 ///
 /// Wraps a boxed closure that has already been monomorphized and type-erased
 /// by the `register_*` method. Only one `impl Handler` exists for this type,
 /// regardless of how many handlers are registered.
-pub(crate) struct ErasedHandler(
-    Box<
-        dyn Fn(&str) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
-            + Send
-            + Sync,
-    >,
-);
+pub(crate) struct ErasedHandler(Box<HandlerCallFn>);
 
 impl ErasedHandler {
     /// Erase a zero-arg handler.
@@ -662,14 +660,13 @@ pub trait StreamHandler: Send + Sync {
 
 // ─── Type-erased streaming handler ─────────────────────────────────────────
 
+/// Boxed closure signature for streaming handlers.
+type StreamHandlerCallFn = dyn Fn(&str, StreamSender) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+    + Send
+    + Sync;
+
 /// Type-erased streaming handler — same principle as `ErasedHandler` (see #58).
-pub(crate) struct ErasedStreamHandler(
-    Box<
-        dyn Fn(&str, StreamSender) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
-            + Send
-            + Sync,
-    >,
-);
+pub(crate) struct ErasedStreamHandler(Box<StreamHandlerCallFn>);
 
 impl ErasedStreamHandler {
     /// Erase a streaming handler with no args.

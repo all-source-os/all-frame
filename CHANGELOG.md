@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.26] - 2026-04-02
+
+### Fixed
+- **E0275 recursion overflow with ~290+ typed handlers** ([#58](https://github.com/all-source-os/all-frame/issues/58)) — Replaced generic handler wrapper structs (`HandlerFn<F,Fut,R>`, `HandlerWithArgs`, `HandlerWithState`, `HandlerWithStateOnly`) with type-erased `ErasedHandler`/`ErasedStreamHandler` in all `register_*` methods. This collapses N distinct `impl Handler` trait impls into exactly 1, eliminating the trait-resolution pressure that triggered infinite recursion via `objc2::Retained`'s `Deref` blanket impl on macOS at ~290+ handlers. Zero runtime cost — same `Box::pin` on the hot path. Original generic structs retained for backward compatibility with direct construction.
+
+---
+
 ## [0.1.25] - 2026-03-19
 
 ### Added

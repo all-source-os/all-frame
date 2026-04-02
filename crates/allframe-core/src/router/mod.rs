@@ -110,12 +110,13 @@ pub use grpc_explorer::{grpc_explorer_html, GrpcExplorerConfig, GrpcExplorerThem
 #[cfg(feature = "router-grpc")]
 pub use grpc_prod::{protobuf, status, streaming, GrpcProductionAdapter, GrpcService};
 pub use handler::{
-    Handler, HandlerFn, HandlerWithArgs, HandlerWithState, HandlerWithStateOnly,
-    IntoHandlerResult, IntoStreamItem, Json, SharedStateMap, State, StreamError, StreamHandler,
-    StreamReceiver, StreamSender, StreamingHandlerFn, StreamingHandlerWithArgs,
-    StreamingHandlerWithState, StreamingHandlerWithStateOnly, DEFAULT_STREAM_CAPACITY,
+    ErasedHandler, ErasedStreamHandler, Handler, HandlerCallFn, HandlerFn, HandlerWithArgs,
+    HandlerWithState, HandlerWithStateOnly, IntoHandlerResult, IntoStreamItem, Json,
+    SharedStateMap, State, StreamError, StreamHandler, StreamHandlerCallFn, StreamReceiver,
+    StreamSender, StreamingHandlerFn, StreamingHandlerWithArgs, StreamingHandlerWithState,
+    StreamingHandlerWithStateOnly, DEFAULT_STREAM_CAPACITY,
 };
-use handler::{ErasedHandler, ErasedStreamHandler};
+pub use handler::resolve_state;
 pub use metadata::RouteMetadata;
 pub use method::Method;
 pub use openapi::{OpenApiGenerator, OpenApiServer};
@@ -535,6 +536,46 @@ impl Router {
     pub fn handlers_count(&self) -> usize {
         self.handlers.len()
     }
+
+    // ─── Non-generic (erased) registration ─────────────────────────────
+    //
+    // These methods accept pre-erased handlers and involve **zero** generic
+    // monomorphization at the call site. Use the `erase_handler!` family of
+    // macros to build the `ErasedHandler` / `ErasedStreamHandler` value.
+    //
+    // This is the recommended path when registering hundreds of handlers,
+    // where cumulative trait-resolution pressure can trigger E0275.
+
+    /// Register a pre-erased handler (non-generic, zero monomorphization).
+    ///
+    /// Pair with one of:
+    /// - [`erase_handler!(handler)`](crate::erase_handler)
+    /// - [`erase_handler_with_args!(handler, ArgsType)`](crate::erase_handler_with_args)
+    /// - [`erase_handler_with_state!(handler, StateType, ArgsType, states)`](crate::erase_handler_with_state)
+    /// - [`erase_handler_with_state_only!(handler, StateType, states)`](crate::erase_handler_with_state_only)
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use allframe_core::{erase_handler_with_args, router::Router};
+    ///
+    /// router.register_erased(
+    ///     "get_user",
+    ///     erase_handler_with_args!(get_user, GetUserArgs),
+    /// );
+    /// ```
+    pub fn register_erased(&mut self, name: &str, handler: ErasedHandler) {
+        self.handlers.insert(name.to_string(), Box::new(handler));
+    }
+
+    /// Register a pre-erased streaming handler (non-generic).
+    ///
+    /// See [`register_erased`](Self::register_erased) for rationale.
+    pub fn register_streaming_erased(&mut self, name: &str, handler: ErasedStreamHandler) {
+        self.streaming_handlers
+            .insert(name.to_string(), Box::new(handler));
+    }
+
 
     // ─── Streaming handler registration ─────────────────────────────────
 
@@ -2684,5 +2725,102 @@ mod tests {
 
         let result = router.call_handler("health", "{}").await;
         assert_eq!(result, Ok("ok".to_string()));
+    }
+
+    // ─── Erased registration tests ──────────────────────────────────��──
+
+    #[tokio::test]
+    async fn test_register_erased_no_args() {
+        let mut router = Router::new();
+        router.register_erased("health", crate::erase_handler!(|| async { "ok".to_string() }));
+        let result = router.call_handler("health", "{}").await;
+        assert_eq!(result, Ok("ok".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_erased_with_args() {
+        #[derive(serde::Deserialize)]
+        struct Args { greeting: String }
+
+        async fn greet(args: Args) -> String {
+            format!("hello {}", args.greeting)
+        }
+
+        let mut router = Router::new();
+        router.register_erased("greet", crate::erase_handler_with_args!(greet, Args));
+        let result = router.call_handler("greet", r#"{"greeting":"world"}"#).await;
+        assert_eq!(result, Ok("hello world".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_erased_with_state() {
+        #[derive(serde::Deserialize)]
+        struct Args { #[allow(dead_code)] key: String }
+
+        async fn with_state(state: handler::State<std::sync::Arc<String>>, _args: Args) -> String {
+            format!("state={}", *state)
+        }
+
+        let mut router = Router::new().with_state("mystate".to_string());
+        let states = router.shared_states();
+        router.register_erased(
+            "stateful",
+            crate::erase_handler_with_state!(with_state, String, Args, states),
+        );
+        let result = router.call_handler("stateful", r#"{"key":"v"}"#).await;
+        assert_eq!(result, Ok("state=mystate".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_erased_with_state_only() {
+        async fn check(state: handler::State<std::sync::Arc<u32>>) -> String {
+            format!("n={}", *state)
+        }
+
+        let mut router = Router::new().with_state(42u32);
+        let states = router.shared_states();
+        router.register_erased(
+            "check",
+            crate::erase_handler_with_state_only!(check, u32, states),
+        );
+        let result = router.call_handler("check", "{}").await;
+        assert_eq!(result, Ok("n=42".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_streaming_erased() {
+        let mut router = Router::new();
+        router.register_streaming_erased(
+            "stream",
+            crate::erase_streaming_handler!(|tx: handler::StreamSender| async move {
+                tx.send("chunk".to_string()).await.ok();
+                "done".to_string()
+            }),
+        );
+        let (mut rx, fut) = router.call_streaming_handler("stream", "{}").unwrap();
+        let result = fut.await;
+        assert_eq!(result, Ok("done".to_string()));
+        assert_eq!(rx.recv().await, Some("chunk".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_register_handlers_erased_macro() {
+        #[derive(serde::Deserialize)]
+        struct GreetArgs { name: String }
+
+        async fn health() -> String { "ok".into() }
+        async fn greet(args: GreetArgs) -> String { format!("hi {}", args.name) }
+
+        let mut router = Router::new();
+        crate::register_handlers_erased!(router, {
+            "health" => health(),
+            "greet" => greet(args: GreetArgs),
+        });
+
+        assert_eq!(router.call_handler("health", "{}").await, Ok("ok".to_string()));
+        assert_eq!(
+            router.call_handler("greet", r#"{"name":"Alice"}"#).await,
+            Ok("hi Alice".to_string()),
+        );
     }
 }

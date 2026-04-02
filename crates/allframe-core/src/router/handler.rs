@@ -22,7 +22,11 @@ use tokio_util::sync::CancellationToken;
 pub type SharedStateMap = Arc<RwLock<HashMap<TypeId, Arc<dyn Any + Send + Sync>>>>;
 
 /// Resolve a typed state from the shared map, returning an error string on failure.
-fn resolve_state<S: Send + Sync + 'static>(
+///
+/// This is used internally by stateful handlers. It is also re-exported for
+/// use by the `erase_handler_with_state!` / `erase_handler_with_state_only!`
+/// macros, which generate non-generic handler registration code.
+pub fn resolve_state<S: Send + Sync + 'static>(
     states: &SharedStateMap,
 ) -> Result<Arc<S>, String> {
     let map = states.read().map_err(|e| format!("State lock poisoned: {e}"))?;
@@ -320,8 +324,19 @@ impl<S> Deref for State<S> {
 }
 
 // ─── Handler structs (4 total, generic over R: IntoHandlerResult) ───────────
+//
+// DEPRECATED: These structs create per-handler `impl Handler` blocks that
+// contribute to trait-resolution pressure. Use `ErasedHandler` (via the
+// `erase_handler!` macros or `register_erased`) instead.
 
-/// Wrapper for function-based handlers with no arguments
+/// Wrapper for function-based handlers with no arguments.
+///
+/// **Soft-deprecated (v0.1.27):** Prefer [`ErasedHandler`] via [`erase_handler!`](crate::erase_handler)
+/// or [`Router::register_erased`](crate::router::Router::register_erased) instead.
+/// Each `HandlerFn` instance adds a distinct `impl Handler` block, which
+/// contributes to trait-resolution pressure at scale (see [#58]).
+///
+/// [#58]: https://github.com/all-source-os/all-frame/issues/58
 pub struct HandlerFn<F, Fut, R>
 where
     F: Fn() -> Fut + Send + Sync,
@@ -359,7 +374,12 @@ where
     }
 }
 
-/// Wrapper for handlers that accept typed, deserialized arguments
+/// Wrapper for handlers that accept typed, deserialized arguments.
+///
+/// **Soft-deprecated (v0.1.27):** Prefer [`ErasedHandler`] via
+/// [`erase_handler_with_args!`](crate::erase_handler_with_args) instead — see [#58].
+///
+/// [#58]: https://github.com/all-source-os/all-frame/issues/58
 #[allow(clippy::type_complexity)]
 pub struct HandlerWithArgs<F, T, Fut, R>
 where
@@ -411,7 +431,12 @@ where
     }
 }
 
-/// Wrapper for handlers that receive injected state and typed args
+/// Wrapper for handlers that receive injected state and typed args.
+///
+/// **Soft-deprecated (v0.1.27):** Prefer [`ErasedHandler`] via
+/// [`erase_handler_with_state!`](crate::erase_handler_with_state) instead — see [#58].
+///
+/// [#58]: https://github.com/all-source-os/all-frame/issues/58
 #[allow(clippy::type_complexity)]
 pub struct HandlerWithState<F, S, T, Fut, R>
 where
@@ -471,7 +496,12 @@ where
     }
 }
 
-/// Wrapper for handlers that receive only injected state (no args)
+/// Wrapper for handlers that receive only injected state (no args).
+///
+/// **Soft-deprecated (v0.1.27):** Prefer [`ErasedHandler`] via
+/// [`erase_handler_with_state_only!`](crate::erase_handler_with_state_only) instead — see [#58].
+///
+/// [#58]: https://github.com/all-source-os/all-frame/issues/58
 #[allow(clippy::type_complexity)]
 pub struct HandlerWithStateOnly<F, S, Fut, R>
 where
@@ -533,17 +563,46 @@ where
 // zero additional allocation at call time.
 
 /// Boxed closure signature shared by `ErasedHandler` and `ErasedStreamHandler`.
-type HandlerCallFn =
+///
+/// Re-exported so that the `erase_handler!` family of macros can construct
+/// erased handlers without going through generic functions.
+pub type HandlerCallFn =
     dyn Fn(&str) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>> + Send + Sync;
 
 /// Type-erased request handler.
 ///
-/// Wraps a boxed closure that has already been monomorphized and type-erased
-/// by the `register_*` method. Only one `impl Handler` exists for this type,
-/// regardless of how many handlers are registered.
-pub(crate) struct ErasedHandler(Box<HandlerCallFn>);
+/// Wraps a boxed closure that has already been monomorphized and type-erased.
+/// Only **one** `impl Handler` exists for this type, regardless of how many
+/// handlers are registered — eliminating the per-handler trait-resolution
+/// pressure that causes E0275 at scale.
+///
+/// # Construction
+///
+/// For most users the generic convenience constructors ([`no_args`], [`with_args`],
+/// [`with_state`], [`with_state_only`]) are the easiest path.  If you hit E0275
+/// with hundreds of handlers, use the `erase_handler!` / `erase_handler_with_args!`
+/// macros instead — they generate fully concrete (non-generic) boxing code.
+///
+/// [`no_args`]: ErasedHandler::no_args
+/// [`with_args`]: ErasedHandler::with_args
+/// [`with_state`]: ErasedHandler::with_state
+/// [`with_state_only`]: ErasedHandler::with_state_only
+pub struct ErasedHandler(pub(crate) Box<HandlerCallFn>);
 
 impl ErasedHandler {
+    /// Create an `ErasedHandler` from an already-boxed closure.
+    ///
+    /// This is the fully non-generic entry point used by the `erase_handler!`
+    /// family of macros. Because the closure is already boxed, **no generic
+    /// function is monomorphized** at the call site — the compiler only sees
+    /// concrete types, keeping trait-resolution pressure near zero.
+    ///
+    /// Prefer the `erase_handler!` / `erase_handler_with_args!` macros over
+    /// calling this directly; they handle the boxing boilerplate for you.
+    pub fn from_closure(f: Box<HandlerCallFn>) -> Self {
+        Self(f)
+    }
+
     /// Erase a zero-arg handler.
     pub fn no_args<F, Fut, R>(handler: F) -> Self
     where
@@ -661,14 +720,24 @@ pub trait StreamHandler: Send + Sync {
 // ─── Type-erased streaming handler ─────────────────────────────────────────
 
 /// Boxed closure signature for streaming handlers.
-type StreamHandlerCallFn = dyn Fn(&str, StreamSender) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+///
+/// Re-exported for use by `erase_streaming_handler!` macros.
+pub type StreamHandlerCallFn = dyn Fn(&str, StreamSender) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
     + Send
     + Sync;
 
-/// Type-erased streaming handler — same principle as `ErasedHandler` (see #58).
-pub(crate) struct ErasedStreamHandler(Box<StreamHandlerCallFn>);
+/// Type-erased streaming handler — same principle as [`ErasedHandler`] (see #58).
+pub struct ErasedStreamHandler(pub(crate) Box<StreamHandlerCallFn>);
 
 impl ErasedStreamHandler {
+    /// Create an `ErasedStreamHandler` from an already-boxed closure.
+    ///
+    /// Non-generic counterpart to the convenience constructors. Used by the
+    /// `erase_streaming_handler!` macros.
+    pub fn from_closure(f: Box<StreamHandlerCallFn>) -> Self {
+        Self(f)
+    }
+
     /// Erase a streaming handler with no args.
     pub fn no_args<F, Fut, R>(handler: F) -> Self
     where
@@ -766,9 +835,14 @@ impl StreamHandler for ErasedStreamHandler {
     }
 }
 
-// ─── Streaming handler structs (4 variants, kept for direct construction) ──
+// ─── Streaming handler structs (4 variants, soft-deprecated) ───────────────
 
-/// Streaming handler with no arguments (receives only StreamSender)
+/// Streaming handler with no arguments (receives only StreamSender).
+///
+/// **Soft-deprecated (v0.1.27):** Prefer [`ErasedStreamHandler`] via
+/// [`erase_streaming_handler!`](crate::erase_streaming_handler) instead — see [#58].
+///
+/// [#58]: https://github.com/all-source-os/all-frame/issues/58
 pub struct StreamingHandlerFn<F, Fut, R>
 where
     F: Fn(StreamSender) -> Fut + Send + Sync,
@@ -810,7 +884,10 @@ where
     }
 }
 
-/// Streaming handler that accepts typed, deserialized arguments
+/// Streaming handler that accepts typed, deserialized arguments.
+///
+/// **Soft-deprecated (v0.1.27):** Prefer [`ErasedStreamHandler`] via
+/// [`erase_streaming_handler_with_args!`](crate::erase_streaming_handler_with_args) instead.
 #[allow(clippy::type_complexity)]
 pub struct StreamingHandlerWithArgs<F, T, Fut, R>
 where
@@ -864,7 +941,10 @@ where
     }
 }
 
-/// Streaming handler that receives injected state and typed args
+/// Streaming handler that receives injected state and typed args.
+///
+/// **Soft-deprecated (v0.1.27):** Prefer [`ErasedStreamHandler`] via
+/// [`erase_streaming_handler_with_state!`](crate::erase_streaming_handler_with_state) instead.
 #[allow(clippy::type_complexity)]
 pub struct StreamingHandlerWithState<F, S, T, Fut, R>
 where
@@ -928,7 +1008,10 @@ where
     }
 }
 
-/// Streaming handler that receives only injected state (no args)
+/// Streaming handler that receives only injected state (no args).
+///
+/// **Soft-deprecated (v0.1.27):** Prefer [`ErasedStreamHandler`] via
+/// [`erase_streaming_handler_with_state_only!`](crate::erase_streaming_handler_with_state_only) instead.
 #[allow(clippy::type_complexity)]
 pub struct StreamingHandlerWithStateOnly<F, S, Fut, R>
 where
@@ -1784,5 +1867,102 @@ mod tests {
 
         assert_eq!(result, Ok("42".to_string()));
         assert_eq!(rx.recv().await, Some("progress".to_string()));
+    }
+
+    // ─── ErasedHandler tests (non-generic path) ─���──────────────────────
+
+    #[tokio::test]
+    async fn test_erased_handler_from_closure_no_args() {
+        let handler = ErasedHandler::from_closure(Box::new(|_args: &str| {
+            Box::pin(async { Ok("hello".to_string()) })
+                as Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+        }));
+        let result = handler.call("{}").await;
+        assert_eq!(result, Ok("hello".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_erased_handler_from_closure_with_args() {
+        #[derive(serde::Deserialize)]
+        struct Input { name: String }
+
+        let handler = ErasedHandler::from_closure(Box::new(|args: &str| {
+            let parsed: Result<Input, _> = serde_json::from_str(args);
+            match parsed {
+                Ok(input) => {
+                    Box::pin(async move { Ok(format!("hello {}", input.name)) })
+                        as Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+                }
+                Err(e) => Box::pin(async move { Err(e.to_string()) })
+                    as Pin<Box<dyn Future<Output = Result<String, String>> + Send>>,
+            }
+        }));
+        let result = handler.call(r#"{"name":"Alice"}"#).await;
+        assert_eq!(result, Ok("hello Alice".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_erased_handler_no_args_constructor() {
+        let handler = ErasedHandler::no_args(|| async { "zero-arg".to_string() });
+        let result = handler.call("ignored").await;
+        assert_eq!(result, Ok("zero-arg".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_erased_handler_with_args_constructor() {
+        #[derive(serde::Deserialize)]
+        struct Input { name: String }
+
+        let handler = ErasedHandler::with_args(|input: Input| async move {
+            format!("hi {}", input.name)
+        });
+        let result = handler.call(r#"{"name":"Bob"}"#).await;
+        assert_eq!(result, Ok("hi Bob".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_erased_handler_with_state_constructor() {
+        #[derive(serde::Deserialize)]
+        struct Input { #[allow(dead_code)] name: String }
+
+        let states = state_map("shared-state".to_string());
+        let handler =
+            ErasedHandler::with_state(
+                |state: State<Arc<String>>, _input: Input| async move {
+                    format!("state={}", *state)
+                },
+                states,
+            );
+        let result = handler.call(r#"{"name":"x"}"#).await;
+        assert_eq!(result, Ok("state=shared-state".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_erased_handler_with_state_only_constructor() {
+        let states = state_map(42u32);
+        let handler =
+            ErasedHandler::with_state_only(
+                |state: State<Arc<u32>>| async move { format!("n={}", *state) },
+                states,
+            );
+        let result = handler.call("{}").await;
+        assert_eq!(result, Ok("n=42".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_erased_stream_handler_from_closure() {
+        let handler = ErasedStreamHandler::from_closure(Box::new(
+            |_args: &str, tx: StreamSender| {
+                Box::pin(async move {
+                    tx.send("chunk".to_string()).await.ok();
+                    Ok("done".to_string())
+                })
+                    as Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+            },
+        ));
+        let (tx, mut rx) = StreamSender::channel();
+        let result = handler.call_streaming("{}", tx).await;
+        assert_eq!(result, Ok("done".to_string()));
+        assert_eq!(rx.recv().await, Some("chunk".to_string()));
     }
 }

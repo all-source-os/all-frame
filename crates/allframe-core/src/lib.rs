@@ -411,6 +411,13 @@ pub mod auth;
 // reduces boilerplate in downstream crates.
 
 // ============================================================================
+// Declarative macros (handler erasure + batch registration)
+// ============================================================================
+// Must be declared before any module that might use them.
+#[macro_use]
+mod macros;
+
+// ============================================================================
 // Re-exported macros
 // ============================================================================
 /// Re-export circuit_breaker attribute macro

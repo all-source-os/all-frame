@@ -327,25 +327,11 @@ fn generate_saga_impl(
         quote! { panic!("No #[saga_data] field found") }
     };
 
-    // Generate steps implementation
-    // Use workflow_steps method if available (from #[saga_workflow]),
-    // otherwise return empty (user must override via #[saga_workflow] or
-    // by providing their own Saga::steps implementation).
-    let steps_impl = quote! {
-        self.workflow_steps().unwrap_or_default()
-    };
-
-    // Generate Saga trait implementation
-    // Assumes Saga trait is available at runtime (from allframe-core)
+    // Generate Saga trait implementation.
+    // `steps()` returns an empty vec by default. When `#[saga_workflow]` is
+    // applied it generates a `workflow_steps()` inherent method; we no longer
+    // emit a conflicting default here (see #58 / saga_macros test fix).
     quote! {
-        impl #struct_name {
-            // Default implementation - returns None if no workflow defined
-            // Can be overridden by #[saga_workflow] macro
-            fn workflow_steps(&self) -> Option<Vec<std::sync::Arc<dyn allframe_core::cqrs::MacroSagaStep>>> {
-                None
-            }
-        }
-
         #[async_trait::async_trait]
         impl allframe_core::cqrs::Saga for #struct_name {
             fn saga_type(&self) -> &'static str {
@@ -353,7 +339,7 @@ fn generate_saga_impl(
             }
 
             fn steps(&self) -> Vec<std::sync::Arc<dyn allframe_core::cqrs::MacroSagaStep>> {
-                #steps_impl
+                vec![]
             }
 
             fn initial_data(&self) -> serde_json::Value {

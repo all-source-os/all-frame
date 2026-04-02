@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.27] - 2026-04-02
+
+### Fixed
+- **E0275 still triggered with 600+ handlers despite v0.1.26 type erasure** ([#58](https://github.com/all-source-os/all-frame/issues/58)) — The v0.1.26 fix reduced `impl Handler` blocks from N to 1, but the `register_*` methods remained generic — each call still monomorphized `ErasedHandler::with_args<F,T,Fut,R>()`. At ~643 handlers the cumulative trait-resolution pressure still overflowed E0275. This release provides a **fully non-generic registration path** where the compiler sees only concrete types at each call site, eliminating generic monomorphization entirely.
+
+### Added
+- **`ErasedHandler::from_closure()` / `ErasedStreamHandler::from_closure()`** — Public non-generic constructors that accept pre-boxed closures directly.
+- **`Router::register_erased()` / `Router::register_streaming_erased()`** — Non-generic registration methods with zero monomorphization at the call site.
+- **`erase_handler!` macro family** (8 macros) — Declarative macros that generate fully concrete boxing code: `erase_handler!`, `erase_handler_with_args!`, `erase_handler_with_state!`, `erase_handler_with_state_only!`, and 4 streaming equivalents.
+- **`register_handlers_erased!` batch macro** — Register multiple handlers at once using the non-generic erased path with a clean declarative syntax.
+- **`resolve_state` re-exported** — Now public for use by the erased state-handler macros.
+
+### Documentation
+- **ADR-0005** — Architecture Decision Record documenting the erased handler registration design, trade-offs, and alternatives considered.
+- **Migration guide** — `docs/guides/erased-handler-registration.md` with before/after examples, macro reference, FAQ, and guidance on when to use each registration path.
+- **Soft-deprecation notices** — Doc comments on `HandlerFn`, `HandlerWithArgs`, `HandlerWithState`, `HandlerWithStateOnly`, and all 4 streaming handler struct equivalents directing users to the erased alternatives.
+
+---
+
 ## [0.1.26] - 2026-04-02
 
 ### Fixed

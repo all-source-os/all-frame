@@ -115,9 +115,16 @@ macro_rules! erase_handler_with_args {
 macro_rules! erase_handler_with_state {
     ($handler:expr, $state_ty:ty, $args_ty:ty, $states:expr) => {{
         let states = $states;
+        let __af_type_id = ::std::any::TypeId::of::<$state_ty>();
+        let __af_type_name = ::std::any::type_name::<$state_ty>();
         $crate::router::ErasedHandler::from_closure(Box::new(move |args_str: &str| {
             let state_arc: ::std::result::Result<::std::sync::Arc<$state_ty>, String> =
-                $crate::router::resolve_state(&states);
+                $crate::router::resolve_state_erased(&states, __af_type_id, __af_type_name)
+                    .and_then(|any| {
+                        any.downcast::<$state_ty>().map_err(|_| {
+                            format!("State type mismatch: expected {}", __af_type_name)
+                        })
+                    });
             match state_arc {
                 Ok(s) => {
                     let parsed: ::std::result::Result<$args_ty, _> =
@@ -188,9 +195,16 @@ macro_rules! erase_handler_with_state {
 macro_rules! erase_handler_with_state_only {
     ($handler:expr, $state_ty:ty, $states:expr) => {{
         let states = $states;
+        let __af_type_id = ::std::any::TypeId::of::<$state_ty>();
+        let __af_type_name = ::std::any::type_name::<$state_ty>();
         $crate::router::ErasedHandler::from_closure(Box::new(move |_args: &str| {
             let state_arc: ::std::result::Result<::std::sync::Arc<$state_ty>, String> =
-                $crate::router::resolve_state(&states);
+                $crate::router::resolve_state_erased(&states, __af_type_id, __af_type_name)
+                    .and_then(|any| {
+                        any.downcast::<$state_ty>().map_err(|_| {
+                            format!("State type mismatch: expected {}", __af_type_name)
+                        })
+                    });
             match state_arc {
                 Ok(s) => {
                     let fut = $handler($crate::router::State(s));
@@ -321,10 +335,17 @@ macro_rules! erase_streaming_handler_with_args {
 macro_rules! erase_streaming_handler_with_state {
     ($handler:expr, $state_ty:ty, $args_ty:ty, $states:expr) => {{
         let states = $states;
+        let __af_type_id = ::std::any::TypeId::of::<$state_ty>();
+        let __af_type_name = ::std::any::type_name::<$state_ty>();
         $crate::router::ErasedStreamHandler::from_closure(Box::new(
             move |args_str: &str, tx: $crate::router::StreamSender| {
                 let state_arc: ::std::result::Result<::std::sync::Arc<$state_ty>, String> =
-                    $crate::router::resolve_state(&states);
+                    $crate::router::resolve_state_erased(&states, __af_type_id, __af_type_name)
+                        .and_then(|any| {
+                            any.downcast::<$state_ty>().map_err(|_| {
+                                format!("State type mismatch: expected {}", __af_type_name)
+                            })
+                        });
                 match state_arc {
                     Ok(s) => {
                         let parsed: ::std::result::Result<$args_ty, _> =
@@ -380,10 +401,17 @@ macro_rules! erase_streaming_handler_with_state {
 macro_rules! erase_streaming_handler_with_state_only {
     ($handler:expr, $state_ty:ty, $states:expr) => {{
         let states = $states;
+        let __af_type_id = ::std::any::TypeId::of::<$state_ty>();
+        let __af_type_name = ::std::any::type_name::<$state_ty>();
         $crate::router::ErasedStreamHandler::from_closure(Box::new(
             move |_args: &str, tx: $crate::router::StreamSender| {
                 let state_arc: ::std::result::Result<::std::sync::Arc<$state_ty>, String> =
-                    $crate::router::resolve_state(&states);
+                    $crate::router::resolve_state_erased(&states, __af_type_id, __af_type_name)
+                        .and_then(|any| {
+                            any.downcast::<$state_ty>().map_err(|_| {
+                                format!("State type mismatch: expected {}", __af_type_name)
+                            })
+                        });
                 match state_arc {
                     Ok(s) => {
                         let fut = $handler($crate::router::State(s), tx);

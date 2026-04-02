@@ -44,6 +44,30 @@ pub fn resolve_state<S: Send + Sync + 'static>(
     })
 }
 
+/// Non-generic state resolution — looks up by pre-computed [`TypeId`].
+///
+/// Used by `erase_handler_with_state!` and `erase_handler_with_state_only!`
+/// macros (and their streaming equivalents) to avoid monomorphizing a generic
+/// function inside each handler closure. The caller computes `TypeId::of::<S>()`
+/// and `type_name::<S>()` once at registration time; the closure only calls this
+/// non-generic function at invocation time.
+///
+/// See [#58](https://github.com/all-source-os/all-frame/issues/58) for context.
+pub fn resolve_state_erased(
+    states: &SharedStateMap,
+    type_id: TypeId,
+    type_name: &str,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+    let map = states
+        .read()
+        .map_err(|e| format!("State lock poisoned: {e}"))?;
+    map.get(&type_id).cloned().ok_or_else(|| {
+        format!(
+            "State not found: {type_name}. Was with_state::<{type_name}>() or inject_state::<{type_name}>() called?"
+        )
+    })
+}
+
 // ─── Output conversion trait ────────────────────────────────────────────────
 
 /// Trait for converting handler return values into `Result<String, String>`.
@@ -1964,5 +1988,79 @@ mod tests {
         let result = handler.call_streaming("{}", tx).await;
         assert_eq!(result, Ok("done".to_string()));
         assert_eq!(rx.recv().await, Some("chunk".to_string()));
+    }
+
+    // ─── resolve_state_erased tests ────────────────────────────────────
+
+    #[test]
+    fn test_resolve_state_erased_success() {
+        let states = state_map(99u64);
+        let type_id = TypeId::of::<u64>();
+        let type_name = std::any::type_name::<u64>();
+
+        let any = resolve_state_erased(&states, type_id, type_name).unwrap();
+        let val = any.downcast::<u64>().unwrap();
+        assert_eq!(*val, 99u64);
+    }
+
+    #[test]
+    fn test_resolve_state_erased_missing() {
+        let states: SharedStateMap = Arc::new(RwLock::new(HashMap::new()));
+        let type_id = TypeId::of::<String>();
+        let type_name = std::any::type_name::<String>();
+
+        let err = resolve_state_erased(&states, type_id, type_name).unwrap_err();
+        assert!(err.contains("State not found"));
+        assert!(err.contains(type_name));
+    }
+
+    // ─── Erased macro with state tests ─────────────────────────────────
+
+    #[tokio::test]
+    async fn test_erase_handler_with_state_macro() {
+        let states = state_map("macro-state".to_string());
+
+        async fn handler(
+            state: State<Arc<String>>,
+            _args: serde_json::Value,
+        ) -> String {
+            format!("got={}", *state)
+        }
+
+        let erased = crate::erase_handler_with_state!(handler, String, serde_json::Value, states);
+        let result = erased.call("{}").await;
+        assert_eq!(result, Ok("got=macro-state".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_erase_handler_with_state_only_macro() {
+        let states = state_map(7u32);
+
+        async fn handler(state: State<Arc<u32>>) -> String {
+            format!("n={}", *state)
+        }
+
+        let erased = crate::erase_handler_with_state_only!(handler, u32, states);
+        let result = erased.call("{}").await;
+        assert_eq!(result, Ok("n=7".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_erase_streaming_handler_with_state_only_macro() {
+        let states = state_map("stream-state".to_string());
+
+        async fn handler(
+            state: State<Arc<String>>,
+            tx: StreamSender,
+        ) -> String {
+            tx.send(format!("from={}", *state)).await.ok();
+            "done".to_string()
+        }
+
+        let erased = crate::erase_streaming_handler_with_state_only!(handler, String, states);
+        let (tx, mut rx) = StreamSender::channel();
+        let result = erased.call_streaming("{}", tx).await;
+        assert_eq!(result, Ok("done".to_string()));
+        assert_eq!(rx.recv().await, Some("from=stream-state".to_string()));
     }
 }

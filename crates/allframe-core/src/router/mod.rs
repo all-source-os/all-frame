@@ -117,6 +117,7 @@ pub use handler::{
     StreamingHandlerWithStateOnly, DEFAULT_STREAM_CAPACITY,
 };
 pub use handler::resolve_state;
+pub use handler::resolve_state_erased;
 pub use metadata::RouteMetadata;
 pub use method::Method;
 pub use openapi::{OpenApiGenerator, OpenApiServer};

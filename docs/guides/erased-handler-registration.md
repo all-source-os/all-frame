@@ -4,6 +4,30 @@
 > `router.register_result_with_args("name", handler)` to
 > `router.register_erased("name", erase_handler_with_args!(handler, ArgsType))`.
 
+## v0.1.28 Update: State-aware macros fixed
+
+Prior to v0.1.28, the state-aware erased macros (`erase_handler_with_state!`,
+`erase_handler_with_state_only!`, and their streaming variants) still called the
+generic `resolve_state::<S>()` function internally, which reintroduced
+monomorphization pressure at scale. This meant that converting `register_with_state`
+handlers to the erased path could still trigger E0275.
+
+**v0.1.28 replaces the generic `resolve_state` call with a non-generic
+`resolve_state_erased` function + a simple `downcast`**, eliminating all remaining
+generic monomorphization from the erased macro path. All handler types — including
+state-aware handlers — now go through a fully non-generic registration path.
+
+**Bulk migration:** Use `register_handlers_erased!` to convert all handlers at once:
+
+```rust
+register_handlers_erased!(router, {
+    "handler1" => handler1(state: AppState, args: Args1),
+    "handler2" => handler2(state: AppState),
+    "handler3" => handler3(args: Args3),
+    "handler4" => handler4(),
+});
+```
+
 ## The Problem
 
 Rust's trait solver has a finite recursion depth. Each generic handler registration

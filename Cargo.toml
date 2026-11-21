@@ -179,3 +179,12 @@ opt-level = 3
 lto = true
 codegen-units = 1
 strip = true
+
+# Full debug info for every dependency is most of a dev build's size on disk.
+# Dependencies keep none; workspace crates keep line tables, so a backtrace
+# still names the file and line in our code.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
